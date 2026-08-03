@@ -1,0 +1,11 @@
+.next/
+node_modules/
+coverage/
+out/
+build/
+.husky/
+package-lock.json
+next-env.d.ts
+
+# Généré par `npm run db:types` — le format est celui de la CLI Supabase.
+src/types/database.types.ts

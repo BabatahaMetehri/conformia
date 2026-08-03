@@ -1,0 +1,18 @@
+{
+  "common": {
+    "actions": {
+      "cancel": "Annuler",
+      "confirm": "Confirmer",
+      "save": "Enregistrer"
+    },
+    "states": {
+      "empty": "Aucun élément",
+      "loading": "Chargement…"
+    }
+  },
+  "errors": {
+    "forbidden": "Vous n'avez pas les droits nécessaires.",
+    "notFound": "Élément introuvable.",
+    "unexpected": "Une erreur inattendue est survenue."
+  }
+}

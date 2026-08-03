@@ -1,0 +1,6 @@
+# Portes qualité — aucun commit ne les contourne.
+# 1. Typage : projet entier, car un changement local casse un fichier distant.
+npm run typecheck
+
+# 2. Lint (--max-warnings=0) puis format, sur les seuls fichiers indexés.
+npx lint-staged
