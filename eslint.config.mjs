@@ -109,9 +109,10 @@ export default tseslint.config(
     rules: { "@typescript-eslint/no-restricted-imports": "off" },
   },
 
-  // Métier pur : ni React, ni Supabase en direct.
+  // Métier pur : ni React, ni Supabase en direct. `src/lib` et `src/config` sont
+  // soumis à la même règle — ils sont importés par les jobs et les scripts.
   {
-    files: ["src/services/**"],
+    files: ["src/services/**", "src/lib/**", "src/config/**"],
     rules: {
       "@typescript-eslint/no-restricted-imports": [
         "error",

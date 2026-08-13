@@ -5,7 +5,7 @@
  * pas de `throw` pour une erreur attendue.
  */
 
-import type { AppError } from "@/lib/errors";
+import { AppError } from "@/lib/errors";
 
 export interface Ok<T> {
   readonly ok: true;
@@ -40,7 +40,10 @@ export function mapResult<T, U, E>(result: Result<T, E>, transform: (value: T) =
   return result.ok ? ok(transform(result.value)) : result;
 }
 
-/** Enchaîne une opération qui peut elle-même échouer. */
+/**
+ * Enchaîne une opération qui peut elle-même échouer.
+ * Primitive de composition des services : `A → B → C` sans imbrication de `if`.
+ */
 export function flatMapResult<T, U, E>(
   result: Result<T, E>,
   transform: (value: T) => Result<U, E>,
@@ -48,19 +51,36 @@ export function flatMapResult<T, U, E>(
   return result.ok ? transform(result.value) : result;
 }
 
-/** Transforme l'erreur d'un échec, propage la valeur inchangée. */
-export function mapError<T, E, F>(result: Result<T, E>, transform: (error: E) => F): Result<T, F> {
-  return result.ok ? result : err(transform(result.error));
-}
-
 export function unwrapOr<T, E>(result: Result<T, E>, fallback: T): T {
   return result.ok ? result.value : fallback;
 }
 
 /**
- * Agrège une liste de `Result` : premier échec rencontré, sinon toutes les valeurs.
+ * Enveloppe une opération qui peut lever ou rejeter.
+ *
+ * Accepte une promesse **ou** une fonction : la forme fonction est la seule qui
+ * capture aussi une exception levée de façon synchrone avant que la promesse
+ * n'existe. Préférez-la partout où l'appel peut échouer immédiatement.
  */
-export function collectResults<T, E>(results: readonly Result<T, E>[]): Result<T[], E> {
+export async function tryCatch<T>(
+  source: Promise<T> | (() => T | Promise<T>),
+  // Enveloppé dans une lambda plutôt que passé en référence : `AppError.from`
+  // détachée de sa classe déclencherait `@typescript-eslint/unbound-method`.
+  onError: (error: unknown) => AppError = (error) => AppError.from(error),
+): Promise<Result<T>> {
+  try {
+    const value = typeof source === "function" ? await source() : await source;
+    return ok(value);
+  } catch (error) {
+    return err(onError(error));
+  }
+}
+
+/**
+ * Agrège un tableau de `Result` en un `Result` de tableau.
+ * S'arrête au premier échec : l'ordre des entrées détermine l'erreur retournée.
+ */
+export function collect<T, E>(results: readonly Result<T, E>[]): Result<T[], E> {
   const values: T[] = [];
   for (const result of results) {
     if (!result.ok) return result;

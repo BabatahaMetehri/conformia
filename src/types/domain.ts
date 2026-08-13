@@ -1,10 +1,12 @@
 /**
  * Types métier, dérivés des types générés par Supabase.
  *
- * Rien n'est redéclaré à la main ici : le schéma Postgres est la source de vérité.
- * Si une valeur disparaît de la base, la compilation casse — c'est l'intérêt.
+ * Le schéma Postgres est la source de vérité. Les énumérations applicatives de
+ * `src/config/constants.ts` sont confrontées ici à celles de la base : toute
+ * divergence casse le typecheck au lieu de produire un bug silencieux.
  */
 
+import type { OccurrenceStatus } from "@/config/constants";
 import type { Database } from "@/types/database.types";
 
 type PublicSchema = Database["public"];
@@ -42,23 +44,17 @@ export type Views<TName extends keyof PublicViews> = PublicViews[TName] extends 
 export type Enums<TName extends keyof PublicEnums> = PublicEnums[TName];
 
 /**
- * Cycle de vie d'une occurrence. L'ensemble des statuts est structurel ;
- * les TRANSITIONS autorisées sont des données en base, pas un `switch` (CLAUDE.md §1).
+ * Vaut `true` si les deux unions sont rigoureusement identiques, `never` sinon.
+ * Un `never` rend l'alias inutilisable et fait échouer `tsc`.
  */
-export type OccurrenceStatus = Enums<"occurrence_status">;
+type AssertSameUnion<A, B> = [A] extends [B] ? ([B] extends [A] ? true : never) : never;
 
 /**
- * Miroir exécutable de l'énumération, vérifié contre le type généré.
- * Un statut ajouté en base sans être listé ici ne fera pas planter la compilation ;
- * un statut listé ici mais absent de la base, si.
+ * Contrat énumération applicative ↔ ENUM Postgres.
+ * Si la migration change `occurrence_status` sans que `src/config/constants.ts`
+ * suive (ou l'inverse), ce type devient `never` et le typecheck échoue.
  */
-export const OCCURRENCE_STATUSES = [
-  "TODO",
-  "IN_PROGRESS",
-  "PENDING_VALIDATION",
-  "VALIDATED",
-  "SUBMITTED",
-  "ARCHIVED",
-  "REJECTED",
-  "NOT_APPLICABLE",
-] as const satisfies readonly OccurrenceStatus[];
+export type OccurrenceStatusMatchesDatabase = AssertSameUnion<
+  OccurrenceStatus,
+  Enums<"occurrence_status">
+>;

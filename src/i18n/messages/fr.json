@@ -3,6 +3,7 @@
     "actions": {
       "cancel": "Annuler",
       "confirm": "Confirmer",
+      "retry": "Réessayer",
       "save": "Enregistrer"
     },
     "states": {
@@ -11,8 +12,17 @@
     }
   },
   "errors": {
-    "forbidden": "Vous n'avez pas les droits nécessaires.",
+    "conflict": "Cette opération entre en conflit avec une donnée existante.",
+    "externalServiceFailed": "Un service externe n'a pas répondu. Réessayez dans un instant.",
+    "forbidden": "Vous n'avez pas les droits nécessaires pour cette action.",
+    "integrityCheckFailed": "L'intégrité du document n'a pas pu être vérifiée.",
+    "internal": "Une erreur inattendue est survenue.",
+    "invalidTransition": "Ce changement de statut n'est pas autorisé.",
     "notFound": "Élément introuvable.",
-    "unexpected": "Une erreur inattendue est survenue."
+    "periodLocked": "La période est clôturée : plus aucune modification n'est possible.",
+    "rateLimited": "Trop de requêtes. Patientez avant de réessayer.",
+    "storageFailed": "Le document n'a pas pu être traité.",
+    "unauthenticated": "Votre session a expiré. Reconnectez-vous.",
+    "validationFailed": "Les informations saisies sont invalides."
   }
 }
