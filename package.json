@@ -29,12 +29,17 @@
     ]
   },
   "dependencies": {
+    "@supabase/ssr": "0.12.4",
+    "@supabase/supabase-js": "2.112.3",
+    "@tanstack/react-query": "5.101.4",
     "date-fns": "4.4.0",
     "date-fns-tz": "3.2.0",
     "next": "15.5.22",
     "react": "19.1.0",
     "react-dom": "19.1.0",
-    "zod": "4.4.3"
+    "server-only": "0.0.1",
+    "zod": "4.4.3",
+    "zustand": "5.0.15"
   },
   "devDependencies": {
     "@eslint/eslintrc": "^3",

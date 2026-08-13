@@ -65,6 +65,17 @@ const NO_REACT_IN_SERVICES = {
   message: MSG_NO_FEATURES_FROM_SERVICES,
 };
 
+/**
+ * Le client `service_role` contourne la RLS. Seuls les scripts de
+ * `src/server/jobs/**` peuvent le charger — partout ailleurs, c'est un défaut.
+ * `import 'server-only'` dans admin.ts est la seconde barrière, côté build.
+ */
+const NO_ADMIN_CLIENT = {
+  group: ["@/lib/supabase/admin", "**/supabase/admin"],
+  message:
+    "Le client service_role contourne la RLS : il ne se charge que depuis src/server/jobs/**. Utilisez @/lib/supabase/server pour un accès soumis aux policies.",
+};
+
 export default tseslint.config(
   {
     ignores: [".next/**", "node_modules/**", "out/**", "build/**", "coverage/**", "next-env.d.ts"],
@@ -97,28 +108,40 @@ export default tseslint.config(
       "@typescript-eslint/no-explicit-any": "error",
       "@typescript-eslint/no-restricted-imports": [
         "error",
-        { patterns: [NO_SUPABASE_OUTSIDE_DATA] },
+        { patterns: [NO_SUPABASE_OUTSIDE_DATA, NO_ADMIN_CLIENT] },
       ],
       "import/no-restricted-paths": ["error", { basePath: __dirname, zones: layerZones }],
     },
   },
 
-  // Seule couche autorisée à parler à Supabase.
-  {
-    files: ["src/data/**", "src/lib/supabase/**", "src/server/jobs/**"],
-    rules: { "@typescript-eslint/no-restricted-imports": "off" },
-  },
-
   // Métier pur : ni React, ni Supabase en direct. `src/lib` et `src/config` sont
   // soumis à la même règle — ils sont importés par les jobs et les scripts.
+  // ⚠️ Ce bloc précède volontairement l'exemption ci-dessous : en flat config,
+  // le dernier bloc qui matche gagne, et `src/lib/**` engloberait sinon
+  // `src/lib/supabase/**`, à qui l'accès à @supabase/* est justement nécessaire.
   {
     files: ["src/services/**", "src/lib/**", "src/config/**"],
     rules: {
       "@typescript-eslint/no-restricted-imports": [
         "error",
-        { patterns: [NO_SUPABASE_OUTSIDE_DATA, NO_REACT_IN_SERVICES] },
+        { patterns: [NO_SUPABASE_OUTSIDE_DATA, NO_REACT_IN_SERVICES, NO_ADMIN_CLIENT] },
       ],
     },
+  },
+
+  // Seules couches autorisées à instancier un client Supabase. Le client
+  // service_role leur reste interdit : il n'appartient qu'aux jobs.
+  {
+    files: ["src/data/**", "src/lib/supabase/**"],
+    rules: {
+      "@typescript-eslint/no-restricted-imports": ["error", { patterns: [NO_ADMIN_CLIENT] }],
+    },
+  },
+
+  // Scripts hors requête : seul endroit où service_role est légitime.
+  {
+    files: ["src/server/jobs/**"],
+    rules: { "@typescript-eslint/no-restricted-imports": "off" },
   },
 
   // Fichiers de configuration hors périmètre TypeScript.
