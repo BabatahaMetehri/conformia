@@ -6,7 +6,7 @@
  * divergence casse le typecheck au lieu de produire un bug silencieux.
  */
 
-import type { OccurrenceStatus } from "@/config/constants";
+import type { Criticality, OccurrenceStatus, Periodicity } from "@/config/constants";
 import type { Database } from "@/types/database.types";
 
 type PublicSchema = Database["public"];
@@ -43,18 +43,26 @@ export type Views<TName extends keyof PublicViews> = PublicViews[TName] extends 
 
 export type Enums<TName extends keyof PublicEnums> = PublicEnums[TName];
 
-/**
- * Vaut `true` si les deux unions sont rigoureusement identiques, `never` sinon.
- * Un `never` rend l'alias inutilisable et fait échouer `tsc`.
- */
-type AssertSameUnion<A, B> = [A] extends [B] ? ([B] extends [A] ? true : never) : never;
+/** `true` si les deux unions sont rigoureusement identiques, `false` sinon. */
+type IsSameUnion<A, B> = [A] extends [B] ? ([B] extends [A] ? true : false) : false;
 
 /**
- * Contrat énumération applicative ↔ ENUM Postgres.
- * Si la migration change `occurrence_status` sans que `src/config/constants.ts`
- * suive (ou l'inverse), ce type devient `never` et le typecheck échoue.
+ * Échoue à la compilation dès que `T` n'est pas `true`.
+ *
+ * La contrainte doit porter sur `false`, pas sur `never` : `never` est assignable
+ * à tout, un `AssertSameUnion` rendant `never` n'aurait donc jamais rien cassé.
  */
-export type OccurrenceStatusMatchesDatabase = AssertSameUnion<
-  OccurrenceStatus,
-  Enums<"occurrence_status">
+type Assert<T extends true> = T;
+
+/**
+ * Contrats énumération applicative ↔ ENUM Postgres.
+ * Si une migration modifie un type ENUM sans que `src/config/constants.ts` suive
+ * (ou l'inverse), `npm run typecheck` échoue sur la ligne concernée.
+ */
+export type OccurrenceStatusMatchesDatabase = Assert<
+  IsSameUnion<OccurrenceStatus, Enums<"occurrence_status">>
 >;
+
+export type PeriodicityMatchesDatabase = Assert<IsSameUnion<Periodicity, Enums<"periodicity">>>;
+
+export type CriticalityMatchesDatabase = Assert<IsSameUnion<Criticality, Enums<"criticality">>>;

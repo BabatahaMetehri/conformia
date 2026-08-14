@@ -78,7 +78,17 @@ const NO_ADMIN_CLIENT = {
 
 export default tseslint.config(
   {
-    ignores: [".next/**", "node_modules/**", "out/**", "build/**", "coverage/**", "next-env.d.ts"],
+    ignores: [
+      ".next/**",
+      "node_modules/**",
+      "out/**",
+      "build/**",
+      "coverage/**",
+      "next-env.d.ts",
+      // Produit par `npm run db:types`. Le corriger à la main est interdit
+      // (CLAUDE.md §6) : il ne peut donc pas être soumis au lint.
+      "src/types/database.types.ts",
+    ],
   },
 
   // Règles Next.js. `next/typescript` est volontairement omis : il enregistre
