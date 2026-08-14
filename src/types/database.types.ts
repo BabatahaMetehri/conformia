@@ -11,28 +11,1573 @@ export type Database = {
     Tables: {
       app_settings: {
         Row: {
-          allow_self_validation: boolean
-          id: boolean
+          description: string
+          key: string
           updated_at: string
           updated_by: string | null
-          validation_fallback_business_days: number
-          weekend_days: number[]
+          value: Json
+          value_type: string
         }
         Insert: {
-          allow_self_validation?: boolean
-          id?: boolean
+          description: string
+          key: string
           updated_at?: string
           updated_by?: string | null
-          validation_fallback_business_days?: number
-          weekend_days?: number[]
+          value: Json
+          value_type: string
         }
         Update: {
-          allow_self_validation?: boolean
-          id?: boolean
+          description?: string
+          key?: string
           updated_at?: string
           updated_by?: string | null
-          validation_fallback_business_days?: number
-          weekend_days?: number[]
+          value?: Json
+          value_type?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "app_settings_updated_by_fkey"
+            columns: ["updated_by"]
+            isOneToOne: false
+            referencedRelation: "profile_directory"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "app_settings_updated_by_fkey"
+            columns: ["updated_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      audit_log: {
+        Row: {
+          action: string
+          actor_email: string | null
+          actor_id: string | null
+          after: Json | null
+          before: Json | null
+          changed_fields: string[] | null
+          entity_id: string | null
+          entity_id_ref: string | null
+          entity_table: string
+          id: number
+          ip_address: unknown
+          occurred_at: string
+          on_behalf_of_id: string | null
+          request_id: string | null
+          user_agent: string | null
+        }
+        Insert: {
+          action: string
+          actor_email?: string | null
+          actor_id?: string | null
+          after?: Json | null
+          before?: Json | null
+          changed_fields?: string[] | null
+          entity_id?: string | null
+          entity_id_ref?: string | null
+          entity_table: string
+          id?: number
+          ip_address?: unknown
+          occurred_at?: string
+          on_behalf_of_id?: string | null
+          request_id?: string | null
+          user_agent?: string | null
+        }
+        Update: {
+          action?: string
+          actor_email?: string | null
+          actor_id?: string | null
+          after?: Json | null
+          before?: Json | null
+          changed_fields?: string[] | null
+          entity_id?: string | null
+          entity_id_ref?: string | null
+          entity_table?: string
+          id?: number
+          ip_address?: unknown
+          occurred_at?: string
+          on_behalf_of_id?: string | null
+          request_id?: string | null
+          user_agent?: string | null
+        }
+        Relationships: []
+      }
+      audit_log_2026m07: {
+        Row: {
+          action: string
+          actor_email: string | null
+          actor_id: string | null
+          after: Json | null
+          before: Json | null
+          changed_fields: string[] | null
+          entity_id: string | null
+          entity_id_ref: string | null
+          entity_table: string
+          id: number
+          ip_address: unknown
+          occurred_at: string
+          on_behalf_of_id: string | null
+          request_id: string | null
+          user_agent: string | null
+        }
+        Insert: {
+          action: string
+          actor_email?: string | null
+          actor_id?: string | null
+          after?: Json | null
+          before?: Json | null
+          changed_fields?: string[] | null
+          entity_id?: string | null
+          entity_id_ref?: string | null
+          entity_table: string
+          id?: number
+          ip_address?: unknown
+          occurred_at?: string
+          on_behalf_of_id?: string | null
+          request_id?: string | null
+          user_agent?: string | null
+        }
+        Update: {
+          action?: string
+          actor_email?: string | null
+          actor_id?: string | null
+          after?: Json | null
+          before?: Json | null
+          changed_fields?: string[] | null
+          entity_id?: string | null
+          entity_id_ref?: string | null
+          entity_table?: string
+          id?: number
+          ip_address?: unknown
+          occurred_at?: string
+          on_behalf_of_id?: string | null
+          request_id?: string | null
+          user_agent?: string | null
+        }
+        Relationships: []
+      }
+      audit_log_2026m08: {
+        Row: {
+          action: string
+          actor_email: string | null
+          actor_id: string | null
+          after: Json | null
+          before: Json | null
+          changed_fields: string[] | null
+          entity_id: string | null
+          entity_id_ref: string | null
+          entity_table: string
+          id: number
+          ip_address: unknown
+          occurred_at: string
+          on_behalf_of_id: string | null
+          request_id: string | null
+          user_agent: string | null
+        }
+        Insert: {
+          action: string
+          actor_email?: string | null
+          actor_id?: string | null
+          after?: Json | null
+          before?: Json | null
+          changed_fields?: string[] | null
+          entity_id?: string | null
+          entity_id_ref?: string | null
+          entity_table: string
+          id?: number
+          ip_address?: unknown
+          occurred_at?: string
+          on_behalf_of_id?: string | null
+          request_id?: string | null
+          user_agent?: string | null
+        }
+        Update: {
+          action?: string
+          actor_email?: string | null
+          actor_id?: string | null
+          after?: Json | null
+          before?: Json | null
+          changed_fields?: string[] | null
+          entity_id?: string | null
+          entity_id_ref?: string | null
+          entity_table?: string
+          id?: number
+          ip_address?: unknown
+          occurred_at?: string
+          on_behalf_of_id?: string | null
+          request_id?: string | null
+          user_agent?: string | null
+        }
+        Relationships: []
+      }
+      audit_log_2026m09: {
+        Row: {
+          action: string
+          actor_email: string | null
+          actor_id: string | null
+          after: Json | null
+          before: Json | null
+          changed_fields: string[] | null
+          entity_id: string | null
+          entity_id_ref: string | null
+          entity_table: string
+          id: number
+          ip_address: unknown
+          occurred_at: string
+          on_behalf_of_id: string | null
+          request_id: string | null
+          user_agent: string | null
+        }
+        Insert: {
+          action: string
+          actor_email?: string | null
+          actor_id?: string | null
+          after?: Json | null
+          before?: Json | null
+          changed_fields?: string[] | null
+          entity_id?: string | null
+          entity_id_ref?: string | null
+          entity_table: string
+          id?: number
+          ip_address?: unknown
+          occurred_at?: string
+          on_behalf_of_id?: string | null
+          request_id?: string | null
+          user_agent?: string | null
+        }
+        Update: {
+          action?: string
+          actor_email?: string | null
+          actor_id?: string | null
+          after?: Json | null
+          before?: Json | null
+          changed_fields?: string[] | null
+          entity_id?: string | null
+          entity_id_ref?: string | null
+          entity_table?: string
+          id?: number
+          ip_address?: unknown
+          occurred_at?: string
+          on_behalf_of_id?: string | null
+          request_id?: string | null
+          user_agent?: string | null
+        }
+        Relationships: []
+      }
+      audit_log_2026m10: {
+        Row: {
+          action: string
+          actor_email: string | null
+          actor_id: string | null
+          after: Json | null
+          before: Json | null
+          changed_fields: string[] | null
+          entity_id: string | null
+          entity_id_ref: string | null
+          entity_table: string
+          id: number
+          ip_address: unknown
+          occurred_at: string
+          on_behalf_of_id: string | null
+          request_id: string | null
+          user_agent: string | null
+        }
+        Insert: {
+          action: string
+          actor_email?: string | null
+          actor_id?: string | null
+          after?: Json | null
+          before?: Json | null
+          changed_fields?: string[] | null
+          entity_id?: string | null
+          entity_id_ref?: string | null
+          entity_table: string
+          id?: number
+          ip_address?: unknown
+          occurred_at?: string
+          on_behalf_of_id?: string | null
+          request_id?: string | null
+          user_agent?: string | null
+        }
+        Update: {
+          action?: string
+          actor_email?: string | null
+          actor_id?: string | null
+          after?: Json | null
+          before?: Json | null
+          changed_fields?: string[] | null
+          entity_id?: string | null
+          entity_id_ref?: string | null
+          entity_table?: string
+          id?: number
+          ip_address?: unknown
+          occurred_at?: string
+          on_behalf_of_id?: string | null
+          request_id?: string | null
+          user_agent?: string | null
+        }
+        Relationships: []
+      }
+      audit_log_2026m11: {
+        Row: {
+          action: string
+          actor_email: string | null
+          actor_id: string | null
+          after: Json | null
+          before: Json | null
+          changed_fields: string[] | null
+          entity_id: string | null
+          entity_id_ref: string | null
+          entity_table: string
+          id: number
+          ip_address: unknown
+          occurred_at: string
+          on_behalf_of_id: string | null
+          request_id: string | null
+          user_agent: string | null
+        }
+        Insert: {
+          action: string
+          actor_email?: string | null
+          actor_id?: string | null
+          after?: Json | null
+          before?: Json | null
+          changed_fields?: string[] | null
+          entity_id?: string | null
+          entity_id_ref?: string | null
+          entity_table: string
+          id?: number
+          ip_address?: unknown
+          occurred_at?: string
+          on_behalf_of_id?: string | null
+          request_id?: string | null
+          user_agent?: string | null
+        }
+        Update: {
+          action?: string
+          actor_email?: string | null
+          actor_id?: string | null
+          after?: Json | null
+          before?: Json | null
+          changed_fields?: string[] | null
+          entity_id?: string | null
+          entity_id_ref?: string | null
+          entity_table?: string
+          id?: number
+          ip_address?: unknown
+          occurred_at?: string
+          on_behalf_of_id?: string | null
+          request_id?: string | null
+          user_agent?: string | null
+        }
+        Relationships: []
+      }
+      audit_log_2026m12: {
+        Row: {
+          action: string
+          actor_email: string | null
+          actor_id: string | null
+          after: Json | null
+          before: Json | null
+          changed_fields: string[] | null
+          entity_id: string | null
+          entity_id_ref: string | null
+          entity_table: string
+          id: number
+          ip_address: unknown
+          occurred_at: string
+          on_behalf_of_id: string | null
+          request_id: string | null
+          user_agent: string | null
+        }
+        Insert: {
+          action: string
+          actor_email?: string | null
+          actor_id?: string | null
+          after?: Json | null
+          before?: Json | null
+          changed_fields?: string[] | null
+          entity_id?: string | null
+          entity_id_ref?: string | null
+          entity_table: string
+          id?: number
+          ip_address?: unknown
+          occurred_at?: string
+          on_behalf_of_id?: string | null
+          request_id?: string | null
+          user_agent?: string | null
+        }
+        Update: {
+          action?: string
+          actor_email?: string | null
+          actor_id?: string | null
+          after?: Json | null
+          before?: Json | null
+          changed_fields?: string[] | null
+          entity_id?: string | null
+          entity_id_ref?: string | null
+          entity_table?: string
+          id?: number
+          ip_address?: unknown
+          occurred_at?: string
+          on_behalf_of_id?: string | null
+          request_id?: string | null
+          user_agent?: string | null
+        }
+        Relationships: []
+      }
+      audit_log_2027m01: {
+        Row: {
+          action: string
+          actor_email: string | null
+          actor_id: string | null
+          after: Json | null
+          before: Json | null
+          changed_fields: string[] | null
+          entity_id: string | null
+          entity_id_ref: string | null
+          entity_table: string
+          id: number
+          ip_address: unknown
+          occurred_at: string
+          on_behalf_of_id: string | null
+          request_id: string | null
+          user_agent: string | null
+        }
+        Insert: {
+          action: string
+          actor_email?: string | null
+          actor_id?: string | null
+          after?: Json | null
+          before?: Json | null
+          changed_fields?: string[] | null
+          entity_id?: string | null
+          entity_id_ref?: string | null
+          entity_table: string
+          id?: number
+          ip_address?: unknown
+          occurred_at?: string
+          on_behalf_of_id?: string | null
+          request_id?: string | null
+          user_agent?: string | null
+        }
+        Update: {
+          action?: string
+          actor_email?: string | null
+          actor_id?: string | null
+          after?: Json | null
+          before?: Json | null
+          changed_fields?: string[] | null
+          entity_id?: string | null
+          entity_id_ref?: string | null
+          entity_table?: string
+          id?: number
+          ip_address?: unknown
+          occurred_at?: string
+          on_behalf_of_id?: string | null
+          request_id?: string | null
+          user_agent?: string | null
+        }
+        Relationships: []
+      }
+      audit_log_2027m02: {
+        Row: {
+          action: string
+          actor_email: string | null
+          actor_id: string | null
+          after: Json | null
+          before: Json | null
+          changed_fields: string[] | null
+          entity_id: string | null
+          entity_id_ref: string | null
+          entity_table: string
+          id: number
+          ip_address: unknown
+          occurred_at: string
+          on_behalf_of_id: string | null
+          request_id: string | null
+          user_agent: string | null
+        }
+        Insert: {
+          action: string
+          actor_email?: string | null
+          actor_id?: string | null
+          after?: Json | null
+          before?: Json | null
+          changed_fields?: string[] | null
+          entity_id?: string | null
+          entity_id_ref?: string | null
+          entity_table: string
+          id?: number
+          ip_address?: unknown
+          occurred_at?: string
+          on_behalf_of_id?: string | null
+          request_id?: string | null
+          user_agent?: string | null
+        }
+        Update: {
+          action?: string
+          actor_email?: string | null
+          actor_id?: string | null
+          after?: Json | null
+          before?: Json | null
+          changed_fields?: string[] | null
+          entity_id?: string | null
+          entity_id_ref?: string | null
+          entity_table?: string
+          id?: number
+          ip_address?: unknown
+          occurred_at?: string
+          on_behalf_of_id?: string | null
+          request_id?: string | null
+          user_agent?: string | null
+        }
+        Relationships: []
+      }
+      audit_log_2027m03: {
+        Row: {
+          action: string
+          actor_email: string | null
+          actor_id: string | null
+          after: Json | null
+          before: Json | null
+          changed_fields: string[] | null
+          entity_id: string | null
+          entity_id_ref: string | null
+          entity_table: string
+          id: number
+          ip_address: unknown
+          occurred_at: string
+          on_behalf_of_id: string | null
+          request_id: string | null
+          user_agent: string | null
+        }
+        Insert: {
+          action: string
+          actor_email?: string | null
+          actor_id?: string | null
+          after?: Json | null
+          before?: Json | null
+          changed_fields?: string[] | null
+          entity_id?: string | null
+          entity_id_ref?: string | null
+          entity_table: string
+          id?: number
+          ip_address?: unknown
+          occurred_at?: string
+          on_behalf_of_id?: string | null
+          request_id?: string | null
+          user_agent?: string | null
+        }
+        Update: {
+          action?: string
+          actor_email?: string | null
+          actor_id?: string | null
+          after?: Json | null
+          before?: Json | null
+          changed_fields?: string[] | null
+          entity_id?: string | null
+          entity_id_ref?: string | null
+          entity_table?: string
+          id?: number
+          ip_address?: unknown
+          occurred_at?: string
+          on_behalf_of_id?: string | null
+          request_id?: string | null
+          user_agent?: string | null
+        }
+        Relationships: []
+      }
+      audit_log_2027m04: {
+        Row: {
+          action: string
+          actor_email: string | null
+          actor_id: string | null
+          after: Json | null
+          before: Json | null
+          changed_fields: string[] | null
+          entity_id: string | null
+          entity_id_ref: string | null
+          entity_table: string
+          id: number
+          ip_address: unknown
+          occurred_at: string
+          on_behalf_of_id: string | null
+          request_id: string | null
+          user_agent: string | null
+        }
+        Insert: {
+          action: string
+          actor_email?: string | null
+          actor_id?: string | null
+          after?: Json | null
+          before?: Json | null
+          changed_fields?: string[] | null
+          entity_id?: string | null
+          entity_id_ref?: string | null
+          entity_table: string
+          id?: number
+          ip_address?: unknown
+          occurred_at?: string
+          on_behalf_of_id?: string | null
+          request_id?: string | null
+          user_agent?: string | null
+        }
+        Update: {
+          action?: string
+          actor_email?: string | null
+          actor_id?: string | null
+          after?: Json | null
+          before?: Json | null
+          changed_fields?: string[] | null
+          entity_id?: string | null
+          entity_id_ref?: string | null
+          entity_table?: string
+          id?: number
+          ip_address?: unknown
+          occurred_at?: string
+          on_behalf_of_id?: string | null
+          request_id?: string | null
+          user_agent?: string | null
+        }
+        Relationships: []
+      }
+      audit_log_2027m05: {
+        Row: {
+          action: string
+          actor_email: string | null
+          actor_id: string | null
+          after: Json | null
+          before: Json | null
+          changed_fields: string[] | null
+          entity_id: string | null
+          entity_id_ref: string | null
+          entity_table: string
+          id: number
+          ip_address: unknown
+          occurred_at: string
+          on_behalf_of_id: string | null
+          request_id: string | null
+          user_agent: string | null
+        }
+        Insert: {
+          action: string
+          actor_email?: string | null
+          actor_id?: string | null
+          after?: Json | null
+          before?: Json | null
+          changed_fields?: string[] | null
+          entity_id?: string | null
+          entity_id_ref?: string | null
+          entity_table: string
+          id?: number
+          ip_address?: unknown
+          occurred_at?: string
+          on_behalf_of_id?: string | null
+          request_id?: string | null
+          user_agent?: string | null
+        }
+        Update: {
+          action?: string
+          actor_email?: string | null
+          actor_id?: string | null
+          after?: Json | null
+          before?: Json | null
+          changed_fields?: string[] | null
+          entity_id?: string | null
+          entity_id_ref?: string | null
+          entity_table?: string
+          id?: number
+          ip_address?: unknown
+          occurred_at?: string
+          on_behalf_of_id?: string | null
+          request_id?: string | null
+          user_agent?: string | null
+        }
+        Relationships: []
+      }
+      audit_log_2027m06: {
+        Row: {
+          action: string
+          actor_email: string | null
+          actor_id: string | null
+          after: Json | null
+          before: Json | null
+          changed_fields: string[] | null
+          entity_id: string | null
+          entity_id_ref: string | null
+          entity_table: string
+          id: number
+          ip_address: unknown
+          occurred_at: string
+          on_behalf_of_id: string | null
+          request_id: string | null
+          user_agent: string | null
+        }
+        Insert: {
+          action: string
+          actor_email?: string | null
+          actor_id?: string | null
+          after?: Json | null
+          before?: Json | null
+          changed_fields?: string[] | null
+          entity_id?: string | null
+          entity_id_ref?: string | null
+          entity_table: string
+          id?: number
+          ip_address?: unknown
+          occurred_at?: string
+          on_behalf_of_id?: string | null
+          request_id?: string | null
+          user_agent?: string | null
+        }
+        Update: {
+          action?: string
+          actor_email?: string | null
+          actor_id?: string | null
+          after?: Json | null
+          before?: Json | null
+          changed_fields?: string[] | null
+          entity_id?: string | null
+          entity_id_ref?: string | null
+          entity_table?: string
+          id?: number
+          ip_address?: unknown
+          occurred_at?: string
+          on_behalf_of_id?: string | null
+          request_id?: string | null
+          user_agent?: string | null
+        }
+        Relationships: []
+      }
+      audit_log_2027m07: {
+        Row: {
+          action: string
+          actor_email: string | null
+          actor_id: string | null
+          after: Json | null
+          before: Json | null
+          changed_fields: string[] | null
+          entity_id: string | null
+          entity_id_ref: string | null
+          entity_table: string
+          id: number
+          ip_address: unknown
+          occurred_at: string
+          on_behalf_of_id: string | null
+          request_id: string | null
+          user_agent: string | null
+        }
+        Insert: {
+          action: string
+          actor_email?: string | null
+          actor_id?: string | null
+          after?: Json | null
+          before?: Json | null
+          changed_fields?: string[] | null
+          entity_id?: string | null
+          entity_id_ref?: string | null
+          entity_table: string
+          id?: number
+          ip_address?: unknown
+          occurred_at?: string
+          on_behalf_of_id?: string | null
+          request_id?: string | null
+          user_agent?: string | null
+        }
+        Update: {
+          action?: string
+          actor_email?: string | null
+          actor_id?: string | null
+          after?: Json | null
+          before?: Json | null
+          changed_fields?: string[] | null
+          entity_id?: string | null
+          entity_id_ref?: string | null
+          entity_table?: string
+          id?: number
+          ip_address?: unknown
+          occurred_at?: string
+          on_behalf_of_id?: string | null
+          request_id?: string | null
+          user_agent?: string | null
+        }
+        Relationships: []
+      }
+      audit_log_2027m08: {
+        Row: {
+          action: string
+          actor_email: string | null
+          actor_id: string | null
+          after: Json | null
+          before: Json | null
+          changed_fields: string[] | null
+          entity_id: string | null
+          entity_id_ref: string | null
+          entity_table: string
+          id: number
+          ip_address: unknown
+          occurred_at: string
+          on_behalf_of_id: string | null
+          request_id: string | null
+          user_agent: string | null
+        }
+        Insert: {
+          action: string
+          actor_email?: string | null
+          actor_id?: string | null
+          after?: Json | null
+          before?: Json | null
+          changed_fields?: string[] | null
+          entity_id?: string | null
+          entity_id_ref?: string | null
+          entity_table: string
+          id?: number
+          ip_address?: unknown
+          occurred_at?: string
+          on_behalf_of_id?: string | null
+          request_id?: string | null
+          user_agent?: string | null
+        }
+        Update: {
+          action?: string
+          actor_email?: string | null
+          actor_id?: string | null
+          after?: Json | null
+          before?: Json | null
+          changed_fields?: string[] | null
+          entity_id?: string | null
+          entity_id_ref?: string | null
+          entity_table?: string
+          id?: number
+          ip_address?: unknown
+          occurred_at?: string
+          on_behalf_of_id?: string | null
+          request_id?: string | null
+          user_agent?: string | null
+        }
+        Relationships: []
+      }
+      audit_log_2027m09: {
+        Row: {
+          action: string
+          actor_email: string | null
+          actor_id: string | null
+          after: Json | null
+          before: Json | null
+          changed_fields: string[] | null
+          entity_id: string | null
+          entity_id_ref: string | null
+          entity_table: string
+          id: number
+          ip_address: unknown
+          occurred_at: string
+          on_behalf_of_id: string | null
+          request_id: string | null
+          user_agent: string | null
+        }
+        Insert: {
+          action: string
+          actor_email?: string | null
+          actor_id?: string | null
+          after?: Json | null
+          before?: Json | null
+          changed_fields?: string[] | null
+          entity_id?: string | null
+          entity_id_ref?: string | null
+          entity_table: string
+          id?: number
+          ip_address?: unknown
+          occurred_at?: string
+          on_behalf_of_id?: string | null
+          request_id?: string | null
+          user_agent?: string | null
+        }
+        Update: {
+          action?: string
+          actor_email?: string | null
+          actor_id?: string | null
+          after?: Json | null
+          before?: Json | null
+          changed_fields?: string[] | null
+          entity_id?: string | null
+          entity_id_ref?: string | null
+          entity_table?: string
+          id?: number
+          ip_address?: unknown
+          occurred_at?: string
+          on_behalf_of_id?: string | null
+          request_id?: string | null
+          user_agent?: string | null
+        }
+        Relationships: []
+      }
+      audit_log_2027m10: {
+        Row: {
+          action: string
+          actor_email: string | null
+          actor_id: string | null
+          after: Json | null
+          before: Json | null
+          changed_fields: string[] | null
+          entity_id: string | null
+          entity_id_ref: string | null
+          entity_table: string
+          id: number
+          ip_address: unknown
+          occurred_at: string
+          on_behalf_of_id: string | null
+          request_id: string | null
+          user_agent: string | null
+        }
+        Insert: {
+          action: string
+          actor_email?: string | null
+          actor_id?: string | null
+          after?: Json | null
+          before?: Json | null
+          changed_fields?: string[] | null
+          entity_id?: string | null
+          entity_id_ref?: string | null
+          entity_table: string
+          id?: number
+          ip_address?: unknown
+          occurred_at?: string
+          on_behalf_of_id?: string | null
+          request_id?: string | null
+          user_agent?: string | null
+        }
+        Update: {
+          action?: string
+          actor_email?: string | null
+          actor_id?: string | null
+          after?: Json | null
+          before?: Json | null
+          changed_fields?: string[] | null
+          entity_id?: string | null
+          entity_id_ref?: string | null
+          entity_table?: string
+          id?: number
+          ip_address?: unknown
+          occurred_at?: string
+          on_behalf_of_id?: string | null
+          request_id?: string | null
+          user_agent?: string | null
+        }
+        Relationships: []
+      }
+      audit_log_2027m11: {
+        Row: {
+          action: string
+          actor_email: string | null
+          actor_id: string | null
+          after: Json | null
+          before: Json | null
+          changed_fields: string[] | null
+          entity_id: string | null
+          entity_id_ref: string | null
+          entity_table: string
+          id: number
+          ip_address: unknown
+          occurred_at: string
+          on_behalf_of_id: string | null
+          request_id: string | null
+          user_agent: string | null
+        }
+        Insert: {
+          action: string
+          actor_email?: string | null
+          actor_id?: string | null
+          after?: Json | null
+          before?: Json | null
+          changed_fields?: string[] | null
+          entity_id?: string | null
+          entity_id_ref?: string | null
+          entity_table: string
+          id?: number
+          ip_address?: unknown
+          occurred_at?: string
+          on_behalf_of_id?: string | null
+          request_id?: string | null
+          user_agent?: string | null
+        }
+        Update: {
+          action?: string
+          actor_email?: string | null
+          actor_id?: string | null
+          after?: Json | null
+          before?: Json | null
+          changed_fields?: string[] | null
+          entity_id?: string | null
+          entity_id_ref?: string | null
+          entity_table?: string
+          id?: number
+          ip_address?: unknown
+          occurred_at?: string
+          on_behalf_of_id?: string | null
+          request_id?: string | null
+          user_agent?: string | null
+        }
+        Relationships: []
+      }
+      audit_log_2027m12: {
+        Row: {
+          action: string
+          actor_email: string | null
+          actor_id: string | null
+          after: Json | null
+          before: Json | null
+          changed_fields: string[] | null
+          entity_id: string | null
+          entity_id_ref: string | null
+          entity_table: string
+          id: number
+          ip_address: unknown
+          occurred_at: string
+          on_behalf_of_id: string | null
+          request_id: string | null
+          user_agent: string | null
+        }
+        Insert: {
+          action: string
+          actor_email?: string | null
+          actor_id?: string | null
+          after?: Json | null
+          before?: Json | null
+          changed_fields?: string[] | null
+          entity_id?: string | null
+          entity_id_ref?: string | null
+          entity_table: string
+          id?: number
+          ip_address?: unknown
+          occurred_at?: string
+          on_behalf_of_id?: string | null
+          request_id?: string | null
+          user_agent?: string | null
+        }
+        Update: {
+          action?: string
+          actor_email?: string | null
+          actor_id?: string | null
+          after?: Json | null
+          before?: Json | null
+          changed_fields?: string[] | null
+          entity_id?: string | null
+          entity_id_ref?: string | null
+          entity_table?: string
+          id?: number
+          ip_address?: unknown
+          occurred_at?: string
+          on_behalf_of_id?: string | null
+          request_id?: string | null
+          user_agent?: string | null
+        }
+        Relationships: []
+      }
+      audit_log_2028m01: {
+        Row: {
+          action: string
+          actor_email: string | null
+          actor_id: string | null
+          after: Json | null
+          before: Json | null
+          changed_fields: string[] | null
+          entity_id: string | null
+          entity_id_ref: string | null
+          entity_table: string
+          id: number
+          ip_address: unknown
+          occurred_at: string
+          on_behalf_of_id: string | null
+          request_id: string | null
+          user_agent: string | null
+        }
+        Insert: {
+          action: string
+          actor_email?: string | null
+          actor_id?: string | null
+          after?: Json | null
+          before?: Json | null
+          changed_fields?: string[] | null
+          entity_id?: string | null
+          entity_id_ref?: string | null
+          entity_table: string
+          id?: number
+          ip_address?: unknown
+          occurred_at?: string
+          on_behalf_of_id?: string | null
+          request_id?: string | null
+          user_agent?: string | null
+        }
+        Update: {
+          action?: string
+          actor_email?: string | null
+          actor_id?: string | null
+          after?: Json | null
+          before?: Json | null
+          changed_fields?: string[] | null
+          entity_id?: string | null
+          entity_id_ref?: string | null
+          entity_table?: string
+          id?: number
+          ip_address?: unknown
+          occurred_at?: string
+          on_behalf_of_id?: string | null
+          request_id?: string | null
+          user_agent?: string | null
+        }
+        Relationships: []
+      }
+      audit_log_2028m02: {
+        Row: {
+          action: string
+          actor_email: string | null
+          actor_id: string | null
+          after: Json | null
+          before: Json | null
+          changed_fields: string[] | null
+          entity_id: string | null
+          entity_id_ref: string | null
+          entity_table: string
+          id: number
+          ip_address: unknown
+          occurred_at: string
+          on_behalf_of_id: string | null
+          request_id: string | null
+          user_agent: string | null
+        }
+        Insert: {
+          action: string
+          actor_email?: string | null
+          actor_id?: string | null
+          after?: Json | null
+          before?: Json | null
+          changed_fields?: string[] | null
+          entity_id?: string | null
+          entity_id_ref?: string | null
+          entity_table: string
+          id?: number
+          ip_address?: unknown
+          occurred_at?: string
+          on_behalf_of_id?: string | null
+          request_id?: string | null
+          user_agent?: string | null
+        }
+        Update: {
+          action?: string
+          actor_email?: string | null
+          actor_id?: string | null
+          after?: Json | null
+          before?: Json | null
+          changed_fields?: string[] | null
+          entity_id?: string | null
+          entity_id_ref?: string | null
+          entity_table?: string
+          id?: number
+          ip_address?: unknown
+          occurred_at?: string
+          on_behalf_of_id?: string | null
+          request_id?: string | null
+          user_agent?: string | null
+        }
+        Relationships: []
+      }
+      audit_log_2028m03: {
+        Row: {
+          action: string
+          actor_email: string | null
+          actor_id: string | null
+          after: Json | null
+          before: Json | null
+          changed_fields: string[] | null
+          entity_id: string | null
+          entity_id_ref: string | null
+          entity_table: string
+          id: number
+          ip_address: unknown
+          occurred_at: string
+          on_behalf_of_id: string | null
+          request_id: string | null
+          user_agent: string | null
+        }
+        Insert: {
+          action: string
+          actor_email?: string | null
+          actor_id?: string | null
+          after?: Json | null
+          before?: Json | null
+          changed_fields?: string[] | null
+          entity_id?: string | null
+          entity_id_ref?: string | null
+          entity_table: string
+          id?: number
+          ip_address?: unknown
+          occurred_at?: string
+          on_behalf_of_id?: string | null
+          request_id?: string | null
+          user_agent?: string | null
+        }
+        Update: {
+          action?: string
+          actor_email?: string | null
+          actor_id?: string | null
+          after?: Json | null
+          before?: Json | null
+          changed_fields?: string[] | null
+          entity_id?: string | null
+          entity_id_ref?: string | null
+          entity_table?: string
+          id?: number
+          ip_address?: unknown
+          occurred_at?: string
+          on_behalf_of_id?: string | null
+          request_id?: string | null
+          user_agent?: string | null
+        }
+        Relationships: []
+      }
+      audit_log_2028m04: {
+        Row: {
+          action: string
+          actor_email: string | null
+          actor_id: string | null
+          after: Json | null
+          before: Json | null
+          changed_fields: string[] | null
+          entity_id: string | null
+          entity_id_ref: string | null
+          entity_table: string
+          id: number
+          ip_address: unknown
+          occurred_at: string
+          on_behalf_of_id: string | null
+          request_id: string | null
+          user_agent: string | null
+        }
+        Insert: {
+          action: string
+          actor_email?: string | null
+          actor_id?: string | null
+          after?: Json | null
+          before?: Json | null
+          changed_fields?: string[] | null
+          entity_id?: string | null
+          entity_id_ref?: string | null
+          entity_table: string
+          id?: number
+          ip_address?: unknown
+          occurred_at?: string
+          on_behalf_of_id?: string | null
+          request_id?: string | null
+          user_agent?: string | null
+        }
+        Update: {
+          action?: string
+          actor_email?: string | null
+          actor_id?: string | null
+          after?: Json | null
+          before?: Json | null
+          changed_fields?: string[] | null
+          entity_id?: string | null
+          entity_id_ref?: string | null
+          entity_table?: string
+          id?: number
+          ip_address?: unknown
+          occurred_at?: string
+          on_behalf_of_id?: string | null
+          request_id?: string | null
+          user_agent?: string | null
+        }
+        Relationships: []
+      }
+      audit_log_2028m05: {
+        Row: {
+          action: string
+          actor_email: string | null
+          actor_id: string | null
+          after: Json | null
+          before: Json | null
+          changed_fields: string[] | null
+          entity_id: string | null
+          entity_id_ref: string | null
+          entity_table: string
+          id: number
+          ip_address: unknown
+          occurred_at: string
+          on_behalf_of_id: string | null
+          request_id: string | null
+          user_agent: string | null
+        }
+        Insert: {
+          action: string
+          actor_email?: string | null
+          actor_id?: string | null
+          after?: Json | null
+          before?: Json | null
+          changed_fields?: string[] | null
+          entity_id?: string | null
+          entity_id_ref?: string | null
+          entity_table: string
+          id?: number
+          ip_address?: unknown
+          occurred_at?: string
+          on_behalf_of_id?: string | null
+          request_id?: string | null
+          user_agent?: string | null
+        }
+        Update: {
+          action?: string
+          actor_email?: string | null
+          actor_id?: string | null
+          after?: Json | null
+          before?: Json | null
+          changed_fields?: string[] | null
+          entity_id?: string | null
+          entity_id_ref?: string | null
+          entity_table?: string
+          id?: number
+          ip_address?: unknown
+          occurred_at?: string
+          on_behalf_of_id?: string | null
+          request_id?: string | null
+          user_agent?: string | null
+        }
+        Relationships: []
+      }
+      audit_log_2028m06: {
+        Row: {
+          action: string
+          actor_email: string | null
+          actor_id: string | null
+          after: Json | null
+          before: Json | null
+          changed_fields: string[] | null
+          entity_id: string | null
+          entity_id_ref: string | null
+          entity_table: string
+          id: number
+          ip_address: unknown
+          occurred_at: string
+          on_behalf_of_id: string | null
+          request_id: string | null
+          user_agent: string | null
+        }
+        Insert: {
+          action: string
+          actor_email?: string | null
+          actor_id?: string | null
+          after?: Json | null
+          before?: Json | null
+          changed_fields?: string[] | null
+          entity_id?: string | null
+          entity_id_ref?: string | null
+          entity_table: string
+          id?: number
+          ip_address?: unknown
+          occurred_at?: string
+          on_behalf_of_id?: string | null
+          request_id?: string | null
+          user_agent?: string | null
+        }
+        Update: {
+          action?: string
+          actor_email?: string | null
+          actor_id?: string | null
+          after?: Json | null
+          before?: Json | null
+          changed_fields?: string[] | null
+          entity_id?: string | null
+          entity_id_ref?: string | null
+          entity_table?: string
+          id?: number
+          ip_address?: unknown
+          occurred_at?: string
+          on_behalf_of_id?: string | null
+          request_id?: string | null
+          user_agent?: string | null
+        }
+        Relationships: []
+      }
+      audit_log_2028m07: {
+        Row: {
+          action: string
+          actor_email: string | null
+          actor_id: string | null
+          after: Json | null
+          before: Json | null
+          changed_fields: string[] | null
+          entity_id: string | null
+          entity_id_ref: string | null
+          entity_table: string
+          id: number
+          ip_address: unknown
+          occurred_at: string
+          on_behalf_of_id: string | null
+          request_id: string | null
+          user_agent: string | null
+        }
+        Insert: {
+          action: string
+          actor_email?: string | null
+          actor_id?: string | null
+          after?: Json | null
+          before?: Json | null
+          changed_fields?: string[] | null
+          entity_id?: string | null
+          entity_id_ref?: string | null
+          entity_table: string
+          id?: number
+          ip_address?: unknown
+          occurred_at?: string
+          on_behalf_of_id?: string | null
+          request_id?: string | null
+          user_agent?: string | null
+        }
+        Update: {
+          action?: string
+          actor_email?: string | null
+          actor_id?: string | null
+          after?: Json | null
+          before?: Json | null
+          changed_fields?: string[] | null
+          entity_id?: string | null
+          entity_id_ref?: string | null
+          entity_table?: string
+          id?: number
+          ip_address?: unknown
+          occurred_at?: string
+          on_behalf_of_id?: string | null
+          request_id?: string | null
+          user_agent?: string | null
+        }
+        Relationships: []
+      }
+      audit_log_2028m08: {
+        Row: {
+          action: string
+          actor_email: string | null
+          actor_id: string | null
+          after: Json | null
+          before: Json | null
+          changed_fields: string[] | null
+          entity_id: string | null
+          entity_id_ref: string | null
+          entity_table: string
+          id: number
+          ip_address: unknown
+          occurred_at: string
+          on_behalf_of_id: string | null
+          request_id: string | null
+          user_agent: string | null
+        }
+        Insert: {
+          action: string
+          actor_email?: string | null
+          actor_id?: string | null
+          after?: Json | null
+          before?: Json | null
+          changed_fields?: string[] | null
+          entity_id?: string | null
+          entity_id_ref?: string | null
+          entity_table: string
+          id?: number
+          ip_address?: unknown
+          occurred_at?: string
+          on_behalf_of_id?: string | null
+          request_id?: string | null
+          user_agent?: string | null
+        }
+        Update: {
+          action?: string
+          actor_email?: string | null
+          actor_id?: string | null
+          after?: Json | null
+          before?: Json | null
+          changed_fields?: string[] | null
+          entity_id?: string | null
+          entity_id_ref?: string | null
+          entity_table?: string
+          id?: number
+          ip_address?: unknown
+          occurred_at?: string
+          on_behalf_of_id?: string | null
+          request_id?: string | null
+          user_agent?: string | null
+        }
+        Relationships: []
+      }
+      audit_log_2028m09: {
+        Row: {
+          action: string
+          actor_email: string | null
+          actor_id: string | null
+          after: Json | null
+          before: Json | null
+          changed_fields: string[] | null
+          entity_id: string | null
+          entity_id_ref: string | null
+          entity_table: string
+          id: number
+          ip_address: unknown
+          occurred_at: string
+          on_behalf_of_id: string | null
+          request_id: string | null
+          user_agent: string | null
+        }
+        Insert: {
+          action: string
+          actor_email?: string | null
+          actor_id?: string | null
+          after?: Json | null
+          before?: Json | null
+          changed_fields?: string[] | null
+          entity_id?: string | null
+          entity_id_ref?: string | null
+          entity_table: string
+          id?: number
+          ip_address?: unknown
+          occurred_at?: string
+          on_behalf_of_id?: string | null
+          request_id?: string | null
+          user_agent?: string | null
+        }
+        Update: {
+          action?: string
+          actor_email?: string | null
+          actor_id?: string | null
+          after?: Json | null
+          before?: Json | null
+          changed_fields?: string[] | null
+          entity_id?: string | null
+          entity_id_ref?: string | null
+          entity_table?: string
+          id?: number
+          ip_address?: unknown
+          occurred_at?: string
+          on_behalf_of_id?: string | null
+          request_id?: string | null
+          user_agent?: string | null
+        }
+        Relationships: []
+      }
+      audit_redacted_columns: {
+        Row: {
+          column_name: string
+          reason: string
+          table_name: string
+        }
+        Insert: {
+          column_name: string
+          reason: string
+          table_name: string
+        }
+        Update: {
+          column_name?: string
+          reason?: string
+          table_name?: string
         }
         Relationships: []
       }
@@ -91,6 +1636,982 @@ export type Database = {
             columns: ["entity_id"]
             isOneToOne: false
             referencedRelation: "entities"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      document_access_log: {
+        Row: {
+          action: string
+          actor_id: string | null
+          created_at: string
+          document_id: string
+          id: number
+          ip_address: unknown
+          user_agent: string | null
+        }
+        Insert: {
+          action: string
+          actor_id?: string | null
+          created_at?: string
+          document_id: string
+          id?: number
+          ip_address?: unknown
+          user_agent?: string | null
+        }
+        Update: {
+          action?: string
+          actor_id?: string | null
+          created_at?: string
+          document_id?: string
+          id?: number
+          ip_address?: unknown
+          user_agent?: string | null
+        }
+        Relationships: []
+      }
+      document_access_log_2026m07: {
+        Row: {
+          action: string
+          actor_id: string | null
+          created_at: string
+          document_id: string
+          id: number
+          ip_address: unknown
+          user_agent: string | null
+        }
+        Insert: {
+          action: string
+          actor_id?: string | null
+          created_at?: string
+          document_id: string
+          id?: number
+          ip_address?: unknown
+          user_agent?: string | null
+        }
+        Update: {
+          action?: string
+          actor_id?: string | null
+          created_at?: string
+          document_id?: string
+          id?: number
+          ip_address?: unknown
+          user_agent?: string | null
+        }
+        Relationships: []
+      }
+      document_access_log_2026m08: {
+        Row: {
+          action: string
+          actor_id: string | null
+          created_at: string
+          document_id: string
+          id: number
+          ip_address: unknown
+          user_agent: string | null
+        }
+        Insert: {
+          action: string
+          actor_id?: string | null
+          created_at?: string
+          document_id: string
+          id?: number
+          ip_address?: unknown
+          user_agent?: string | null
+        }
+        Update: {
+          action?: string
+          actor_id?: string | null
+          created_at?: string
+          document_id?: string
+          id?: number
+          ip_address?: unknown
+          user_agent?: string | null
+        }
+        Relationships: []
+      }
+      document_access_log_2026m09: {
+        Row: {
+          action: string
+          actor_id: string | null
+          created_at: string
+          document_id: string
+          id: number
+          ip_address: unknown
+          user_agent: string | null
+        }
+        Insert: {
+          action: string
+          actor_id?: string | null
+          created_at?: string
+          document_id: string
+          id?: number
+          ip_address?: unknown
+          user_agent?: string | null
+        }
+        Update: {
+          action?: string
+          actor_id?: string | null
+          created_at?: string
+          document_id?: string
+          id?: number
+          ip_address?: unknown
+          user_agent?: string | null
+        }
+        Relationships: []
+      }
+      document_access_log_2026m10: {
+        Row: {
+          action: string
+          actor_id: string | null
+          created_at: string
+          document_id: string
+          id: number
+          ip_address: unknown
+          user_agent: string | null
+        }
+        Insert: {
+          action: string
+          actor_id?: string | null
+          created_at?: string
+          document_id: string
+          id?: number
+          ip_address?: unknown
+          user_agent?: string | null
+        }
+        Update: {
+          action?: string
+          actor_id?: string | null
+          created_at?: string
+          document_id?: string
+          id?: number
+          ip_address?: unknown
+          user_agent?: string | null
+        }
+        Relationships: []
+      }
+      document_access_log_2026m11: {
+        Row: {
+          action: string
+          actor_id: string | null
+          created_at: string
+          document_id: string
+          id: number
+          ip_address: unknown
+          user_agent: string | null
+        }
+        Insert: {
+          action: string
+          actor_id?: string | null
+          created_at?: string
+          document_id: string
+          id?: number
+          ip_address?: unknown
+          user_agent?: string | null
+        }
+        Update: {
+          action?: string
+          actor_id?: string | null
+          created_at?: string
+          document_id?: string
+          id?: number
+          ip_address?: unknown
+          user_agent?: string | null
+        }
+        Relationships: []
+      }
+      document_access_log_2026m12: {
+        Row: {
+          action: string
+          actor_id: string | null
+          created_at: string
+          document_id: string
+          id: number
+          ip_address: unknown
+          user_agent: string | null
+        }
+        Insert: {
+          action: string
+          actor_id?: string | null
+          created_at?: string
+          document_id: string
+          id?: number
+          ip_address?: unknown
+          user_agent?: string | null
+        }
+        Update: {
+          action?: string
+          actor_id?: string | null
+          created_at?: string
+          document_id?: string
+          id?: number
+          ip_address?: unknown
+          user_agent?: string | null
+        }
+        Relationships: []
+      }
+      document_access_log_2027m01: {
+        Row: {
+          action: string
+          actor_id: string | null
+          created_at: string
+          document_id: string
+          id: number
+          ip_address: unknown
+          user_agent: string | null
+        }
+        Insert: {
+          action: string
+          actor_id?: string | null
+          created_at?: string
+          document_id: string
+          id?: number
+          ip_address?: unknown
+          user_agent?: string | null
+        }
+        Update: {
+          action?: string
+          actor_id?: string | null
+          created_at?: string
+          document_id?: string
+          id?: number
+          ip_address?: unknown
+          user_agent?: string | null
+        }
+        Relationships: []
+      }
+      document_access_log_2027m02: {
+        Row: {
+          action: string
+          actor_id: string | null
+          created_at: string
+          document_id: string
+          id: number
+          ip_address: unknown
+          user_agent: string | null
+        }
+        Insert: {
+          action: string
+          actor_id?: string | null
+          created_at?: string
+          document_id: string
+          id?: number
+          ip_address?: unknown
+          user_agent?: string | null
+        }
+        Update: {
+          action?: string
+          actor_id?: string | null
+          created_at?: string
+          document_id?: string
+          id?: number
+          ip_address?: unknown
+          user_agent?: string | null
+        }
+        Relationships: []
+      }
+      document_access_log_2027m03: {
+        Row: {
+          action: string
+          actor_id: string | null
+          created_at: string
+          document_id: string
+          id: number
+          ip_address: unknown
+          user_agent: string | null
+        }
+        Insert: {
+          action: string
+          actor_id?: string | null
+          created_at?: string
+          document_id: string
+          id?: number
+          ip_address?: unknown
+          user_agent?: string | null
+        }
+        Update: {
+          action?: string
+          actor_id?: string | null
+          created_at?: string
+          document_id?: string
+          id?: number
+          ip_address?: unknown
+          user_agent?: string | null
+        }
+        Relationships: []
+      }
+      document_access_log_2027m04: {
+        Row: {
+          action: string
+          actor_id: string | null
+          created_at: string
+          document_id: string
+          id: number
+          ip_address: unknown
+          user_agent: string | null
+        }
+        Insert: {
+          action: string
+          actor_id?: string | null
+          created_at?: string
+          document_id: string
+          id?: number
+          ip_address?: unknown
+          user_agent?: string | null
+        }
+        Update: {
+          action?: string
+          actor_id?: string | null
+          created_at?: string
+          document_id?: string
+          id?: number
+          ip_address?: unknown
+          user_agent?: string | null
+        }
+        Relationships: []
+      }
+      document_access_log_2027m05: {
+        Row: {
+          action: string
+          actor_id: string | null
+          created_at: string
+          document_id: string
+          id: number
+          ip_address: unknown
+          user_agent: string | null
+        }
+        Insert: {
+          action: string
+          actor_id?: string | null
+          created_at?: string
+          document_id: string
+          id?: number
+          ip_address?: unknown
+          user_agent?: string | null
+        }
+        Update: {
+          action?: string
+          actor_id?: string | null
+          created_at?: string
+          document_id?: string
+          id?: number
+          ip_address?: unknown
+          user_agent?: string | null
+        }
+        Relationships: []
+      }
+      document_access_log_2027m06: {
+        Row: {
+          action: string
+          actor_id: string | null
+          created_at: string
+          document_id: string
+          id: number
+          ip_address: unknown
+          user_agent: string | null
+        }
+        Insert: {
+          action: string
+          actor_id?: string | null
+          created_at?: string
+          document_id: string
+          id?: number
+          ip_address?: unknown
+          user_agent?: string | null
+        }
+        Update: {
+          action?: string
+          actor_id?: string | null
+          created_at?: string
+          document_id?: string
+          id?: number
+          ip_address?: unknown
+          user_agent?: string | null
+        }
+        Relationships: []
+      }
+      document_access_log_2027m07: {
+        Row: {
+          action: string
+          actor_id: string | null
+          created_at: string
+          document_id: string
+          id: number
+          ip_address: unknown
+          user_agent: string | null
+        }
+        Insert: {
+          action: string
+          actor_id?: string | null
+          created_at?: string
+          document_id: string
+          id?: number
+          ip_address?: unknown
+          user_agent?: string | null
+        }
+        Update: {
+          action?: string
+          actor_id?: string | null
+          created_at?: string
+          document_id?: string
+          id?: number
+          ip_address?: unknown
+          user_agent?: string | null
+        }
+        Relationships: []
+      }
+      document_access_log_2027m08: {
+        Row: {
+          action: string
+          actor_id: string | null
+          created_at: string
+          document_id: string
+          id: number
+          ip_address: unknown
+          user_agent: string | null
+        }
+        Insert: {
+          action: string
+          actor_id?: string | null
+          created_at?: string
+          document_id: string
+          id?: number
+          ip_address?: unknown
+          user_agent?: string | null
+        }
+        Update: {
+          action?: string
+          actor_id?: string | null
+          created_at?: string
+          document_id?: string
+          id?: number
+          ip_address?: unknown
+          user_agent?: string | null
+        }
+        Relationships: []
+      }
+      document_access_log_2027m09: {
+        Row: {
+          action: string
+          actor_id: string | null
+          created_at: string
+          document_id: string
+          id: number
+          ip_address: unknown
+          user_agent: string | null
+        }
+        Insert: {
+          action: string
+          actor_id?: string | null
+          created_at?: string
+          document_id: string
+          id?: number
+          ip_address?: unknown
+          user_agent?: string | null
+        }
+        Update: {
+          action?: string
+          actor_id?: string | null
+          created_at?: string
+          document_id?: string
+          id?: number
+          ip_address?: unknown
+          user_agent?: string | null
+        }
+        Relationships: []
+      }
+      document_access_log_2027m10: {
+        Row: {
+          action: string
+          actor_id: string | null
+          created_at: string
+          document_id: string
+          id: number
+          ip_address: unknown
+          user_agent: string | null
+        }
+        Insert: {
+          action: string
+          actor_id?: string | null
+          created_at?: string
+          document_id: string
+          id?: number
+          ip_address?: unknown
+          user_agent?: string | null
+        }
+        Update: {
+          action?: string
+          actor_id?: string | null
+          created_at?: string
+          document_id?: string
+          id?: number
+          ip_address?: unknown
+          user_agent?: string | null
+        }
+        Relationships: []
+      }
+      document_access_log_2027m11: {
+        Row: {
+          action: string
+          actor_id: string | null
+          created_at: string
+          document_id: string
+          id: number
+          ip_address: unknown
+          user_agent: string | null
+        }
+        Insert: {
+          action: string
+          actor_id?: string | null
+          created_at?: string
+          document_id: string
+          id?: number
+          ip_address?: unknown
+          user_agent?: string | null
+        }
+        Update: {
+          action?: string
+          actor_id?: string | null
+          created_at?: string
+          document_id?: string
+          id?: number
+          ip_address?: unknown
+          user_agent?: string | null
+        }
+        Relationships: []
+      }
+      document_access_log_2027m12: {
+        Row: {
+          action: string
+          actor_id: string | null
+          created_at: string
+          document_id: string
+          id: number
+          ip_address: unknown
+          user_agent: string | null
+        }
+        Insert: {
+          action: string
+          actor_id?: string | null
+          created_at?: string
+          document_id: string
+          id?: number
+          ip_address?: unknown
+          user_agent?: string | null
+        }
+        Update: {
+          action?: string
+          actor_id?: string | null
+          created_at?: string
+          document_id?: string
+          id?: number
+          ip_address?: unknown
+          user_agent?: string | null
+        }
+        Relationships: []
+      }
+      document_access_log_2028m01: {
+        Row: {
+          action: string
+          actor_id: string | null
+          created_at: string
+          document_id: string
+          id: number
+          ip_address: unknown
+          user_agent: string | null
+        }
+        Insert: {
+          action: string
+          actor_id?: string | null
+          created_at?: string
+          document_id: string
+          id?: number
+          ip_address?: unknown
+          user_agent?: string | null
+        }
+        Update: {
+          action?: string
+          actor_id?: string | null
+          created_at?: string
+          document_id?: string
+          id?: number
+          ip_address?: unknown
+          user_agent?: string | null
+        }
+        Relationships: []
+      }
+      document_access_log_2028m02: {
+        Row: {
+          action: string
+          actor_id: string | null
+          created_at: string
+          document_id: string
+          id: number
+          ip_address: unknown
+          user_agent: string | null
+        }
+        Insert: {
+          action: string
+          actor_id?: string | null
+          created_at?: string
+          document_id: string
+          id?: number
+          ip_address?: unknown
+          user_agent?: string | null
+        }
+        Update: {
+          action?: string
+          actor_id?: string | null
+          created_at?: string
+          document_id?: string
+          id?: number
+          ip_address?: unknown
+          user_agent?: string | null
+        }
+        Relationships: []
+      }
+      document_access_log_2028m03: {
+        Row: {
+          action: string
+          actor_id: string | null
+          created_at: string
+          document_id: string
+          id: number
+          ip_address: unknown
+          user_agent: string | null
+        }
+        Insert: {
+          action: string
+          actor_id?: string | null
+          created_at?: string
+          document_id: string
+          id?: number
+          ip_address?: unknown
+          user_agent?: string | null
+        }
+        Update: {
+          action?: string
+          actor_id?: string | null
+          created_at?: string
+          document_id?: string
+          id?: number
+          ip_address?: unknown
+          user_agent?: string | null
+        }
+        Relationships: []
+      }
+      document_access_log_2028m04: {
+        Row: {
+          action: string
+          actor_id: string | null
+          created_at: string
+          document_id: string
+          id: number
+          ip_address: unknown
+          user_agent: string | null
+        }
+        Insert: {
+          action: string
+          actor_id?: string | null
+          created_at?: string
+          document_id: string
+          id?: number
+          ip_address?: unknown
+          user_agent?: string | null
+        }
+        Update: {
+          action?: string
+          actor_id?: string | null
+          created_at?: string
+          document_id?: string
+          id?: number
+          ip_address?: unknown
+          user_agent?: string | null
+        }
+        Relationships: []
+      }
+      document_access_log_2028m05: {
+        Row: {
+          action: string
+          actor_id: string | null
+          created_at: string
+          document_id: string
+          id: number
+          ip_address: unknown
+          user_agent: string | null
+        }
+        Insert: {
+          action: string
+          actor_id?: string | null
+          created_at?: string
+          document_id: string
+          id?: number
+          ip_address?: unknown
+          user_agent?: string | null
+        }
+        Update: {
+          action?: string
+          actor_id?: string | null
+          created_at?: string
+          document_id?: string
+          id?: number
+          ip_address?: unknown
+          user_agent?: string | null
+        }
+        Relationships: []
+      }
+      document_access_log_2028m06: {
+        Row: {
+          action: string
+          actor_id: string | null
+          created_at: string
+          document_id: string
+          id: number
+          ip_address: unknown
+          user_agent: string | null
+        }
+        Insert: {
+          action: string
+          actor_id?: string | null
+          created_at?: string
+          document_id: string
+          id?: number
+          ip_address?: unknown
+          user_agent?: string | null
+        }
+        Update: {
+          action?: string
+          actor_id?: string | null
+          created_at?: string
+          document_id?: string
+          id?: number
+          ip_address?: unknown
+          user_agent?: string | null
+        }
+        Relationships: []
+      }
+      document_access_log_2028m07: {
+        Row: {
+          action: string
+          actor_id: string | null
+          created_at: string
+          document_id: string
+          id: number
+          ip_address: unknown
+          user_agent: string | null
+        }
+        Insert: {
+          action: string
+          actor_id?: string | null
+          created_at?: string
+          document_id: string
+          id?: number
+          ip_address?: unknown
+          user_agent?: string | null
+        }
+        Update: {
+          action?: string
+          actor_id?: string | null
+          created_at?: string
+          document_id?: string
+          id?: number
+          ip_address?: unknown
+          user_agent?: string | null
+        }
+        Relationships: []
+      }
+      document_access_log_2028m08: {
+        Row: {
+          action: string
+          actor_id: string | null
+          created_at: string
+          document_id: string
+          id: number
+          ip_address: unknown
+          user_agent: string | null
+        }
+        Insert: {
+          action: string
+          actor_id?: string | null
+          created_at?: string
+          document_id: string
+          id?: number
+          ip_address?: unknown
+          user_agent?: string | null
+        }
+        Update: {
+          action?: string
+          actor_id?: string | null
+          created_at?: string
+          document_id?: string
+          id?: number
+          ip_address?: unknown
+          user_agent?: string | null
+        }
+        Relationships: []
+      }
+      document_access_log_2028m09: {
+        Row: {
+          action: string
+          actor_id: string | null
+          created_at: string
+          document_id: string
+          id: number
+          ip_address: unknown
+          user_agent: string | null
+        }
+        Insert: {
+          action: string
+          actor_id?: string | null
+          created_at?: string
+          document_id: string
+          id?: number
+          ip_address?: unknown
+          user_agent?: string | null
+        }
+        Update: {
+          action?: string
+          actor_id?: string | null
+          created_at?: string
+          document_id?: string
+          id?: number
+          ip_address?: unknown
+          user_agent?: string | null
+        }
+        Relationships: []
+      }
+      documents: {
+        Row: {
+          bucket: string
+          checklist_item_id: string | null
+          deleted_at: string | null
+          deleted_by: string | null
+          deletion_reason: string | null
+          detected_mime_type: string | null
+          document_kind: string | null
+          entity_id: string
+          id: string
+          integrity_checked_at: string | null
+          mime_type: string
+          normalized_filename: string
+          occurrence_id: string
+          original_filename: string
+          sha256: string
+          size_bytes: number
+          storage_path: string
+          supersedes_id: string | null
+          uploaded_at: string
+          uploaded_by: string
+          version: number
+        }
+        Insert: {
+          bucket?: string
+          checklist_item_id?: string | null
+          deleted_at?: string | null
+          deleted_by?: string | null
+          deletion_reason?: string | null
+          detected_mime_type?: string | null
+          document_kind?: string | null
+          entity_id?: string
+          id?: string
+          integrity_checked_at?: string | null
+          mime_type: string
+          normalized_filename: string
+          occurrence_id: string
+          original_filename: string
+          sha256: string
+          size_bytes: number
+          storage_path: string
+          supersedes_id?: string | null
+          uploaded_at?: string
+          uploaded_by: string
+          version?: number
+        }
+        Update: {
+          bucket?: string
+          checklist_item_id?: string | null
+          deleted_at?: string | null
+          deleted_by?: string | null
+          deletion_reason?: string | null
+          detected_mime_type?: string | null
+          document_kind?: string | null
+          entity_id?: string
+          id?: string
+          integrity_checked_at?: string | null
+          mime_type?: string
+          normalized_filename?: string
+          occurrence_id?: string
+          original_filename?: string
+          sha256?: string
+          size_bytes?: number
+          storage_path?: string
+          supersedes_id?: string | null
+          uploaded_at?: string
+          uploaded_by?: string
+          version?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "documents_checklist_item_id_fkey"
+            columns: ["checklist_item_id"]
+            isOneToOne: false
+            referencedRelation: "occurrence_checklist_items"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "documents_deleted_by_fkey"
+            columns: ["deleted_by"]
+            isOneToOne: false
+            referencedRelation: "profile_directory"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "documents_deleted_by_fkey"
+            columns: ["deleted_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "documents_entity_id_fkey"
+            columns: ["entity_id"]
+            isOneToOne: false
+            referencedRelation: "entities"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "documents_occurrence_id_fkey"
+            columns: ["occurrence_id"]
+            isOneToOne: false
+            referencedRelation: "obligation_occurrences"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "documents_supersedes_id_fkey"
+            columns: ["supersedes_id"]
+            isOneToOne: false
+            referencedRelation: "documents"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "documents_supersedes_id_fkey"
+            columns: ["supersedes_id"]
+            isOneToOne: false
+            referencedRelation: "documents_pending_purge"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "documents_uploaded_by_fkey"
+            columns: ["uploaded_by"]
+            isOneToOne: false
+            referencedRelation: "profile_directory"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "documents_uploaded_by_fkey"
+            columns: ["uploaded_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
             referencedColumns: ["id"]
           },
         ]
@@ -1213,6 +3734,28 @@ export type Database = {
       }
     }
     Views: {
+      documents_pending_purge: {
+        Row: {
+          id: string | null
+          normalized_filename: string | null
+          obligation_code: string | null
+          occurrence_id: string | null
+          original_filename: string | null
+          period_key: string | null
+          purge_eligible_on: string | null
+          retention_years: number | null
+          uploaded_at: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "documents_occurrence_id_fkey"
+            columns: ["occurrence_id"]
+            isOneToOne: false
+            referencedRelation: "obligation_occurrences"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       profile_directory: {
         Row: {
           department_id: string | null
@@ -1255,8 +3798,16 @@ export type Database = {
         Args: { occurrence_id: string }
         Returns: boolean
       }
+      create_upcoming_partitions: {
+        Args: { months_ahead?: number }
+        Returns: undefined
+      }
       current_profile_id: { Args: never; Returns: string }
       effective_principals: { Args: never; Returns: string[] }
+      ensure_month_partition: {
+        Args: { base_table: string; month_start: string }
+        Returns: undefined
+      }
       has_permission: { Args: { perm: string }; Returns: boolean }
       has_permission_in_domain: {
         Args: { perm: string; target_domain: string }
@@ -1268,11 +3819,28 @@ export type Database = {
         Args: { p: Database["public"]["Enums"]["periodicity"]; rule: Json }
         Returns: boolean
       }
+      log_document_access: {
+        Args: {
+          p_action: string
+          p_document_id: string
+          p_ip?: unknown
+          p_user_agent?: string
+        }
+        Returns: undefined
+      }
       obligation_domain_of_occurrence: {
         Args: { occurrence_id: string }
         Returns: string
       }
       obligation_domain_of_type: { Args: { type_id: string }; Returns: string }
+      setting_bool: {
+        Args: { fallback: boolean; setting_key: string }
+        Returns: boolean
+      }
+      setting_int: {
+        Args: { fallback: number; setting_key: string }
+        Returns: number
+      }
     }
     Enums: {
       criticality: "LOW" | "MEDIUM" | "HIGH" | "CRITICAL"
