@@ -20,6 +20,7 @@ const ROOT = {
   notifications: "notifications",
   dashboard: "dashboard",
   users: "users",
+  search: "search",
 } as const;
 
 export interface ObligationListFilters {
@@ -88,6 +89,15 @@ export const queryKeys = {
     list: () => [ROOT.users, "list"] as const,
     detail: (userId: string) => [ROOT.users, "detail", userId] as const,
   },
+
+  /**
+   * La requête EST la clé : deux frappes distinctes sont deux caches distincts,
+   * ce qui rend le retour arrière dans la palette instantané.
+   */
+  search: {
+    all: () => [ROOT.search] as const,
+    results: (query: string) => [ROOT.search, "results", query] as const,
+  },
 } as const;
 
 /** Type de toute clé produite par la fabrique. */
@@ -99,4 +109,5 @@ export type AppQueryKey = ReturnType<
   | (typeof queryKeys.notifications)[keyof typeof queryKeys.notifications]
   | (typeof queryKeys.dashboard)[keyof typeof queryKeys.dashboard]
   | (typeof queryKeys.users)[keyof typeof queryKeys.users]
+  | (typeof queryKeys.search)[keyof typeof queryKeys.search]
 >;

@@ -1,43 +1,27 @@
 {
-  "common": {
-    "actions": {
-      "add": "إضافة",
-      "cancel": "إلغاء",
-      "close": "إغلاق",
-      "confirm": "تأكيد",
-      "continue": "متابعة",
-      "delete": "حذف",
-      "edit": "تعديل",
-      "export": "تصدير",
-      "filter": "تصفية",
-      "retry": "إعادة المحاولة",
-      "save": "حفظ",
-      "search": "بحث",
-      "submit": "تأكيد"
-    },
-    "states": {
-      "empty": "لا يوجد عنصر",
-      "loading": "جارٍ التحميل…",
-      "working": "جارٍ المعالجة…"
-    },
-    "confirm": {
-      "cancel": "إلغاء",
-      "irreversible": "لا يمكن التراجع عن هذا الإجراء.",
-      "typeToConfirm": "اكتب «{word}» للتأكيد"
-    },
-    "table": {
-      "empty": "لا توجد صفوف للعرض",
-      "sortBy": "الترتيب حسب هذا العمود",
-      "loadMore": "تحميل المزيد"
-    },
-    "theme": {
-      "toggle": "تغيير المظهر",
-      "light": "فاتح",
-      "dark": "داكن",
-      "system": "النظام"
+  "admin": {
+    "users": "المستخدمون",
+    "roles": "الأدوار",
+    "settings": "الإعدادات",
+    "deactivation": {
+      "title": "تعطيل الحساب",
+      "blocked": "لا يزال هذا الحساب يحمل {count} ملفًا مفتوحًا. عيّن مستلمًا قبل التعطيل.",
+      "reassignTo": "إعادة إسناد الملفات إلى",
+      "submit": "إعادة الإسناد والتعطيل",
+      "kept": "يُحفظ السجل والوثائق المودعة بالكامل. لا يُحذف الحساب أبدًا.",
+      "success": "تم تعطيل الحساب. أُعيد إسناد {count} ملفًا."
     }
   },
-
+  "audit": {
+    "title": "سجل التدقيق",
+    "actor": "الفاعل",
+    "action": "الإجراء",
+    "occurredAt": "التوقيت",
+    "creation": "إنشاء",
+    "systemActor": "النظام",
+    "onBehalfOf": "نيابة عن {name}",
+    "reasonLabel": "السبب:"
+  },
   "auth": {
     "login": {
       "title": "تسجيل الدخول",
@@ -102,7 +86,162 @@
       "ipNotAllowed": "رُفض دخول المسؤول من هذا العنوان الشبكي."
     }
   },
-
+  "common": {
+    "actions": {
+      "add": "إضافة",
+      "cancel": "إلغاء",
+      "close": "إغلاق",
+      "confirm": "تأكيد",
+      "continue": "متابعة",
+      "delete": "حذف",
+      "edit": "تعديل",
+      "export": "تصدير",
+      "filter": "تصفية",
+      "retry": "إعادة المحاولة",
+      "save": "حفظ",
+      "search": "بحث",
+      "submit": "تأكيد"
+    },
+    "states": {
+      "empty": "لا يوجد عنصر",
+      "loading": "جارٍ التحميل…",
+      "working": "جارٍ المعالجة…"
+    },
+    "confirm": {
+      "cancel": "إلغاء",
+      "irreversible": "لا يمكن التراجع عن هذا الإجراء.",
+      "typeToConfirm": "اكتب «{word}» للتأكيد"
+    },
+    "table": {
+      "empty": "لا توجد صفوف للعرض",
+      "sortBy": "الترتيب حسب هذا العمود",
+      "loadMore": "تحميل المزيد"
+    },
+    "theme": {
+      "toggle": "تغيير المظهر",
+      "light": "فاتح",
+      "dark": "داكن",
+      "system": "النظام"
+    }
+  },
+  "dashboard": {
+    "title": "لوحة القيادة",
+    "overdue": "متأخرة",
+    "dueThisWeek": "هذا الأسبوع",
+    "pendingValidation": "في انتظار المصادقة",
+    "completedThisMonth": "المعالجة هذا الشهر"
+  },
+  "designSystem": {
+    "title": "نظام التصميم",
+    "warning": "صفحة مرجعية داخلية. يجب حذفها قبل الإنتاج.",
+    "sections": {
+      "colors": "رموز الألوان",
+      "typography": "الطباعة",
+      "status": "حالات الاستحقاق",
+      "due": "إلحاح الأجل",
+      "badges": "الدورية والحرجية",
+      "identity": "الهوية",
+      "states": "حالات الشاشة",
+      "table": "الجدول",
+      "dialogs": "الحوارات",
+      "forms": "النماذج",
+      "upload": "إيداع ملف",
+      "audit": "السجل"
+    },
+    "sampleTableCaption": "مثال على جدول الاستحقاقات",
+    "columnObligation": "الالتزام",
+    "columnStatus": "الحالة",
+    "columnDue": "الأجل",
+    "destructiveExample": "حذف الوثيقة",
+    "destructiveDescription": "ستُزال الوثيقة من الملف. هذا الإجراء مُوثَّق ولا يمكن التراجع عنه."
+  },
+  "documents": {
+    "title": "الوثائق الثبوتية",
+    "filename": "اسم الملف",
+    "uploadedBy": "أودعه",
+    "uploadedAt": "تاريخ الإيداع",
+    "size": "الحجم",
+    "kind": {
+      "JUSTIFICATIF": "وثيقة ثبوتية",
+      "PREUVE_DEPOT": "إثبات إيداع",
+      "ANNEXE": "ملحق",
+      "CORRESPONDANCE": "مراسلة"
+    },
+    "dropzone": {
+      "prompt": "اسحب ملفًا إلى هنا، أو انقر للاستعراض",
+      "constraints": "{maxSizeMb} ميغابايت كحد أقصى · {count} صيغة مقبولة"
+    }
+  },
+  "errors": {
+    "conflict": "تتعارض هذه العملية مع بيانات موجودة.",
+    "correlationId": "المرجع الواجب إبلاغه للدعم:",
+    "externalServiceFailed": "لم تستجب خدمة خارجية. أعد المحاولة بعد قليل.",
+    "forbidden": "ليست لديك الصلاحيات اللازمة لهذا الإجراء.",
+    "integrityCheckFailed": "تعذّر التحقق من سلامة الوثيقة.",
+    "internal": "حدث خطأ غير متوقع.",
+    "invalidTransition": "تغيير الحالة هذا غير مسموح.",
+    "notFound": "العنصر غير موجود.",
+    "periodLocked": "الفترة مقفلة: لم يعد أي تعديل ممكنًا.",
+    "rateLimited": "طلبات كثيرة. انتظر قبل إعادة المحاولة.",
+    "storageFailed": "تعذّرت معالجة الوثيقة.",
+    "unauthenticated": "انتهت جلستك. أعد تسجيل الدخول.",
+    "validationFailed": "المعلومات المدخلة غير صالحة.",
+    "loadFailed": "فشل التحميل."
+  },
+  "layout": {
+    "skipToContent": "الانتقال إلى المحتوى الرئيسي",
+    "openSidebar": "توسيع الشريط الجانبي",
+    "closeSidebar": "طي الشريط الجانبي",
+    "openMenu": "فتح قائمة التنقل",
+    "breadcrumb": "مسار التنقل",
+    "home": "الرئيسية",
+    "userMenu": "قائمة المستخدم",
+    "signOut": "تسجيل الخروج",
+    "language": "اللغة",
+    "languageOnlyFrench": "ستتوفر العربية في إصدار لاحق.",
+    "locales": {
+      "fr": "Français",
+      "ar": "العربية"
+    },
+    "notificationsLabel": "{count, plural, =0 {الإشعارات، لا إشعار غير مقروء} one {الإشعارات، # غير مقروء} two {الإشعارات، # غير مقروءين} few {الإشعارات، # غير مقروءة} many {الإشعارات، # غير مقروءًا} other {الإشعارات، # غير مقروء}}",
+    "underConstruction": "لم يُبنَ هذا القسم بعد",
+    "underConstructionHint": "هيكل التنقل جاهز ؛ أما الشاشة الوظيفية فتأتي في مرحلة لاحقة."
+  },
+  "nav": {
+    "primary": "التنقل الرئيسي",
+    "dashboard": "لوحة القيادة",
+    "myTasks": "مهامي",
+    "occurrences": "الروزنامة",
+    "validation": "في انتظار المصادقة",
+    "obligations": "مرجع الالتزامات",
+    "documents": "الوثائق",
+    "reports": "التقارير والتصدير",
+    "admin": "الإدارة",
+    "adminUsers": "المستخدمون والأدوار",
+    "adminDelegations": "التفويضات",
+    "adminReferentials": "المراجع",
+    "adminNotifications": "قواعد الإشعارات",
+    "adminSettings": "الإعدادات",
+    "adminPurge": "الحذف قيد المراجعة",
+    "audit": "سجل التدقيق",
+    "profile": "ملفي الشخصي",
+    "calendarFeed": "تدفق التقويم",
+    "counters": {
+      "overdue": "{count, plural, =0 {لا استحقاق متأخر} one {استحقاق واحد متأخر} two {استحقاقان متأخران} few {# استحقاقات متأخرة} many {# استحقاقًا متأخرًا} other {# استحقاق متأخر}}",
+      "pendingValidation": "{count, plural, =0 {لا ملف للمصادقة} one {ملف واحد للمصادقة} two {ملفان للمصادقة} few {# ملفات للمصادقة} many {# ملفًا للمصادقة} other {# ملف للمصادقة}}",
+      "myTasks": "{count, plural, =0 {لا مهام} one {مهمة واحدة} two {مهمتان} few {# مهام} many {# مهمة} other {# مهمة}}"
+    }
+  },
+  "notifications": {
+    "title": "الإشعارات",
+    "empty": "لا توجد إشعارات",
+    "markAllRead": "تعليم الكل كمقروء",
+    "channel": {
+      "EMAIL": "بريد إلكتروني",
+      "IN_APP": "داخل التطبيق",
+      "SMS": "رسالة قصيرة"
+    }
+  },
   "obligations": {
     "title": "مرجع الالتزامات",
     "code": "الرمز",
@@ -134,7 +273,6 @@
       "JURIDIQUE": "قانوني"
     }
   },
-
   "occurrences": {
     "title": "الاستحقاقات",
     "period": "الفترة",
@@ -162,25 +300,108 @@
       "linkToOriginal": "تصحيحية رقم {index} — عرض التصريح الأصلي"
     }
   },
-
-  "documents": {
-    "title": "الوثائق الثبوتية",
-    "filename": "اسم الملف",
-    "uploadedBy": "أودعه",
-    "uploadedAt": "تاريخ الإيداع",
-    "size": "الحجم",
-    "kind": {
-      "JUSTIFICATIF": "وثيقة ثبوتية",
-      "PREUVE_DEPOT": "إثبات إيداع",
-      "ANNEXE": "ملحق",
-      "CORRESPONDANCE": "مراسلة"
-    },
-    "dropzone": {
-      "prompt": "اسحب ملفًا إلى هنا، أو انقر للاستعراض",
-      "constraints": "{maxSizeMb} ميغابايت كحد أقصى · {count} صيغة مقبولة"
+  "routing": {
+    "notFoundTitle": "الصفحة غير موجودة",
+    "notFoundDescription": "هذه الصفحة غير موجودة، أو أنها غير متاحة لك.",
+    "backHome": "العودة إلى الرئيسية",
+    "errorTitle": "تعذّر عرض هذا القسم",
+    "errorDescription": "فشل التحميل. أعد المحاولة ؛ وإن استمرّت المشكلة فبلّغ الدعم بالمرجع أدناه."
+  },
+  "search": {
+    "title": "البحث الشامل",
+    "open": "بحث",
+    "placeholder": "ابحث عن التزام أو استحقاق أو وثيقة…",
+    "description": "أدخل {min} أحرف على الأقل. تقتصر النتائج على ما تسمح به صلاحياتك.",
+    "tooShort": "أدخل {min} أحرف على الأقل.",
+    "empty": "لا نتائج",
+    "failed": "تعذّر إتمام البحث.",
+    "searching": "جارٍ البحث…",
+    "shortcutHint": "فتح البحث",
+    "groups": {
+      "OBLIGATION": "الالتزامات",
+      "OCCURRENCE": "الاستحقاقات",
+      "DOCUMENT": "الوثائق"
     }
   },
-
+  "sections": {
+    "dashboard": {
+      "title": "لوحة القيادة",
+      "description": "نظرة عامة على الاستحقاقات وتقدّمها."
+    },
+    "myTasks": {
+      "title": "مهامي",
+      "description": "الملفات التي تتولّى مسؤوليتها."
+    },
+    "occurrences": {
+      "title": "الروزنامة",
+      "description": "جميع استحقاقات مجالاتك، في تقويم أو قائمة."
+    },
+    "validation": {
+      "title": "في انتظار المصادقة",
+      "description": "الملفات التي تنتظر مصادقتك."
+    },
+    "obligations": {
+      "title": "مرجع الالتزامات",
+      "description": "الالتزامات المتابَعة وقواعدها ووثائقها المطلوبة."
+    },
+    "documents": {
+      "title": "الوثائق",
+      "description": "القطع المودَعة وإصداراتها وسلامتها."
+    },
+    "reports": {
+      "title": "التقارير والتصدير",
+      "description": "الاستخراجات وكشوف التلخيص."
+    },
+    "admin": {
+      "title": "الإدارة",
+      "description": "الحسابات والصلاحيات والمراجع والإعدادات."
+    },
+    "adminUsers": {
+      "title": "المستخدمون والأدوار",
+      "description": "الحسابات والصلاحيات ونطاقاتها."
+    },
+    "adminDelegations": {
+      "title": "التفويضات",
+      "description": "تفويضات المصادقة ومدّتها وإلغاؤها."
+    },
+    "adminReferentials": {
+      "title": "المراجع",
+      "description": "المجالات والسلطات والأقسام والعطل."
+    },
+    "adminNotifications": {
+      "title": "قواعد الإشعارات",
+      "description": "مواعيد التذكير والقنوات ومستويات التصعيد."
+    },
+    "adminSettings": {
+      "title": "الإعدادات",
+      "description": "إعدادات التطبيق وسياسات الأمن."
+    },
+    "adminPurge": {
+      "title": "الحذف قيد المراجعة",
+      "description": "القطع التي بلغت نهاية مدّة حفظها."
+    },
+    "audit": {
+      "title": "سجل التدقيق",
+      "description": "للاطّلاع فقط. لا يُعدَّل السجل ولا يُمحى."
+    },
+    "profile": {
+      "title": "ملفي الشخصي",
+      "description": "معلوماتك ومظهرك وتدفق تقويمك."
+    },
+    "calendarFeed": {
+      "title": "تدفق التقويم",
+      "description": "اشتراك iCalendar في استحقاقاتك."
+    }
+  },
+  "validation": {
+    "required": "هذا الحقل إلزامي.",
+    "email": "عنوان بريد إلكتروني غير صالح.",
+    "minLength": "{min} حرفًا على الأقل.",
+    "maxLength": "{max} حرفًا كحد أقصى.",
+    "invalidDate": "تاريخ غير صالح.",
+    "fileTooLarge": "الملف كبير جدًا: {maxSizeMb} ميغابايت كحد أقصى.",
+    "fileTypeNotAllowed": "هذا النوع من الملفات غير مقبول."
+  },
   "workflow": {
     "transition": "تغيير الحالة",
     "reason": "السبب",
@@ -195,101 +416,5 @@
       "unlock": "إعادة فتح الملف",
       "markNotApplicable": "تعيينها غير معنية"
     }
-  },
-
-  "notifications": {
-    "title": "الإشعارات",
-    "empty": "لا توجد إشعارات",
-    "markAllRead": "تعليم الكل كمقروء",
-    "channel": {
-      "EMAIL": "بريد إلكتروني",
-      "IN_APP": "داخل التطبيق",
-      "SMS": "رسالة قصيرة"
-    }
-  },
-
-  "dashboard": {
-    "title": "لوحة القيادة",
-    "overdue": "متأخرة",
-    "dueThisWeek": "هذا الأسبوع",
-    "pendingValidation": "في انتظار المصادقة",
-    "completedThisMonth": "المعالجة هذا الشهر"
-  },
-
-  "admin": {
-    "users": "المستخدمون",
-    "roles": "الأدوار",
-    "settings": "الإعدادات",
-    "deactivation": {
-      "title": "تعطيل الحساب",
-      "blocked": "لا يزال هذا الحساب يحمل {count} ملفًا مفتوحًا. عيّن مستلمًا قبل التعطيل.",
-      "reassignTo": "إعادة إسناد الملفات إلى",
-      "submit": "إعادة الإسناد والتعطيل",
-      "kept": "يُحفظ السجل والوثائق المودعة بالكامل. لا يُحذف الحساب أبدًا.",
-      "success": "تم تعطيل الحساب. أُعيد إسناد {count} ملفًا."
-    }
-  },
-
-  "audit": {
-    "title": "سجل التدقيق",
-    "actor": "الفاعل",
-    "action": "الإجراء",
-    "occurredAt": "التوقيت",
-    "creation": "إنشاء",
-    "systemActor": "النظام",
-    "onBehalfOf": "نيابة عن {name}",
-    "reasonLabel": "السبب:"
-  },
-
-  "errors": {
-    "conflict": "تتعارض هذه العملية مع بيانات موجودة.",
-    "correlationId": "المرجع الواجب إبلاغه للدعم:",
-    "externalServiceFailed": "لم تستجب خدمة خارجية. أعد المحاولة بعد قليل.",
-    "forbidden": "ليست لديك الصلاحيات اللازمة لهذا الإجراء.",
-    "integrityCheckFailed": "تعذّر التحقق من سلامة الوثيقة.",
-    "internal": "حدث خطأ غير متوقع.",
-    "invalidTransition": "تغيير الحالة هذا غير مسموح.",
-    "notFound": "العنصر غير موجود.",
-    "periodLocked": "الفترة مقفلة: لم يعد أي تعديل ممكنًا.",
-    "rateLimited": "طلبات كثيرة. انتظر قبل إعادة المحاولة.",
-    "storageFailed": "تعذّرت معالجة الوثيقة.",
-    "unauthenticated": "انتهت جلستك. أعد تسجيل الدخول.",
-    "validationFailed": "المعلومات المدخلة غير صالحة.",
-    "loadFailed": "فشل التحميل."
-  },
-
-  "validation": {
-    "required": "هذا الحقل إلزامي.",
-    "email": "عنوان بريد إلكتروني غير صالح.",
-    "minLength": "{min} حرفًا على الأقل.",
-    "maxLength": "{max} حرفًا كحد أقصى.",
-    "invalidDate": "تاريخ غير صالح.",
-    "fileTooLarge": "الملف كبير جدًا: {maxSizeMb} ميغابايت كحد أقصى.",
-    "fileTypeNotAllowed": "هذا النوع من الملفات غير مقبول."
-  },
-
-  "designSystem": {
-    "title": "نظام التصميم",
-    "warning": "صفحة مرجعية داخلية. يجب حذفها قبل الإنتاج.",
-    "sections": {
-      "colors": "رموز الألوان",
-      "typography": "الطباعة",
-      "status": "حالات الاستحقاق",
-      "due": "إلحاح الأجل",
-      "badges": "الدورية والحرجية",
-      "identity": "الهوية",
-      "states": "حالات الشاشة",
-      "table": "الجدول",
-      "dialogs": "الحوارات",
-      "forms": "النماذج",
-      "upload": "إيداع ملف",
-      "audit": "السجل"
-    },
-    "sampleTableCaption": "مثال على جدول الاستحقاقات",
-    "columnObligation": "الالتزام",
-    "columnStatus": "الحالة",
-    "columnDue": "الأجل",
-    "destructiveExample": "حذف الوثيقة",
-    "destructiveDescription": "ستُزال الوثيقة من الملف. هذا الإجراء مُوثَّق ولا يمكن التراجع عنه."
   }
 }

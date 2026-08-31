@@ -3825,15 +3825,33 @@ export type Database = {
         Args: { occurrence_id: string }
         Returns: boolean
       }
+      closed_occurrence_statuses: {
+        Args: never
+        Returns: Database["public"]["Enums"]["occurrence_status"][]
+      }
       create_upcoming_partitions: {
         Args: { months_ahead?: number }
         Returns: undefined
       }
       current_profile_id: { Args: never; Returns: string }
+      document_search_vector: {
+        Args: { p_normalized_filename: string; p_original_filename: string }
+        Returns: unknown
+      }
       effective_principals: { Args: never; Returns: string[] }
       ensure_month_partition: {
         Args: { base_table: string; month_start: string }
         Returns: undefined
+      }
+      global_search: {
+        Args: { p_limit?: number; p_query: string }
+        Returns: {
+          kind: string
+          rank: number
+          result_id: string
+          subtitle: string
+          title: string
+        }[]
       }
       has_permission: { Args: { perm: string }; Returns: boolean }
       has_permission_in_domain: {
@@ -3872,11 +3890,32 @@ export type Database = {
         Returns: undefined
       }
       mfa_required_for: { Args: { p_user_id: string }; Returns: boolean }
+      navigation_counters: {
+        Args: never
+        Returns: {
+          my_tasks: number
+          overdue: number
+          pending_validation: number
+        }[]
+      }
       obligation_domain_of_occurrence: {
         Args: { occurrence_id: string }
         Returns: string
       }
       obligation_domain_of_type: { Args: { type_id: string }; Returns: string }
+      obligation_type_search_vector: {
+        Args: { p_code: string; p_legal_basis: string; p_name: string }
+        Returns: unknown
+      }
+      occurrence_search_vector: {
+        Args: {
+          p_period_key: string
+          p_reference_number: string
+          p_type_code: string
+          p_type_name: string
+        }
+        Returns: unknown
+      }
       open_occurrence_count: { Args: { p_user_id: string }; Returns: number }
       purge_auth_attempts: { Args: never; Returns: undefined }
       record_auth_attempt: {
@@ -3888,6 +3927,8 @@ export type Database = {
         }
         Returns: undefined
       }
+      search_tsquery: { Args: { p_text: string }; Returns: unknown }
+      searchable_text: { Args: { p_text: string }; Returns: string }
       session_gates: { Args: { p_ip?: unknown }; Returns: Json }
       setting_bool: {
         Args: { fallback: boolean; setting_key: string }

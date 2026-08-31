@@ -1,43 +1,27 @@
 {
-  "common": {
-    "actions": {
-      "add": "Ajouter",
-      "cancel": "Annuler",
-      "close": "Fermer",
-      "confirm": "Confirmer",
-      "continue": "Continuer",
-      "delete": "Supprimer",
-      "edit": "Modifier",
-      "export": "Exporter",
-      "filter": "Filtrer",
-      "retry": "Réessayer",
-      "save": "Enregistrer",
-      "search": "Rechercher",
-      "submit": "Valider"
-    },
-    "states": {
-      "empty": "Aucun élément",
-      "loading": "Chargement…",
-      "working": "Traitement en cours…"
-    },
-    "confirm": {
-      "cancel": "Annuler",
-      "irreversible": "Cette action est irréversible.",
-      "typeToConfirm": "Saisissez « {word} » pour confirmer"
-    },
-    "table": {
-      "empty": "Aucune ligne à afficher",
-      "sortBy": "Trier par cette colonne",
-      "loadMore": "Charger la suite"
-    },
-    "theme": {
-      "toggle": "Changer de thème",
-      "light": "Clair",
-      "dark": "Sombre",
-      "system": "Système"
+  "admin": {
+    "users": "Utilisateurs",
+    "roles": "Rôles",
+    "settings": "Paramètres",
+    "deactivation": {
+      "title": "Désactiver le compte",
+      "blocked": "Ce compte porte encore {count} dossier(s) ouvert(s). Désignez un destinataire avant de le désactiver.",
+      "reassignTo": "Réaffecter les dossiers à",
+      "submit": "Réaffecter et désactiver",
+      "kept": "L'historique et les pièces déposées sont intégralement conservés. Le compte n'est jamais supprimé.",
+      "success": "Compte désactivé. {count} dossier(s) réaffecté(s)."
     }
   },
-
+  "audit": {
+    "title": "Journal d'audit",
+    "actor": "Auteur",
+    "action": "Action",
+    "occurredAt": "Horodatage",
+    "creation": "Création",
+    "systemActor": "Système",
+    "onBehalfOf": "au nom de {name}",
+    "reasonLabel": "Motif :"
+  },
   "auth": {
     "login": {
       "title": "Connexion",
@@ -102,7 +86,162 @@
       "ipNotAllowed": "Connexion administrateur refusée depuis cette adresse réseau."
     }
   },
-
+  "common": {
+    "actions": {
+      "add": "Ajouter",
+      "cancel": "Annuler",
+      "close": "Fermer",
+      "confirm": "Confirmer",
+      "continue": "Continuer",
+      "delete": "Supprimer",
+      "edit": "Modifier",
+      "export": "Exporter",
+      "filter": "Filtrer",
+      "retry": "Réessayer",
+      "save": "Enregistrer",
+      "search": "Rechercher",
+      "submit": "Valider"
+    },
+    "states": {
+      "empty": "Aucun élément",
+      "loading": "Chargement…",
+      "working": "Traitement en cours…"
+    },
+    "confirm": {
+      "cancel": "Annuler",
+      "irreversible": "Cette action est irréversible.",
+      "typeToConfirm": "Saisissez « {word} » pour confirmer"
+    },
+    "table": {
+      "empty": "Aucune ligne à afficher",
+      "sortBy": "Trier par cette colonne",
+      "loadMore": "Charger la suite"
+    },
+    "theme": {
+      "toggle": "Changer de thème",
+      "light": "Clair",
+      "dark": "Sombre",
+      "system": "Système"
+    }
+  },
+  "dashboard": {
+    "title": "Tableau de bord",
+    "overdue": "En retard",
+    "dueThisWeek": "Cette semaine",
+    "pendingValidation": "En attente de validation",
+    "completedThisMonth": "Traitées ce mois"
+  },
+  "designSystem": {
+    "title": "Système de design",
+    "warning": "Page de référence interne. À supprimer avant la mise en production.",
+    "sections": {
+      "colors": "Jetons de couleur",
+      "typography": "Typographie",
+      "status": "États d'occurrence",
+      "due": "Urgence d'échéance",
+      "badges": "Périodicité et criticité",
+      "identity": "Identité",
+      "states": "États d'écran",
+      "table": "Tableau",
+      "dialogs": "Dialogues",
+      "forms": "Formulaires",
+      "upload": "Dépôt de fichier",
+      "audit": "Journal"
+    },
+    "sampleTableCaption": "Exemple de tableau d'échéances",
+    "columnObligation": "Obligation",
+    "columnStatus": "Statut",
+    "columnDue": "Échéance",
+    "destructiveExample": "Supprimer la pièce",
+    "destructiveDescription": "La pièce sera retirée du dossier. Cette action est tracée et irréversible."
+  },
+  "documents": {
+    "title": "Pièces justificatives",
+    "filename": "Nom du fichier",
+    "uploadedBy": "Déposé par",
+    "uploadedAt": "Date de dépôt",
+    "size": "Taille",
+    "kind": {
+      "JUSTIFICATIF": "Justificatif",
+      "PREUVE_DEPOT": "Preuve de dépôt",
+      "ANNEXE": "Annexe",
+      "CORRESPONDANCE": "Correspondance"
+    },
+    "dropzone": {
+      "prompt": "Glissez un fichier ici, ou cliquez pour parcourir",
+      "constraints": "{maxSizeMb} Mo maximum · {count} formats acceptés"
+    }
+  },
+  "errors": {
+    "conflict": "Cette opération entre en conflit avec une donnée existante.",
+    "correlationId": "Référence à communiquer au support :",
+    "externalServiceFailed": "Un service externe n'a pas répondu. Réessayez dans un instant.",
+    "forbidden": "Vous n'avez pas les droits nécessaires pour cette action.",
+    "integrityCheckFailed": "L'intégrité du document n'a pas pu être vérifiée.",
+    "internal": "Une erreur inattendue est survenue.",
+    "invalidTransition": "Ce changement de statut n'est pas autorisé.",
+    "notFound": "Élément introuvable.",
+    "periodLocked": "La période est clôturée : plus aucune modification n'est possible.",
+    "rateLimited": "Trop de requêtes. Patientez avant de réessayer.",
+    "storageFailed": "Le document n'a pas pu être traité.",
+    "unauthenticated": "Votre session a expiré. Reconnectez-vous.",
+    "validationFailed": "Les informations saisies sont invalides.",
+    "loadFailed": "Le chargement a échoué."
+  },
+  "layout": {
+    "skipToContent": "Aller au contenu principal",
+    "openSidebar": "Déployer la barre latérale",
+    "closeSidebar": "Replier la barre latérale",
+    "openMenu": "Ouvrir le menu de navigation",
+    "breadcrumb": "Fil d'Ariane",
+    "home": "Accueil",
+    "userMenu": "Menu utilisateur",
+    "signOut": "Se déconnecter",
+    "language": "Langue",
+    "languageOnlyFrench": "L'arabe arrivera dans une version ultérieure.",
+    "locales": {
+      "fr": "Français",
+      "ar": "العربية"
+    },
+    "notificationsLabel": "{count, plural, =0 {Notifications, aucune non lue} one {Notifications, # non lue} other {Notifications, # non lues}}",
+    "underConstruction": "Cette section n'est pas encore construite",
+    "underConstructionHint": "L'ossature de navigation est en place ; l'écran métier arrive dans une phase ultérieure."
+  },
+  "nav": {
+    "primary": "Navigation principale",
+    "dashboard": "Tableau de bord",
+    "myTasks": "Mes tâches",
+    "occurrences": "Échéancier",
+    "validation": "À valider",
+    "obligations": "Référentiel des obligations",
+    "documents": "Documents",
+    "reports": "Rapports & exports",
+    "admin": "Administration",
+    "adminUsers": "Utilisateurs & rôles",
+    "adminDelegations": "Délégations",
+    "adminReferentials": "Référentiels",
+    "adminNotifications": "Règles de notification",
+    "adminSettings": "Paramètres",
+    "adminPurge": "Purge à examiner",
+    "audit": "Journal d'audit",
+    "profile": "Mon profil",
+    "calendarFeed": "Flux calendrier",
+    "counters": {
+      "overdue": "{count, plural, =0 {aucune échéance en retard} one {# échéance en retard} other {# échéances en retard}}",
+      "pendingValidation": "{count, plural, =0 {aucun dossier à valider} one {# dossier à valider} other {# dossiers à valider}}",
+      "myTasks": "{count, plural, =0 {aucune tâche} one {# tâche} other {# tâches}}"
+    }
+  },
+  "notifications": {
+    "title": "Notifications",
+    "empty": "Aucune notification",
+    "markAllRead": "Tout marquer comme lu",
+    "channel": {
+      "EMAIL": "Courriel",
+      "IN_APP": "Dans l'application",
+      "SMS": "SMS"
+    }
+  },
   "obligations": {
     "title": "Référentiel des obligations",
     "code": "Code",
@@ -134,7 +273,6 @@
       "JURIDIQUE": "Juridique"
     }
   },
-
   "occurrences": {
     "title": "Échéances",
     "period": "Période",
@@ -162,25 +300,108 @@
       "linkToOriginal": "Rectificative n° {index} — voir la déclaration d'origine"
     }
   },
-
-  "documents": {
-    "title": "Pièces justificatives",
-    "filename": "Nom du fichier",
-    "uploadedBy": "Déposé par",
-    "uploadedAt": "Date de dépôt",
-    "size": "Taille",
-    "kind": {
-      "JUSTIFICATIF": "Justificatif",
-      "PREUVE_DEPOT": "Preuve de dépôt",
-      "ANNEXE": "Annexe",
-      "CORRESPONDANCE": "Correspondance"
-    },
-    "dropzone": {
-      "prompt": "Glissez un fichier ici, ou cliquez pour parcourir",
-      "constraints": "{maxSizeMb} Mo maximum · {count} formats acceptés"
+  "routing": {
+    "notFoundTitle": "Page introuvable",
+    "notFoundDescription": "Cette page n'existe pas, ou elle ne vous est pas accessible.",
+    "backHome": "Revenir à l'accueil",
+    "errorTitle": "Cette section n'a pas pu s'afficher",
+    "errorDescription": "Le chargement a échoué. Réessayez ; si le problème persiste, communiquez la référence ci-dessous au support."
+  },
+  "search": {
+    "title": "Recherche globale",
+    "open": "Rechercher",
+    "placeholder": "Rechercher une obligation, une échéance, une pièce…",
+    "description": "Saisissez au moins {min} caractères. Les résultats se limitent à ce que vos droits vous autorisent à consulter.",
+    "tooShort": "Saisissez au moins {min} caractères.",
+    "empty": "Aucun résultat",
+    "failed": "La recherche n'a pas abouti.",
+    "searching": "Recherche en cours…",
+    "shortcutHint": "Ouvrir la recherche",
+    "groups": {
+      "OBLIGATION": "Obligations",
+      "OCCURRENCE": "Échéances",
+      "DOCUMENT": "Documents"
     }
   },
-
+  "sections": {
+    "dashboard": {
+      "title": "Tableau de bord",
+      "description": "Vue d'ensemble des échéances et de leur avancement."
+    },
+    "myTasks": {
+      "title": "Mes tâches",
+      "description": "Les dossiers dont vous êtes responsable."
+    },
+    "occurrences": {
+      "title": "Échéancier",
+      "description": "Toutes les échéances de vos domaines, en calendrier ou en liste."
+    },
+    "validation": {
+      "title": "À valider",
+      "description": "Les dossiers en attente de votre validation."
+    },
+    "obligations": {
+      "title": "Référentiel des obligations",
+      "description": "Les obligations suivies, leurs règles et leurs pièces requises."
+    },
+    "documents": {
+      "title": "Documents",
+      "description": "Les pièces déposées, leurs versions et leur intégrité."
+    },
+    "reports": {
+      "title": "Rapports & exports",
+      "description": "Extractions et états de synthèse."
+    },
+    "admin": {
+      "title": "Administration",
+      "description": "Comptes, habilitations, référentiels et paramètres."
+    },
+    "adminUsers": {
+      "title": "Utilisateurs & rôles",
+      "description": "Comptes, habilitations et portées."
+    },
+    "adminDelegations": {
+      "title": "Délégations",
+      "description": "Délégations de validation, leur durée et leur révocation."
+    },
+    "adminReferentials": {
+      "title": "Référentiels",
+      "description": "Domaines, autorités, départements et jours fériés."
+    },
+    "adminNotifications": {
+      "title": "Règles de notification",
+      "description": "Jalons de rappel, canaux et paliers d'escalade."
+    },
+    "adminSettings": {
+      "title": "Paramètres",
+      "description": "Réglages applicatifs et politiques de sécurité."
+    },
+    "adminPurge": {
+      "title": "Purge à examiner",
+      "description": "Pièces arrivées au terme de leur durée de conservation."
+    },
+    "audit": {
+      "title": "Journal d'audit",
+      "description": "Consultation seule. Le journal ne se modifie ni ne s'efface."
+    },
+    "profile": {
+      "title": "Mon profil",
+      "description": "Vos informations, votre thème et votre flux calendrier."
+    },
+    "calendarFeed": {
+      "title": "Flux calendrier",
+      "description": "Abonnement iCalendar à vos échéances."
+    }
+  },
+  "validation": {
+    "required": "Ce champ est obligatoire.",
+    "email": "Adresse électronique invalide.",
+    "minLength": "{min} caractères minimum.",
+    "maxLength": "{max} caractères maximum.",
+    "invalidDate": "Date invalide.",
+    "fileTooLarge": "Fichier trop volumineux : {maxSizeMb} Mo maximum.",
+    "fileTypeNotAllowed": "Ce type de fichier n'est pas accepté."
+  },
   "workflow": {
     "transition": "Changement de statut",
     "reason": "Motif",
@@ -195,101 +416,5 @@
       "unlock": "Rouvrir le dossier",
       "markNotApplicable": "Déclarer sans objet"
     }
-  },
-
-  "notifications": {
-    "title": "Notifications",
-    "empty": "Aucune notification",
-    "markAllRead": "Tout marquer comme lu",
-    "channel": {
-      "EMAIL": "Courriel",
-      "IN_APP": "Dans l'application",
-      "SMS": "SMS"
-    }
-  },
-
-  "dashboard": {
-    "title": "Tableau de bord",
-    "overdue": "En retard",
-    "dueThisWeek": "Cette semaine",
-    "pendingValidation": "En attente de validation",
-    "completedThisMonth": "Traitées ce mois"
-  },
-
-  "admin": {
-    "users": "Utilisateurs",
-    "roles": "Rôles",
-    "settings": "Paramètres",
-    "deactivation": {
-      "title": "Désactiver le compte",
-      "blocked": "Ce compte porte encore {count} dossier(s) ouvert(s). Désignez un destinataire avant de le désactiver.",
-      "reassignTo": "Réaffecter les dossiers à",
-      "submit": "Réaffecter et désactiver",
-      "kept": "L'historique et les pièces déposées sont intégralement conservés. Le compte n'est jamais supprimé.",
-      "success": "Compte désactivé. {count} dossier(s) réaffecté(s)."
-    }
-  },
-
-  "audit": {
-    "title": "Journal d'audit",
-    "actor": "Auteur",
-    "action": "Action",
-    "occurredAt": "Horodatage",
-    "creation": "Création",
-    "systemActor": "Système",
-    "onBehalfOf": "au nom de {name}",
-    "reasonLabel": "Motif :"
-  },
-
-  "errors": {
-    "conflict": "Cette opération entre en conflit avec une donnée existante.",
-    "correlationId": "Référence à communiquer au support :",
-    "externalServiceFailed": "Un service externe n'a pas répondu. Réessayez dans un instant.",
-    "forbidden": "Vous n'avez pas les droits nécessaires pour cette action.",
-    "integrityCheckFailed": "L'intégrité du document n'a pas pu être vérifiée.",
-    "internal": "Une erreur inattendue est survenue.",
-    "invalidTransition": "Ce changement de statut n'est pas autorisé.",
-    "notFound": "Élément introuvable.",
-    "periodLocked": "La période est clôturée : plus aucune modification n'est possible.",
-    "rateLimited": "Trop de requêtes. Patientez avant de réessayer.",
-    "storageFailed": "Le document n'a pas pu être traité.",
-    "unauthenticated": "Votre session a expiré. Reconnectez-vous.",
-    "validationFailed": "Les informations saisies sont invalides.",
-    "loadFailed": "Le chargement a échoué."
-  },
-
-  "validation": {
-    "required": "Ce champ est obligatoire.",
-    "email": "Adresse électronique invalide.",
-    "minLength": "{min} caractères minimum.",
-    "maxLength": "{max} caractères maximum.",
-    "invalidDate": "Date invalide.",
-    "fileTooLarge": "Fichier trop volumineux : {maxSizeMb} Mo maximum.",
-    "fileTypeNotAllowed": "Ce type de fichier n'est pas accepté."
-  },
-
-  "designSystem": {
-    "title": "Système de design",
-    "warning": "Page de référence interne. À supprimer avant la mise en production.",
-    "sections": {
-      "colors": "Jetons de couleur",
-      "typography": "Typographie",
-      "status": "États d'occurrence",
-      "due": "Urgence d'échéance",
-      "badges": "Périodicité et criticité",
-      "identity": "Identité",
-      "states": "États d'écran",
-      "table": "Tableau",
-      "dialogs": "Dialogues",
-      "forms": "Formulaires",
-      "upload": "Dépôt de fichier",
-      "audit": "Journal"
-    },
-    "sampleTableCaption": "Exemple de tableau d'échéances",
-    "columnObligation": "Obligation",
-    "columnStatus": "Statut",
-    "columnDue": "Échéance",
-    "destructiveExample": "Supprimer la pièce",
-    "destructiveDescription": "La pièce sera retirée du dossier. Cette action est tracée et irréversible."
   }
 }

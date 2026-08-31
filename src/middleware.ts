@@ -10,6 +10,7 @@
 import { NextResponse, type NextRequest } from "next/server";
 
 import { DEFAULT_LOCALE, LOCALES, type Locale } from "@/config/constants";
+import { detectLocale, LOCALE_COOKIE } from "@/lib/locale-detection";
 import { carryOverCookies, updateSession } from "@/lib/supabase/middleware";
 
 /** Pages du groupe (auth) : accessibles sans session. */
@@ -110,6 +111,8 @@ interface LocalizedPath {
   readonly locale: Locale;
   /** Chemin débarrassé du préfixe de locale : `/fr/login` → `/login`. */
   readonly path: string;
+  /** Faux quand l'URL n'était pas préfixée : il faut alors rediriger. */
+  readonly prefixed: boolean;
 }
 
 function splitLocale(pathname: string): LocalizedPath {
@@ -118,10 +121,10 @@ function splitLocale(pathname: string): LocalizedPath {
   const locale = LOCALES.find((known) => known === candidate);
 
   if (locale === undefined) {
-    return { locale: DEFAULT_LOCALE, path: pathname };
+    return { locale: DEFAULT_LOCALE, path: pathname, prefixed: false };
   }
   const rest = segments.slice(2).join("/");
-  return { locale, path: rest.length === 0 ? "/" : `/${rest}` };
+  return { locale, path: rest.length === 0 ? "/" : `/${rest}`, prefixed: true };
 }
 
 /** Les groupes de routes n'apparaissent pas dans l'URL : la liste fait foi. */
@@ -170,7 +173,31 @@ export async function middleware(request: NextRequest): Promise<NextResponse> {
     return applySecurityHeaders(response, csp);
   }
 
-  const { locale, path } = splitLocale(pathname);
+  const split = splitLocale(pathname);
+
+  /*
+   * URL sans préfixe de locale (`/`, `/documents`, un lien copié à la main).
+   * `localePrefix: "always"` interdit de la servir telle quelle : on choisit la
+   * locale — cookie, puis `Accept-Language`, puis `fr` — et on redirige.
+   *
+   * La redirection est faite AVANT toute décision de session : une redirection
+   * de langue ne doit pas dépendre de l'état de connexion, sinon la même URL
+   * change de destination selon qu'on est connecté ou non.
+   */
+  if (!split.prefixed) {
+    const detected = detectLocale(
+      request.cookies.get(LOCALE_COOKIE)?.value,
+      request.headers.get("accept-language"),
+    );
+    const destination = request.nextUrl.clone();
+    destination.pathname = `/${detected}${pathname === "/" ? HOME_PATH : pathname}`;
+    return applySecurityHeaders(
+      carryOverCookies(response, NextResponse.redirect(destination)),
+      csp,
+    );
+  }
+
+  const { locale, path } = split;
   const onAuthPage = isAuthPath(path);
 
   if (user === null && !onAuthPage) {
