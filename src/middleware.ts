@@ -12,8 +12,22 @@ import { NextResponse, type NextRequest } from "next/server";
 import { DEFAULT_LOCALE, LOCALES, type Locale } from "@/config/constants";
 import { carryOverCookies, updateSession } from "@/lib/supabase/middleware";
 
-/** Pages du groupe (auth) : accessibles sans session, interdites avec. */
-const AUTH_PATHS = ["/login", "/forgot-password", "/reset-password", "/mfa"] as const;
+/** Pages du groupe (auth) : accessibles sans session. */
+const AUTH_PATHS = [
+  "/login",
+  "/forgot-password",
+  "/reset-password",
+  "/set-password",
+  "/mfa",
+] as const;
+
+/**
+ * Écrans atteignables avec une session mais SANS second facteur enrôlé. Tout le
+ * reste est bloqué tant que l'enrôlement n'est pas fait, pour les rôles qui
+ * l'exigent — c'est la différence entre « invité à activer » et « contraint ».
+ */
+const MFA_ENROLLMENT_PATH = "/mfa/enroll";
+const MFA_CHALLENGE_PATH = "/mfa";
 
 /** Destination après connexion, et cible de sortie du groupe (auth). */
 const HOME_PATH = "/dashboard";
@@ -127,6 +141,15 @@ function redirectTo(request: NextRequest, pathname: string, next?: string): Next
 
 // ─── Middleware ──────────────────────────────────────────────────────────────
 
+/** IP de l'appelant derrière le proxy de l'hébergeur. */
+function readClientIp(request: NextRequest): string | null {
+  const forwarded = request.headers.get("x-forwarded-for");
+  if (forwarded !== null && forwarded.length > 0) {
+    return forwarded.split(",")[0]?.trim() ?? null;
+  }
+  return request.headers.get("x-real-ip");
+}
+
 export async function middleware(request: NextRequest): Promise<NextResponse> {
   const nonce = createNonce();
   const csp = buildContentSecurityPolicy(nonce);
@@ -137,7 +160,8 @@ export async function middleware(request: NextRequest): Promise<NextResponse> {
   // qu'il génère lui-même. Sans cela, ses scripts seraient bloqués.
   requestHeaders.set("content-security-policy", csp);
 
-  const { response, user } = await updateSession(request, requestHeaders);
+  const clientIp = readClientIp(request);
+  const { response, user, gates } = await updateSession(request, requestHeaders, clientIp);
   const { pathname, search } = request.nextUrl;
 
   // Les Route Handlers s'authentifient autrement (CRON_SECRET, webhooks signés) :
@@ -154,7 +178,41 @@ export async function middleware(request: NextRequest): Promise<NextResponse> {
     return applySecurityHeaders(carryOverCookies(response, destination), csp);
   }
 
-  if (user !== null && onAuthPage) {
+  if (user === null) {
+    return applySecurityHeaders(response, csp);
+  }
+
+  // ── Session présente : les portes se referment une à une. ──────────────────
+
+  // Compte désactivé : la session existe encore côté cookie, mais l'accès cesse
+  // immédiatement. Renvoyé vers la connexion, pas vers une page d'erreur.
+  if (gates !== null && !gates.active) {
+    const destination = redirectTo(request, `/${locale}/login`);
+    return applySecurityHeaders(carryOverCookies(response, destination), csp);
+  }
+
+  // Liste blanche d'origine : applicable au SEUL rôle ADMIN. Un porteur d'ADMIN
+  // connecté depuis une adresse non listée est déconnecté de fait — les autres
+  // rôles ne sont jamais concernés.
+  if (gates !== null && gates.isAdmin && !gates.ipAllowed) {
+    const destination = redirectTo(request, `/${locale}/login`);
+    destination.cookies.delete("sb-access-token");
+    return applySecurityHeaders(carryOverCookies(response, destination), csp);
+  }
+
+  // Second facteur EXIGÉ mais absent (ADMIN, DIRECTION, ou require_mfa_all_users) :
+  // l'enrôlement devient la seule page atteignable. Les autres rôles ne passent
+  // jamais ici — ils reçoivent une invitation à l'écran, sans blocage.
+  const mustEnrollMfa = gates !== null && gates.mfaRequired && !gates.mfaEnrolled;
+  const onMfaPath = path === MFA_ENROLLMENT_PATH || path === MFA_CHALLENGE_PATH;
+
+  if (mustEnrollMfa && !onMfaPath) {
+    const destination = redirectTo(request, `/${locale}${MFA_ENROLLMENT_PATH}`);
+    return applySecurityHeaders(carryOverCookies(response, destination), csp);
+  }
+
+  // Utilisateur en règle sur une page d'authentification : on le renvoie chez lui.
+  if (!mustEnrollMfa && onAuthPage) {
     const destination = redirectTo(request, `/${locale}${HOME_PATH}`);
     return applySecurityHeaders(carryOverCookies(response, destination), csp);
   }

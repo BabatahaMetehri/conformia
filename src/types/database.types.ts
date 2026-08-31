@@ -1581,6 +1581,33 @@ export type Database = {
         }
         Relationships: []
       }
+      auth_attempts: {
+        Row: {
+          attempted_at: string
+          email: string
+          id: number
+          ip_address: unknown
+          succeeded: boolean
+          user_agent: string | null
+        }
+        Insert: {
+          attempted_at?: string
+          email: string
+          id?: number
+          ip_address?: unknown
+          succeeded?: boolean
+          user_agent?: string | null
+        }
+        Update: {
+          attempted_at?: string
+          email?: string
+          id?: number
+          ip_address?: unknown
+          succeeded?: boolean
+          user_agent?: string | null
+        }
+        Relationships: []
+      }
       authorities: {
         Row: {
           code: string
@@ -3813,11 +3840,27 @@ export type Database = {
         Args: { perm: string; target_domain: string }
         Returns: boolean
       }
+      has_verified_mfa: { Args: { p_user_id: string }; Returns: boolean }
       is_active_user: { Args: never; Returns: boolean }
       is_admin: { Args: never; Returns: boolean }
+      is_auth_throttled: {
+        Args: { p_email: string; p_ip?: unknown }
+        Returns: boolean
+      }
+      is_ip_allowed_for_admin: { Args: { p_ip: unknown }; Returns: boolean }
       is_valid_due_rule: {
         Args: { p: Database["public"]["Enums"]["periodicity"]; rule: Json }
         Returns: boolean
+      }
+      log_auth_event: {
+        Args: {
+          p_action: string
+          p_actor_id?: string
+          p_email: string
+          p_ip?: unknown
+          p_user_agent?: string
+        }
+        Returns: undefined
       }
       log_document_access: {
         Args: {
@@ -3828,11 +3871,24 @@ export type Database = {
         }
         Returns: undefined
       }
+      mfa_required_for: { Args: { p_user_id: string }; Returns: boolean }
       obligation_domain_of_occurrence: {
         Args: { occurrence_id: string }
         Returns: string
       }
       obligation_domain_of_type: { Args: { type_id: string }; Returns: string }
+      open_occurrence_count: { Args: { p_user_id: string }; Returns: number }
+      purge_auth_attempts: { Args: never; Returns: undefined }
+      record_auth_attempt: {
+        Args: {
+          p_email: string
+          p_ip?: unknown
+          p_succeeded?: boolean
+          p_user_agent?: string
+        }
+        Returns: undefined
+      }
+      session_gates: { Args: { p_ip?: unknown }; Returns: Json }
       setting_bool: {
         Args: { fallback: boolean; setting_key: string }
         Returns: boolean

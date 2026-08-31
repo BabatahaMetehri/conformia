@@ -15,6 +15,7 @@ import { NextResponse, type NextRequest } from "next/server";
 import { toClientError } from "@/lib/errors";
 import { logger } from "@/lib/logger";
 import { issueSignedDocumentUrl, type DocumentAccessAction } from "@/services/documents/signed-url";
+import { toDocumentId } from "@/types/domain";
 
 const ALLOWED_ACTIONS: readonly DocumentAccessAction[] = ["SIGNED_URL_ISSUED", "VIEW", "DOWNLOAD"];
 
@@ -41,7 +42,9 @@ export async function POST(
   const url = new URL(request.url);
 
   const result = await issueSignedDocumentUrl({
-    documentId,
+    // Frontière : le segment d'URL est une chaîne quelconque tant qu'on ne l'a pas
+    // marquée. La validité de l'uuid est vérifiée par la requête elle-même.
+    documentId: toDocumentId(documentId),
     action: readAction(url.searchParams.get("action")),
     ipAddress: readClientIp(request),
     userAgent: request.headers.get("user-agent"),

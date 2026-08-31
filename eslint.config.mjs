@@ -59,10 +59,25 @@ const NO_SUPABASE_OUTSIDE_DATA = {
     "Seuls src/data/** et src/lib/supabase/** instancient un client Supabase (cf. CLAUDE.md §3.2).",
 };
 
-/** Un service ne connaît pas React. */
+/**
+ * Un service ne connaît pas React — à une exception près : `cache`, qui n'est pas
+ * une primitive d'interface mais de mémoïsation par requête côté serveur. Elle est
+ * nommément autorisée ; hooks, JSX et le reste restent interdits.
+ */
 const NO_REACT_IN_SERVICES = {
   group: ["react", "react-dom", "react/*", "react-dom/*"],
+  allowImportNames: ["cache"],
   message: MSG_NO_FEATURES_FROM_SERVICES,
+};
+
+/**
+ * Le client Supabase n'est instancié que par la couche data. Les services
+ * composent des fonctions de `src/data/**`, ils n'ouvrent pas de connexion.
+ */
+const NO_SUPABASE_CLIENT_OUTSIDE_DATA = {
+  group: ["@/lib/supabase/*", "**/lib/supabase/*"],
+  message:
+    "Seule la couche src/data/** instancie un client Supabase (cf. CLAUDE.md §3.2). Passez par une fonction de src/data/queries ou src/data/mutations.",
 };
 
 /**
@@ -118,7 +133,9 @@ export default tseslint.config(
       "@typescript-eslint/no-explicit-any": "error",
       "@typescript-eslint/no-restricted-imports": [
         "error",
-        { patterns: [NO_SUPABASE_OUTSIDE_DATA, NO_ADMIN_CLIENT] },
+        {
+          patterns: [NO_SUPABASE_OUTSIDE_DATA, NO_ADMIN_CLIENT, NO_SUPABASE_CLIENT_OUTSIDE_DATA],
+        },
       ],
       "import/no-restricted-paths": ["error", { basePath: __dirname, zones: layerZones }],
     },
@@ -134,15 +151,25 @@ export default tseslint.config(
     rules: {
       "@typescript-eslint/no-restricted-imports": [
         "error",
-        { patterns: [NO_SUPABASE_OUTSIDE_DATA, NO_REACT_IN_SERVICES, NO_ADMIN_CLIENT] },
+        {
+          patterns: [
+            NO_SUPABASE_OUTSIDE_DATA,
+            NO_REACT_IN_SERVICES,
+            NO_ADMIN_CLIENT,
+            NO_SUPABASE_CLIENT_OUTSIDE_DATA,
+          ],
+        },
       ],
     },
   },
 
   // Seules couches autorisées à instancier un client Supabase. Le client
   // service_role leur reste interdit : il n'appartient qu'aux jobs.
+  // `src/middleware.ts` figure ici à titre d'exception assumée : il rafraîchit le
+  // cookie de session sur le runtime Edge, ce que la couche data — marquée
+  // `server-only` — ne peut pas faire.
   {
-    files: ["src/data/**", "src/lib/supabase/**"],
+    files: ["src/data/**", "src/lib/supabase/**", "src/middleware.ts", "tests/**"],
     rules: {
       "@typescript-eslint/no-restricted-imports": ["error", { patterns: [NO_ADMIN_CLIENT] }],
     },

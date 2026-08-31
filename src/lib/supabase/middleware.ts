@@ -21,11 +21,38 @@ import type { Database } from "@/types/database.types";
 const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL;
 const SUPABASE_ANON_KEY = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
 
+/**
+ * Verdicts d'accès, calculés en base en un seul appel. Le middleware n'a besoin
+ * de rien d'autre : ni rôles, ni permissions, ni données métier.
+ */
+export interface SessionGates {
+  readonly active: boolean;
+  readonly isAdmin: boolean;
+  readonly mfaRequired: boolean;
+  readonly mfaEnrolled: boolean;
+  readonly ipAllowed: boolean;
+}
+
 export interface SessionRefresh {
   /** Réponse portant les cookies de session réécrits. À renvoyer telle quelle. */
   readonly response: NextResponse;
   /** `null` si aucune session valide. */
   readonly user: User | null;
+  /** `null` en l'absence de session, ou si le verdict n'a pas pu être obtenu. */
+  readonly gates: SessionGates | null;
+}
+
+function readGates(value: unknown): SessionGates | null {
+  if (typeof value !== "object" || value === null) return null;
+  const raw: Record<string, unknown> = { ...value };
+  const flag = (key: string): boolean => raw[key] === true;
+  return {
+    active: flag("active"),
+    isAdmin: flag("is_admin"),
+    mfaRequired: flag("mfa_required"),
+    mfaEnrolled: flag("mfa_enrolled"),
+    ipAllowed: flag("ip_allowed"),
+  };
 }
 
 /**
@@ -37,6 +64,7 @@ export interface SessionRefresh {
 export async function updateSession(
   request: NextRequest,
   requestHeaders: Headers,
+  clientIp: string | null = null,
 ): Promise<SessionRefresh> {
   let response = NextResponse.next({ request: { headers: requestHeaders } });
 
@@ -69,7 +97,15 @@ export async function updateSession(
   // qui peut être forgé.
   const { data } = await supabase.auth.getUser();
 
-  return { response, user: data.user };
+  if (data.user === null) {
+    return { response, user: null, gates: null };
+  }
+
+  const { data: gates } = await supabase.rpc("session_gates", {
+    ...(clientIp === null ? {} : { p_ip: clientIp }),
+  });
+
+  return { response, user: data.user, gates: readGates(gates) };
 }
 
 /** Recopie les cookies de session sur une réponse de redirection. */

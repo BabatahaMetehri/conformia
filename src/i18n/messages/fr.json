@@ -3,12 +3,89 @@
     "actions": {
       "cancel": "Annuler",
       "confirm": "Confirmer",
+      "continue": "Continuer",
       "retry": "Réessayer",
-      "save": "Enregistrer"
+      "save": "Enregistrer",
+      "submit": "Valider"
     },
     "states": {
       "empty": "Aucun élément",
-      "loading": "Chargement…"
+      "loading": "Chargement…",
+      "working": "Traitement en cours…"
+    }
+  },
+  "auth": {
+    "login": {
+      "title": "Connexion",
+      "subtitle": "Accès réservé aux collaborateurs AGROESPACE.",
+      "email": "Adresse professionnelle",
+      "password": "Mot de passe",
+      "submit": "Se connecter",
+      "forgot": "Mot de passe oublié ?",
+      "noSignup": "Les comptes sont créés par l'administrateur. Aucune inscription n'est possible depuis cette page.",
+      "invited": "Vous avez reçu une invitation ? Suivez le lien reçu par courriel pour définir votre mot de passe."
+    },
+    "mfa": {
+      "title": "Vérification en deux étapes",
+      "subtitle": "Saisissez le code à six chiffres affiché par votre application d'authentification.",
+      "code": "Code de vérification",
+      "submit": "Vérifier",
+      "enrollTitle": "Activer la vérification en deux étapes",
+      "enrollSubtitle": "Scannez ce code avec votre application d'authentification, puis saisissez le code affiché.",
+      "enrollRequired": "Votre rôle impose la vérification en deux étapes. Elle doit être activée avant d'accéder à l'application.",
+      "enrollSuggested": "Protégez votre compte en activant la vérification en deux étapes.",
+      "enrollLater": "Plus tard",
+      "manualSecret": "Impossible de scanner ? Saisissez cette clé manuellement :",
+      "submitEnroll": "Activer"
+    },
+    "forgotPassword": {
+      "title": "Mot de passe oublié",
+      "subtitle": "Indiquez votre adresse professionnelle. Si un compte y correspond, un lien de réinitialisation vous sera envoyé.",
+      "submit": "Envoyer le lien",
+      "sent": "Si un compte correspond à cette adresse, un lien vient d'être envoyé. Vérifiez votre messagerie.",
+      "backToLogin": "Retour à la connexion"
+    },
+    "resetPassword": {
+      "title": "Nouveau mot de passe",
+      "subtitle": "Choisissez un mot de passe d'au moins 12 caractères.",
+      "password": "Nouveau mot de passe",
+      "confirmation": "Confirmation",
+      "submit": "Enregistrer le mot de passe",
+      "success": "Mot de passe enregistré. Vous pouvez vous connecter."
+    },
+    "setPassword": {
+      "title": "Définir votre mot de passe",
+      "subtitle": "Bienvenue. Choisissez le mot de passe qui protégera votre compte.",
+      "submit": "Activer mon compte"
+    },
+    "password": {
+      "hint": "12 caractères minimum. Une phrase dont vous vous souvenez vaut mieux qu'un mot compliqué.",
+      "tooShort": "Le mot de passe doit compter au moins 12 caractères.",
+      "mismatch": "Les deux saisies ne correspondent pas.",
+      "compromised": "Ce mot de passe figure dans une fuite de données connue. Choisissez-en un autre.",
+      "noExpiry": "Ce mot de passe n'expirera pas. Vous n'aurez pas à le changer périodiquement."
+    },
+    "session": {
+      "expiringTitle": "Votre session va expirer",
+      "expiringBody": "Vous serez déconnecté dans {seconds} secondes. Votre saisie en cours sera conservée si vous prolongez.",
+      "extend": "Rester connecté",
+      "expired": "Votre session a expiré. Reconnectez-vous pour continuer."
+    },
+    "errors": {
+      "invalidCredentials": "Adresse ou mot de passe incorrect.",
+      "rateLimited": "Trop de tentatives. Réessayez dans quelques minutes.",
+      "invalidCode": "Code incorrect ou expiré.",
+      "ipNotAllowed": "Connexion administrateur refusée depuis cette adresse réseau."
+    }
+  },
+  "admin": {
+    "deactivation": {
+      "title": "Désactiver le compte",
+      "blocked": "Ce compte porte encore {count} dossier(s) ouvert(s). Désignez un destinataire avant de le désactiver.",
+      "reassignTo": "Réaffecter les dossiers à",
+      "submit": "Réaffecter et désactiver",
+      "kept": "L'historique et les pièces déposées sont intégralement conservés. Le compte n'est jamais supprimé.",
+      "success": "Compte désactivé. {count} dossier(s) réaffecté(s)."
     }
   },
   "errors": {
