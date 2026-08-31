@@ -3,7 +3,8 @@
 import { useTranslations } from "next-intl";
 import { useActionState } from "react";
 
-import { forgotPasswordAction, initialActionState } from "@/features/auth/actions";
+import { forgotPasswordAction } from "@/features/auth/actions";
+import { initialActionState } from "@/features/auth/actions/state";
 import { FormNotice, SubmitButton, TextField } from "@/features/auth/components/auth-form";
 
 export function ForgotPasswordForm({ locale }: { locale: string }) {

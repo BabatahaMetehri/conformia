@@ -1,19 +1,43 @@
 {
   "common": {
     "actions": {
+      "add": "إضافة",
       "cancel": "إلغاء",
+      "close": "إغلاق",
       "confirm": "تأكيد",
       "continue": "متابعة",
+      "delete": "حذف",
+      "edit": "تعديل",
+      "export": "تصدير",
+      "filter": "تصفية",
       "retry": "إعادة المحاولة",
       "save": "حفظ",
+      "search": "بحث",
       "submit": "تأكيد"
     },
     "states": {
       "empty": "لا يوجد عنصر",
       "loading": "جارٍ التحميل…",
       "working": "جارٍ المعالجة…"
+    },
+    "confirm": {
+      "cancel": "إلغاء",
+      "irreversible": "لا يمكن التراجع عن هذا الإجراء.",
+      "typeToConfirm": "اكتب «{word}» للتأكيد"
+    },
+    "table": {
+      "empty": "لا توجد صفوف للعرض",
+      "sortBy": "الترتيب حسب هذا العمود",
+      "loadMore": "تحميل المزيد"
+    },
+    "theme": {
+      "toggle": "تغيير المظهر",
+      "light": "فاتح",
+      "dark": "داكن",
+      "system": "النظام"
     }
   },
+
   "auth": {
     "login": {
       "title": "تسجيل الدخول",
@@ -78,7 +102,124 @@
       "ipNotAllowed": "رُفض دخول المسؤول من هذا العنوان الشبكي."
     }
   },
+
+  "obligations": {
+    "title": "مرجع الالتزامات",
+    "code": "الرمز",
+    "name": "التسمية",
+    "domain": "المجال",
+    "authority": "الإدارة",
+    "legalBasis": "الأساس القانوني",
+    "procedure": "دليل الإجراء",
+    "requiredDocuments": "الوثائق المطلوبة",
+    "periodicity": {
+      "MONTHLY": "شهرية",
+      "QUARTERLY": "فصلية",
+      "SEMIANNUAL": "نصف سنوية",
+      "ANNUAL": "سنوية",
+      "BIENNIAL": "كل سنتين",
+      "ON_EVENT": "عند وقوع حدث",
+      "CUSTOM": "تواريخ ثابتة"
+    },
+    "criticality": {
+      "LOW": "منخفضة",
+      "MEDIUM": "متوسطة",
+      "HIGH": "مرتفعة",
+      "CRITICAL": "حرجة"
+    },
+    "domainCode": {
+      "FISCAL": "جبائي",
+      "SOCIAL": "اجتماعي",
+      "REGLEMENTAIRE": "تنظيمي",
+      "JURIDIQUE": "قانوني"
+    }
+  },
+
+  "occurrences": {
+    "title": "الاستحقاقات",
+    "period": "الفترة",
+    "owner": "المسؤول",
+    "validator": "المصادِق",
+    "legalDueDate": "الأجل القانوني",
+    "internalDueDate": "الأجل الداخلي",
+    "reference": "رقم الإيداع",
+    "status": {
+      "TODO": "للإنجاز",
+      "IN_PROGRESS": "قيد الإنجاز",
+      "PENDING_VALIDATION": "في انتظار المصادقة",
+      "REJECTED": "مرفوضة",
+      "VALIDATED": "مصادق عليها",
+      "SUBMITTED": "مودعة",
+      "ARCHIVED": "مؤرشفة",
+      "NOT_APPLICABLE": "غير معنية"
+    },
+    "due": {
+      "remaining": "{days, plural, =0 {اليوم} one {يوم واحد متبقٍ} two {يومان متبقيان} few {# أيام متبقية} other {# يومًا متبقيًا}}",
+      "overdue": "{days, plural, one {يوم تأخير} two {يومان تأخير} few {# أيام تأخير} other {# يومًا تأخير}}"
+    },
+    "rectification": {
+      "badge": "تصحيحية رقم {index}",
+      "linkToOriginal": "تصحيحية رقم {index} — عرض التصريح الأصلي"
+    }
+  },
+
+  "documents": {
+    "title": "الوثائق الثبوتية",
+    "filename": "اسم الملف",
+    "uploadedBy": "أودعه",
+    "uploadedAt": "تاريخ الإيداع",
+    "size": "الحجم",
+    "kind": {
+      "JUSTIFICATIF": "وثيقة ثبوتية",
+      "PREUVE_DEPOT": "إثبات إيداع",
+      "ANNEXE": "ملحق",
+      "CORRESPONDANCE": "مراسلة"
+    },
+    "dropzone": {
+      "prompt": "اسحب ملفًا إلى هنا، أو انقر للاستعراض",
+      "constraints": "{maxSizeMb} ميغابايت كحد أقصى · {count} صيغة مقبولة"
+    }
+  },
+
+  "workflow": {
+    "transition": "تغيير الحالة",
+    "reason": "السبب",
+    "reasonRequired": "السبب إلزامي لهذا التغيير.",
+    "actions": {
+      "start": "بدء المعالجة",
+      "submitForValidation": "الإرسال للمصادقة",
+      "validate": "مصادقة",
+      "reject": "رفض",
+      "markSubmitted": "تسجيل الإيداع",
+      "archive": "أرشفة",
+      "unlock": "إعادة فتح الملف",
+      "markNotApplicable": "تعيينها غير معنية"
+    }
+  },
+
+  "notifications": {
+    "title": "الإشعارات",
+    "empty": "لا توجد إشعارات",
+    "markAllRead": "تعليم الكل كمقروء",
+    "channel": {
+      "EMAIL": "بريد إلكتروني",
+      "IN_APP": "داخل التطبيق",
+      "SMS": "رسالة قصيرة"
+    }
+  },
+
+  "dashboard": {
+    "title": "لوحة القيادة",
+    "overdue": "متأخرة",
+    "dueThisWeek": "هذا الأسبوع",
+    "pendingValidation": "في انتظار المصادقة",
+    "completedThisMonth": "المعالجة هذا الشهر"
+  },
+
   "admin": {
+    "users": "المستخدمون",
+    "roles": "الأدوار",
+    "settings": "الإعدادات",
     "deactivation": {
       "title": "تعطيل الحساب",
       "blocked": "لا يزال هذا الحساب يحمل {count} ملفًا مفتوحًا. عيّن مستلمًا قبل التعطيل.",
@@ -88,8 +229,21 @@
       "success": "تم تعطيل الحساب. أُعيد إسناد {count} ملفًا."
     }
   },
+
+  "audit": {
+    "title": "سجل التدقيق",
+    "actor": "الفاعل",
+    "action": "الإجراء",
+    "occurredAt": "التوقيت",
+    "creation": "إنشاء",
+    "systemActor": "النظام",
+    "onBehalfOf": "نيابة عن {name}",
+    "reasonLabel": "السبب:"
+  },
+
   "errors": {
     "conflict": "تتعارض هذه العملية مع بيانات موجودة.",
+    "correlationId": "المرجع الواجب إبلاغه للدعم:",
     "externalServiceFailed": "لم تستجب خدمة خارجية. أعد المحاولة بعد قليل.",
     "forbidden": "ليست لديك الصلاحيات اللازمة لهذا الإجراء.",
     "integrityCheckFailed": "تعذّر التحقق من سلامة الوثيقة.",
@@ -100,6 +254,42 @@
     "rateLimited": "طلبات كثيرة. انتظر قبل إعادة المحاولة.",
     "storageFailed": "تعذّرت معالجة الوثيقة.",
     "unauthenticated": "انتهت جلستك. أعد تسجيل الدخول.",
-    "validationFailed": "المعلومات المدخلة غير صالحة."
+    "validationFailed": "المعلومات المدخلة غير صالحة.",
+    "loadFailed": "فشل التحميل."
+  },
+
+  "validation": {
+    "required": "هذا الحقل إلزامي.",
+    "email": "عنوان بريد إلكتروني غير صالح.",
+    "minLength": "{min} حرفًا على الأقل.",
+    "maxLength": "{max} حرفًا كحد أقصى.",
+    "invalidDate": "تاريخ غير صالح.",
+    "fileTooLarge": "الملف كبير جدًا: {maxSizeMb} ميغابايت كحد أقصى.",
+    "fileTypeNotAllowed": "هذا النوع من الملفات غير مقبول."
+  },
+
+  "designSystem": {
+    "title": "نظام التصميم",
+    "warning": "صفحة مرجعية داخلية. يجب حذفها قبل الإنتاج.",
+    "sections": {
+      "colors": "رموز الألوان",
+      "typography": "الطباعة",
+      "status": "حالات الاستحقاق",
+      "due": "إلحاح الأجل",
+      "badges": "الدورية والحرجية",
+      "identity": "الهوية",
+      "states": "حالات الشاشة",
+      "table": "الجدول",
+      "dialogs": "الحوارات",
+      "forms": "النماذج",
+      "upload": "إيداع ملف",
+      "audit": "السجل"
+    },
+    "sampleTableCaption": "مثال على جدول الاستحقاقات",
+    "columnObligation": "الالتزام",
+    "columnStatus": "الحالة",
+    "columnDue": "الأجل",
+    "destructiveExample": "حذف الوثيقة",
+    "destructiveDescription": "ستُزال الوثيقة من الملف. هذا الإجراء مُوثَّق ولا يمكن التراجع عنه."
   }
 }

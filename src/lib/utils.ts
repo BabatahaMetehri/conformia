@@ -1,8 +1,19 @@
 /**
- * Utilitaires transverses, sans dépendance et sans métier.
- *
- * Le helper `cn()` de shadcn/ui atterrira ici lorsque shadcn sera installé.
+ * Utilitaires transverses, sans métier.
  */
+
+import { clsx, type ClassValue } from "clsx";
+import { twMerge } from "tailwind-merge";
+
+/**
+ * Fusionne des classes Tailwind en laissant la dernière gagner.
+ * `clsx` gère les conditions, `twMerge` résout les conflits : sans lui,
+ * `cn("p-2", "p-4")` produirait deux classes concurrentes dont l'ordre CSS,
+ * et non l'ordre d'écriture, déciderait.
+ */
+export function cn(...inputs: ClassValue[]): string {
+  return twMerge(clsx(inputs));
+}
 
 /**
  * Garantit l'exhaustivité d'un `switch` à la compilation.

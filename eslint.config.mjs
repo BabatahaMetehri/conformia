@@ -6,6 +6,8 @@ import { createTypeScriptImportResolver } from "eslint-import-resolver-typescrip
 import importPlugin from "eslint-plugin-import";
 import tseslint from "typescript-eslint";
 
+import noPhysicalCssProperties from "./eslint-rules/no-physical-css-properties.mjs";
+
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const compat = new FlatCompat({ baseDirectory: __dirname });
 
@@ -120,7 +122,11 @@ export default tseslint.config(
         tsconfigRootDir: __dirname,
       },
     },
-    plugins: { import: importPlugin },
+    plugins: {
+      import: importPlugin,
+      // Plugin local : il ne porte qu'une regle, la contrainte RTL.
+      conformia: { rules: { "no-physical-css-properties": noPhysicalCssProperties } },
+    },
     settings: {
       "import/resolver-next": [
         createTypeScriptImportResolver({
@@ -131,6 +137,7 @@ export default tseslint.config(
     },
     rules: {
       "@typescript-eslint/no-explicit-any": "error",
+      "conformia/no-physical-css-properties": "error",
       "@typescript-eslint/no-restricted-imports": [
         "error",
         {

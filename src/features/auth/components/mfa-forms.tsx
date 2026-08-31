@@ -3,11 +3,8 @@
 import { useTranslations } from "next-intl";
 import { useActionState } from "react";
 
-import {
-  completeMfaEnrollmentAction,
-  verifyMfaAction,
-  initialActionState,
-} from "@/features/auth/actions";
+import { completeMfaEnrollmentAction, verifyMfaAction } from "@/features/auth/actions";
+import { initialActionState } from "@/features/auth/actions/state";
 import { FormError, SubmitButton, TextField } from "@/features/auth/components/auth-form";
 
 /** Champ commun aux deux formulaires : six chiffres, saisie numérique. */

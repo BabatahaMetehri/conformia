@@ -1,19 +1,43 @@
 {
   "common": {
     "actions": {
+      "add": "Ajouter",
       "cancel": "Annuler",
+      "close": "Fermer",
       "confirm": "Confirmer",
       "continue": "Continuer",
+      "delete": "Supprimer",
+      "edit": "Modifier",
+      "export": "Exporter",
+      "filter": "Filtrer",
       "retry": "Réessayer",
       "save": "Enregistrer",
+      "search": "Rechercher",
       "submit": "Valider"
     },
     "states": {
       "empty": "Aucun élément",
       "loading": "Chargement…",
       "working": "Traitement en cours…"
+    },
+    "confirm": {
+      "cancel": "Annuler",
+      "irreversible": "Cette action est irréversible.",
+      "typeToConfirm": "Saisissez « {word} » pour confirmer"
+    },
+    "table": {
+      "empty": "Aucune ligne à afficher",
+      "sortBy": "Trier par cette colonne",
+      "loadMore": "Charger la suite"
+    },
+    "theme": {
+      "toggle": "Changer de thème",
+      "light": "Clair",
+      "dark": "Sombre",
+      "system": "Système"
     }
   },
+
   "auth": {
     "login": {
       "title": "Connexion",
@@ -78,7 +102,124 @@
       "ipNotAllowed": "Connexion administrateur refusée depuis cette adresse réseau."
     }
   },
+
+  "obligations": {
+    "title": "Référentiel des obligations",
+    "code": "Code",
+    "name": "Intitulé",
+    "domain": "Domaine",
+    "authority": "Administration",
+    "legalBasis": "Base légale",
+    "procedure": "Mode opératoire",
+    "requiredDocuments": "Pièces attendues",
+    "periodicity": {
+      "MONTHLY": "Mensuelle",
+      "QUARTERLY": "Trimestrielle",
+      "SEMIANNUAL": "Semestrielle",
+      "ANNUAL": "Annuelle",
+      "BIENNIAL": "Biennale",
+      "ON_EVENT": "Sur événement",
+      "CUSTOM": "Dates fixes"
+    },
+    "criticality": {
+      "LOW": "Faible",
+      "MEDIUM": "Moyenne",
+      "HIGH": "Élevée",
+      "CRITICAL": "Critique"
+    },
+    "domainCode": {
+      "FISCAL": "Fiscal",
+      "SOCIAL": "Social",
+      "REGLEMENTAIRE": "Réglementaire",
+      "JURIDIQUE": "Juridique"
+    }
+  },
+
+  "occurrences": {
+    "title": "Échéances",
+    "period": "Période",
+    "owner": "Responsable",
+    "validator": "Validateur",
+    "legalDueDate": "Échéance légale",
+    "internalDueDate": "Échéance interne",
+    "reference": "Numéro de dépôt",
+    "status": {
+      "TODO": "À faire",
+      "IN_PROGRESS": "En cours",
+      "PENDING_VALIDATION": "En validation",
+      "REJECTED": "Rejetée",
+      "VALIDATED": "Validée",
+      "SUBMITTED": "Déposée",
+      "ARCHIVED": "Archivée",
+      "NOT_APPLICABLE": "Sans objet"
+    },
+    "due": {
+      "remaining": "{days, plural, =0 {aujourd'hui} one {J-# jour} other {J-# jours}}",
+      "overdue": "{days, plural, one {# jour de retard} other {# jours de retard}}"
+    },
+    "rectification": {
+      "badge": "Rectificative n° {index}",
+      "linkToOriginal": "Rectificative n° {index} — voir la déclaration d'origine"
+    }
+  },
+
+  "documents": {
+    "title": "Pièces justificatives",
+    "filename": "Nom du fichier",
+    "uploadedBy": "Déposé par",
+    "uploadedAt": "Date de dépôt",
+    "size": "Taille",
+    "kind": {
+      "JUSTIFICATIF": "Justificatif",
+      "PREUVE_DEPOT": "Preuve de dépôt",
+      "ANNEXE": "Annexe",
+      "CORRESPONDANCE": "Correspondance"
+    },
+    "dropzone": {
+      "prompt": "Glissez un fichier ici, ou cliquez pour parcourir",
+      "constraints": "{maxSizeMb} Mo maximum · {count} formats acceptés"
+    }
+  },
+
+  "workflow": {
+    "transition": "Changement de statut",
+    "reason": "Motif",
+    "reasonRequired": "Un motif est obligatoire pour cette transition.",
+    "actions": {
+      "start": "Démarrer le traitement",
+      "submitForValidation": "Envoyer en validation",
+      "validate": "Valider",
+      "reject": "Rejeter",
+      "markSubmitted": "Déclarer déposé",
+      "archive": "Archiver",
+      "unlock": "Rouvrir le dossier",
+      "markNotApplicable": "Déclarer sans objet"
+    }
+  },
+
+  "notifications": {
+    "title": "Notifications",
+    "empty": "Aucune notification",
+    "markAllRead": "Tout marquer comme lu",
+    "channel": {
+      "EMAIL": "Courriel",
+      "IN_APP": "Dans l'application",
+      "SMS": "SMS"
+    }
+  },
+
+  "dashboard": {
+    "title": "Tableau de bord",
+    "overdue": "En retard",
+    "dueThisWeek": "Cette semaine",
+    "pendingValidation": "En attente de validation",
+    "completedThisMonth": "Traitées ce mois"
+  },
+
   "admin": {
+    "users": "Utilisateurs",
+    "roles": "Rôles",
+    "settings": "Paramètres",
     "deactivation": {
       "title": "Désactiver le compte",
       "blocked": "Ce compte porte encore {count} dossier(s) ouvert(s). Désignez un destinataire avant de le désactiver.",
@@ -88,8 +229,21 @@
       "success": "Compte désactivé. {count} dossier(s) réaffecté(s)."
     }
   },
+
+  "audit": {
+    "title": "Journal d'audit",
+    "actor": "Auteur",
+    "action": "Action",
+    "occurredAt": "Horodatage",
+    "creation": "Création",
+    "systemActor": "Système",
+    "onBehalfOf": "au nom de {name}",
+    "reasonLabel": "Motif :"
+  },
+
   "errors": {
     "conflict": "Cette opération entre en conflit avec une donnée existante.",
+    "correlationId": "Référence à communiquer au support :",
     "externalServiceFailed": "Un service externe n'a pas répondu. Réessayez dans un instant.",
     "forbidden": "Vous n'avez pas les droits nécessaires pour cette action.",
     "integrityCheckFailed": "L'intégrité du document n'a pas pu être vérifiée.",
@@ -100,6 +254,42 @@
     "rateLimited": "Trop de requêtes. Patientez avant de réessayer.",
     "storageFailed": "Le document n'a pas pu être traité.",
     "unauthenticated": "Votre session a expiré. Reconnectez-vous.",
-    "validationFailed": "Les informations saisies sont invalides."
+    "validationFailed": "Les informations saisies sont invalides.",
+    "loadFailed": "Le chargement a échoué."
+  },
+
+  "validation": {
+    "required": "Ce champ est obligatoire.",
+    "email": "Adresse électronique invalide.",
+    "minLength": "{min} caractères minimum.",
+    "maxLength": "{max} caractères maximum.",
+    "invalidDate": "Date invalide.",
+    "fileTooLarge": "Fichier trop volumineux : {maxSizeMb} Mo maximum.",
+    "fileTypeNotAllowed": "Ce type de fichier n'est pas accepté."
+  },
+
+  "designSystem": {
+    "title": "Système de design",
+    "warning": "Page de référence interne. À supprimer avant la mise en production.",
+    "sections": {
+      "colors": "Jetons de couleur",
+      "typography": "Typographie",
+      "status": "États d'occurrence",
+      "due": "Urgence d'échéance",
+      "badges": "Périodicité et criticité",
+      "identity": "Identité",
+      "states": "États d'écran",
+      "table": "Tableau",
+      "dialogs": "Dialogues",
+      "forms": "Formulaires",
+      "upload": "Dépôt de fichier",
+      "audit": "Journal"
+    },
+    "sampleTableCaption": "Exemple de tableau d'échéances",
+    "columnObligation": "Obligation",
+    "columnStatus": "Statut",
+    "columnDue": "Échéance",
+    "destructiveExample": "Supprimer la pièce",
+    "destructiveDescription": "La pièce sera retirée du dossier. Cette action est tracée et irréversible."
   }
 }

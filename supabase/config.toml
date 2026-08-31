@@ -223,8 +223,12 @@ web3 = 30
 # secret = ""
 
 [auth.email]
-# Allow/disallow new user signups via email to your project.
-enable_signup = false
+# ⚠️ NE PAS mettre à false. Malgré son nom, cette clé pilote l'ACTIVATION du
+# fournisseur e-mail dans GoTrue : à false, plus personne ne peut se connecter
+# (« email_provider_disabled »), pas seulement s'inscrire.
+# L'interdiction d'inscription libre est portée par `enable_signup = false` dans
+# la section [auth] ci-dessus, qui la couvre pour tous les fournisseurs.
+enable_signup = true
 # If enabled, a user will be required to confirm any email change on both the old, and new email
 # addresses. If disabled, only the new email is required to confirm.
 double_confirm_changes = true

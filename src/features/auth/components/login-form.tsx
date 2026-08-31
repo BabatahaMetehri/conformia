@@ -3,7 +3,8 @@
 import { useTranslations } from "next-intl";
 import { useActionState } from "react";
 
-import { loginAction, initialActionState } from "@/features/auth/actions";
+import { loginAction } from "@/features/auth/actions";
+import { initialActionState } from "@/features/auth/actions/state";
 import { FormError, SubmitButton, TextField } from "@/features/auth/components/auth-form";
 
 export function LoginForm({ locale }: { locale: string }) {

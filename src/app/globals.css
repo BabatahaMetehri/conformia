@@ -1,27 +1,246 @@
 @import "tailwindcss";
 
 /*
- * Jetons de design minimaux. Les tokens shadcn/ui seront ajoutés ici lors de
- * l'installation de la bibliothèque de composants.
+ * =============================================================================
+ * CONFORMIA — jetons de design
+ *
+ * Application interne, consultée toute la journée sur des tableaux denses.
+ * La lisibilité prime sur l'effet : contraste franc, surfaces calmes, couleur
+ * réservée à ce qui porte du sens.
+ *
+ * Palette SÉMANTIQUE. Aucun composant n'écrit de couleur littérale — ni
+ * #2D6A4F, ni green-600. Un statut change de teinte en modifiant un jeton,
+ * pas en parcourant l'application.
+ * =============================================================================
  */
+
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  /* Surfaces */
+  --background: oklch(0.985 0.002 250);
+  --surface: oklch(1 0 0);
+  --surface-raised: oklch(0.995 0.001 250);
+  --border: oklch(0.912 0.006 250);
+  --border-strong: oklch(0.83 0.01 250);
+
+  /* Texte */
+  --text-primary: oklch(0.21 0.012 250);
+  --text-secondary: oklch(0.44 0.012 250);
+  /* 0.54 et non 0.58 : mesure a 4.27:1 sur blanc, sous le plancher AA de 4.5:1. */
+  --text-muted: oklch(0.54 0.012 250);
+  --text-inverse: oklch(0.99 0 0);
+
+  /* Marque : vert agro sobre, proche de #2D6A4F */
+  --primary: oklch(0.45 0.077 162);
+  --primary-hover: oklch(0.39 0.075 162);
+  --primary-subtle: oklch(0.955 0.022 162);
+
+  /*
+   * États métier. Codes stables dans TOUTE l'application : une occurrence
+   * validée est verte dans le tableau, dans le détail, dans l'export et dans
+   * le courriel. Chaque état porte un fond discret et un texte contrasté.
+   */
+  /* 0.50 et non 0.55 : mesure a 4.25:1 sur --status-todo-bg. */
+  --status-todo: oklch(0.5 0.01 250);
+  --status-todo-bg: oklch(0.955 0.004 250);
+  --status-progress: oklch(0.5 0.14 250);
+  --status-progress-bg: oklch(0.96 0.025 250);
+  --status-pending: oklch(0.52 0.12 75);
+  --status-pending-bg: oklch(0.96 0.04 85);
+  --status-rejected: oklch(0.52 0.15 45);
+  --status-rejected-bg: oklch(0.96 0.04 55);
+  --status-validated: oklch(0.47 0.1 155);
+  --status-validated-bg: oklch(0.955 0.03 158);
+  --status-submitted: oklch(0.47 0.14 275);
+  --status-submitted-bg: oklch(0.955 0.03 278);
+  --status-archived: oklch(0.48 0.02 240);
+  --status-archived-bg: oklch(0.95 0.006 240);
+  --status-overdue: oklch(0.5 0.19 25);
+  --status-overdue-bg: oklch(0.955 0.035 25);
+  --status-na: oklch(0.53 0.006 250);
+  --status-na-bg: oklch(0.97 0.002 250);
+
+  /*
+   * Urgence. Progression volontairement monotone : plus l'échéance approche,
+   * plus la teinte est chaude et saturée. Lisible en diagonale sur une colonne.
+   */
+  --due-far: oklch(0.5 0.01 250);
+  --due-soon: oklch(0.52 0.12 75);
+  --due-imminent: oklch(0.52 0.16 45);
+  --due-overdue: oklch(0.5 0.19 25);
+
+  --ring: oklch(0.45 0.077 162);
+  --radius: 0.5rem;
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+/*
+ * Mode sombre piloté par une CLASSE, jamais par la seule requête média : le
+ * choix explicite de l'utilisateur doit pouvoir contredire son système.
+ */
+.dark {
+  --background: oklch(0.17 0.008 250);
+  --surface: oklch(0.205 0.009 250);
+  --surface-raised: oklch(0.245 0.01 250);
+  --border: oklch(0.3 0.012 250);
+  --border-strong: oklch(0.42 0.014 250);
+
+  --text-primary: oklch(0.96 0.003 250);
+  --text-secondary: oklch(0.79 0.008 250);
+  --text-muted: oklch(0.65 0.01 250);
+  --text-inverse: oklch(0.18 0.008 250);
+
+  /* Le vert de marque est éclairci : à 0.45 il ne passerait pas AA sur fond sombre. */
+  --primary: oklch(0.72 0.11 160);
+  --primary-hover: oklch(0.79 0.11 160);
+  --primary-subtle: oklch(0.27 0.04 162);
+
+  --status-todo: oklch(0.75 0.012 250);
+  --status-todo-bg: oklch(0.26 0.008 250);
+  --status-progress: oklch(0.78 0.11 250);
+  --status-progress-bg: oklch(0.27 0.045 250);
+  --status-pending: oklch(0.82 0.12 85);
+  --status-pending-bg: oklch(0.28 0.05 75);
+  --status-rejected: oklch(0.79 0.13 55);
+  --status-rejected-bg: oklch(0.28 0.06 45);
+  --status-validated: oklch(0.78 0.12 158);
+  --status-validated-bg: oklch(0.27 0.05 158);
+  --status-submitted: oklch(0.77 0.12 278);
+  --status-submitted-bg: oklch(0.28 0.05 278);
+  --status-archived: oklch(0.72 0.02 240);
+  --status-archived-bg: oklch(0.26 0.012 240);
+  --status-overdue: oklch(0.76 0.16 25);
+  --status-overdue-bg: oklch(0.28 0.07 25);
+  --status-na: oklch(0.62 0.008 250);
+  --status-na-bg: oklch(0.24 0.005 250);
+
+  --due-far: oklch(0.75 0.012 250);
+  --due-soon: oklch(0.82 0.12 85);
+  --due-imminent: oklch(0.79 0.14 45);
+  --due-overdue: oklch(0.76 0.16 25);
+
+  --ring: oklch(0.72 0.11 160);
 }
 
 @theme inline {
   --color-background: var(--background);
-  --color-foreground: var(--foreground);
+  --color-surface: var(--surface);
+  --color-surface-raised: var(--surface-raised);
+  --color-border: var(--border);
+  --color-border-strong: var(--border-strong);
+
+  --color-text-primary: var(--text-primary);
+  --color-text-secondary: var(--text-secondary);
+  --color-text-muted: var(--text-muted);
+  --color-text-inverse: var(--text-inverse);
+
+  --color-primary: var(--primary);
+  --color-primary-hover: var(--primary-hover);
+  --color-primary-subtle: var(--primary-subtle);
+
+  --color-status-todo: var(--status-todo);
+  --color-status-todo-bg: var(--status-todo-bg);
+  --color-status-progress: var(--status-progress);
+  --color-status-progress-bg: var(--status-progress-bg);
+  --color-status-pending: var(--status-pending);
+  --color-status-pending-bg: var(--status-pending-bg);
+  --color-status-rejected: var(--status-rejected);
+  --color-status-rejected-bg: var(--status-rejected-bg);
+  --color-status-validated: var(--status-validated);
+  --color-status-validated-bg: var(--status-validated-bg);
+  --color-status-submitted: var(--status-submitted);
+  --color-status-submitted-bg: var(--status-submitted-bg);
+  --color-status-archived: var(--status-archived);
+  --color-status-archived-bg: var(--status-archived-bg);
+  --color-status-overdue: var(--status-overdue);
+  --color-status-overdue-bg: var(--status-overdue-bg);
+  --color-status-na: var(--status-na);
+  --color-status-na-bg: var(--status-na-bg);
+
+  --color-due-far: var(--due-far);
+  --color-due-soon: var(--due-soon);
+  --color-due-imminent: var(--due-imminent);
+  --color-due-overdue: var(--due-overdue);
+
+  --color-ring: var(--ring);
+
+  /* shadcn/ui lit ces alias : ils pointent sur nos jetons, jamais l'inverse. */
+  --color-foreground: var(--text-primary);
+  --color-card: var(--surface);
+  --color-card-foreground: var(--text-primary);
+  --color-popover: var(--surface-raised);
+  --color-popover-foreground: var(--text-primary);
+  --color-primary-foreground: var(--text-inverse);
+  --color-secondary: var(--surface-raised);
+  --color-secondary-foreground: var(--text-primary);
+  --color-muted: var(--surface-raised);
+  --color-muted-foreground: var(--text-muted);
+  --color-accent: var(--primary-subtle);
+  --color-accent-foreground: var(--text-primary);
+  --color-destructive: var(--status-overdue);
+  --color-destructive-foreground: var(--text-inverse);
+  --color-input: var(--border);
+
+  --font-sans: var(--font-inter), ui-sans-serif, system-ui, sans-serif;
+
+  /*
+   * Échelle typographique limitée à SIX tailles. Une échelle plus riche produit
+   * des écrans où plus rien ne hiérarchise rien.
+   */
+  --text-2xs: 0.6875rem;
+  --text-2xs--line-height: 1rem;
+  --text-xs: 0.75rem;
+  --text-xs--line-height: 1.125rem;
+  --text-sm: 0.875rem;
+  --text-sm--line-height: 1.375rem;
+  --text-base: 1rem;
+  --text-base--line-height: 1.5rem;
+  --text-lg: 1.125rem;
+  --text-lg--line-height: 1.75rem;
+  --text-xl: 1.5rem;
+  --text-xl--line-height: 2rem;
+
+  --radius-sm: calc(var(--radius) - 2px);
+  --radius-md: var(--radius);
+  --radius-lg: calc(var(--radius) + 2px);
 }
 
-body {
-  background: var(--background);
-  color: var(--foreground);
+@layer base {
+  * {
+    border-color: var(--border);
+  }
+
+  body {
+    background-color: var(--background);
+    color: var(--text-primary);
+  }
+
+  /*
+   * Chiffres à chasse fixe partout où ils s'alignent en colonne : dates,
+   * compteurs de jours, périodes, versions. Sans cela « 11/01 » et « 30/09 »
+   * n'ont pas la même largeur et la colonne cesse d'être lisible en diagonale.
+   */
+  table,
+  time,
+  [data-numeric],
+  .tabular {
+    font-variant-numeric: tabular-nums;
+  }
+
+  /*
+   * Anneau de focus visible, systématiquement. `:focus-visible` et non `:focus` :
+   * pas d'anneau au clic souris, toujours un anneau au clavier.
+   */
+  :focus-visible {
+    outline: 2px solid var(--ring);
+    outline-offset: 2px;
+  }
+
+  /* Respecte un système réglé sur « animations réduites ». */
+  @media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after {
+      animation-duration: 0.01ms !important;
+      transition-duration: 0.01ms !important;
+    }
+  }
 }

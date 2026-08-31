@@ -9,3 +9,5 @@ next-env.d.ts
 
 # Généré par `npm run db:types` — le format est celui de la CLI Supabase.
 src/types/database.types.ts
+test-results/
+playwright-report/

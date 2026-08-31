@@ -3,7 +3,8 @@
 import { useTranslations } from "next-intl";
 import { useActionState } from "react";
 
-import { setPasswordAction, initialActionState } from "@/features/auth/actions";
+import { setPasswordAction } from "@/features/auth/actions";
+import { initialActionState } from "@/features/auth/actions/state";
 import {
   FormError,
   FormNotice,

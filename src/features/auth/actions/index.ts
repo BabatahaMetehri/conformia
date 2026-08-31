@@ -13,7 +13,8 @@ import { redirect } from "next/navigation";
 import { z } from "zod";
 
 import { DEFAULT_LOCALE } from "@/config/constants";
-import { toClientError, type ClientError } from "@/lib/errors";
+import type { ActionState } from "@/features/auth/actions/state";
+import { toClientError } from "@/lib/errors";
 import { login, logout } from "@/services/auth/login";
 import {
   beginTotpEnrollment,
@@ -22,15 +23,6 @@ import {
   startPasswordReset,
   choosePassword,
 } from "@/services/auth/credentials";
-
-export interface ActionState {
-  readonly status: "idle" | "success" | "error";
-  readonly error?: ClientError;
-  /** Renseigné par les actions dont l'écran affiche une confirmation. */
-  readonly message?: string;
-}
-
-const IDLE: ActionState = { status: "idle" };
 
 const emailSchema = z.email().max(320);
 /** 12 caractères minimum, aucune exigence de composition (cf. décisions §2). */
@@ -227,5 +219,3 @@ export async function verifyMfaAction(
 
   redirect(`/${parsed.data.locale}/dashboard`);
 }
-
-export { IDLE as initialActionState };
