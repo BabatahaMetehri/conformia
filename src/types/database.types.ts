@@ -3904,7 +3904,12 @@ export type Database = {
       }
       obligation_domain_of_type: { Args: { type_id: string }; Returns: string }
       obligation_type_search_vector: {
-        Args: { p_code: string; p_legal_basis: string; p_name: string }
+        Args: {
+          p_code: string
+          p_legal_basis: string
+          p_name: string
+          p_procedure_md: string
+        }
         Returns: unknown
       }
       occurrence_search_vector: {
@@ -3918,6 +3923,10 @@ export type Database = {
       }
       open_occurrence_count: { Args: { p_user_id: string }; Returns: number }
       purge_auth_attempts: { Args: never; Returns: undefined }
+      recalculate_todo_due_dates: {
+        Args: { p_obligation_type_id: string; p_updates: Json }
+        Returns: number
+      }
       record_auth_attempt: {
         Args: {
           p_email: string

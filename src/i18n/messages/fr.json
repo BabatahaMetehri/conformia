@@ -230,7 +230,8 @@
       "overdue": "{count, plural, =0 {aucune échéance en retard} one {# échéance en retard} other {# échéances en retard}}",
       "pendingValidation": "{count, plural, =0 {aucun dossier à valider} one {# dossier à valider} other {# dossiers à valider}}",
       "myTasks": "{count, plural, =0 {aucune tâche} one {# tâche} other {# tâches}}"
-    }
+    },
+    "obligationCreate": "Nouvelle obligation"
   },
   "notifications": {
     "title": "Notifications",
@@ -245,11 +246,16 @@
   "obligations": {
     "title": "Référentiel des obligations",
     "code": "Code",
-    "name": "Intitulé",
+    "name": "Nom",
     "domain": "Domaine",
-    "authority": "Administration",
+    "authority": "Organisme",
     "legalBasis": "Base légale",
-    "procedure": "Mode opératoire",
+    "procedure": {
+      "write": "Rédiger",
+      "preview": "Aperçu",
+      "hint": "Markdown pris en charge : titres, listes, gras, liens.",
+      "emptyPreview": "Rien à afficher pour l'instant."
+    },
     "requiredDocuments": "Pièces attendues",
     "periodicity": {
       "MONTHLY": "Mensuelle",
@@ -271,7 +277,202 @@
       "SOCIAL": "Social",
       "REGLEMENTAIRE": "Réglementaire",
       "JURIDIQUE": "Juridique"
-    }
+    },
+    "defaultOwner": "Responsable par défaut",
+    "defaultValidator": "Validateur par défaut",
+    "nextDueDate": "Prochaine échéance",
+    "status": "Statut",
+    "active": "Active",
+    "inactive": "Inactive",
+    "actions": "Actions",
+    "actionsFor": "Actions pour {code}",
+    "create": "Nouvelle obligation",
+    "edit": "Modifier",
+    "duplicate": "Dupliquer",
+    "deactivate": "Désactiver",
+    "reactivate": "Réactiver",
+    "created": "Obligation créée.",
+    "updated": "Obligation enregistrée.",
+    "duplicated": "Obligation dupliquée. La copie est inactive : relisez-la avant de l'activer.",
+    "deactivated": "Obligation désactivée. Les dossiers déjà générés sont conservés.",
+    "reactivated": "Obligation réactivée.",
+    "tableCaption": "Liste des obligations du référentiel",
+    "emptyList": "Aucune obligation",
+    "emptyListHint": "Aucune obligation ne correspond à ces filtres.",
+    "loadFailed": "Le référentiel n'a pas pu être chargé.",
+    "codeHint": "Majuscules, chiffres, tiret. Il apparaît dans les exports et les échanges.",
+    "internalLeadDays": "Marge interne (jours ouvrés)",
+    "internalLeadDaysHint": "Avance que l'équipe se donne sur l'échéance légale.",
+    "effectiveFrom": "En vigueur depuis",
+    "effectiveTo": "Jusqu'au",
+    "effectiveToHint": "Laisser vide tant que l'obligation reste applicable.",
+    "portalUrl": "Portail de dépôt",
+    "openPortal": "Ouvrir le portail",
+    "dependsOn": "Dépend de",
+    "dependsOnHint": "L'obligation qui doit être traitée avant celle-ci.",
+    "unset": "Non renseigné",
+    "procedureLabel": "Procédure",
+    "noProcedure": "Aucune procédure rédigée.",
+    "requiresValidation": "Exige une validation",
+    "requiresProof": "Exige une preuve de dépôt",
+    "allowSelfValidation": "Auto-validation autorisée",
+    "period": "Période",
+    "legalDueDate": "Échéance légale",
+    "occurrencesCaption": "Périodes générées pour cette obligation",
+    "noOccurrences": "Aucune période générée",
+    "noOccurrencesHint": "Aucune période visible pour cette obligation. Les dossiers d'un domaine auquel vous n'avez pas accès n'apparaissent pas ici.",
+    "tabs": {
+      "general": "Général",
+      "documents": "Pièces requises",
+      "rule": "Règle d'échéance",
+      "occurrences": "Occurrences",
+      "history": "Historique"
+    },
+    "anchor": {
+      "PERIOD_END": "Fin de période",
+      "PERIOD_START": "Début de période",
+      "FIXED_DATE": "Date civile fixe",
+      "EXPIRY_DATE": "Date d'expiration",
+      "EVENT_DATE": "Date du fait déclencheur",
+      "hint": {
+        "PERIOD_END": "L'échéance se compte à partir du dernier jour de la période.",
+        "PERIOD_START": "L'échéance se compte à partir du premier jour de la période.",
+        "FIXED_DATE": "L'échéance tombe chaque année à la même date civile.",
+        "EXPIRY_DATE": "L'échéance précède l'expiration du titre concerné.",
+        "EVENT_DATE": "L'échéance se compte à partir de la date du fait déclencheur."
+      }
+    },
+    "shift": {
+      "NEXT_BUSINESS_DAY": "Reporter au jour ouvré suivant",
+      "PREVIOUS_BUSINESS_DAY": "Ramener au jour ouvré précédent",
+      "NONE": "Ne pas reporter"
+    },
+    "rule": {
+      "title": "Règle d'échéance",
+      "anchor": "Point de départ",
+      "offsetAfterPeriodEnd": "Jours après la fin de période",
+      "offsetAfterPeriodEndHint": "Exemple : 20 pour une échéance au 20 du mois suivant.",
+      "offsetAfterPeriodStart": "Jours après le début de période",
+      "offsetAfterPeriodStartHint": "Compté depuis le premier jour de la période.",
+      "offsetBeforeExpiry": "Jours avant expiration",
+      "offsetBeforeExpiryHint": "Exemple : 90 pour préparer un renouvellement trois mois avant.",
+      "offsetAfterEvent": "Jours après le fait déclencheur",
+      "offsetAfterEventHint": "Compté depuis la date de l'événement portée par le dossier.",
+      "fixedMonth": "Mois",
+      "fixedDay": "Jour",
+      "yearOffset": "Décalage d'année",
+      "yearOffsetHint": "1 pour une échéance qui tombe l'année suivant la période concernée.",
+      "weekendShift": "Si l'échéance tombe un week-end",
+      "weekendShiftHint": "Le week-end algérien est le vendredi et le samedi.",
+      "holidayShift": "Si l'échéance tombe un jour férié",
+      "holidayShiftHint": "Les jours fériés sont tenus à jour dans les référentiels.",
+      "customDates": "Dates fixes de l'année",
+      "customDatesHint": "Chaque ligne produit une échéance par an.",
+      "customDatesEmpty": "Aucune date déclarée. Une périodicité « dates fixes » en exige au moins une.",
+      "addCustomDate": "Ajouter une date",
+      "removeCustomDate": "Retirer la date {index}"
+    },
+    "preview": {
+      "title": "Prochaines échéances",
+      "caption": "Prévisualisation des prochaines échéances calculées par cette règle",
+      "period": "Période",
+      "computed": "Calculée",
+      "legal": "Échéance",
+      "internal": "Interne",
+      "unavailable": "Prévisualisation impossible",
+      "onEventNote": "Une obligation sur événement ne se répète pas dans le calendrier : une seule échéance est prévisualisée.",
+      "shift": {
+        "WEEKEND": "week-end",
+        "HOLIDAY": "férié"
+      },
+      "reasons": {
+        "DUE_RULE_MALFORMED": "La règle est incomplète.",
+        "FIXED_DATE_REQUIRES_MONTH_AND_DAY": "Renseignez le mois et le jour.",
+        "FIXED_DATE_REQUIRES_ANNUAL_PERIODICITY": "Une date civile fixe ne se répète qu'une fois par an : choisissez une périodicité annuelle ou biennale.",
+        "OFFSET_DAYS_REQUIRED": "Renseignez le nombre de jours.",
+        "FIXED_FIELDS_ONLY_FOR_FIXED_DATE": "Mois et jour ne s'appliquent qu'à une date civile fixe.",
+        "CUSTOM_REQUIRES_OCCURRENCES": "Déclarez au moins une date fixe.",
+        "CUSTOM_REQUIRES_PERIOD_ANCHOR": "Avec des dates fixes, le point de départ doit être le début ou la fin de période.",
+        "CUSTOM_DUPLICATE_DATE": "Deux dates fixes identiques ont été déclarées.",
+        "OCCURRENCES_ONLY_FOR_CUSTOM": "Les dates fixes n'existent qu'avec la périodicité « dates fixes ».",
+        "ON_EVENT_REQUIRES_EVENT_ANCHOR": "Une obligation sur événement doit partir de la date du fait déclencheur ou d'une expiration.",
+        "SHIFTS_MUST_AGREE": "Les deux reports doivent aller dans le même sens, sinon le calcul ne converge pas.",
+        "SHIFT_DOES_NOT_CONVERGE": "Le report ne trouve aucun jour ouvré.",
+        "ANCHOR_DATE_REQUIRED": "Cette règle dépend d'une date portée par le dossier : la prévisualisation ne peut pas la deviner.",
+        "PERIOD_RANGE_REVERSED": "Intervalle de période incohérent.",
+        "CUSTOM_DATE_INVALID": "Une date fixe est invalide.",
+        "UNKNOWN": "La règle n'est pas exploitable en l'état."
+      }
+    },
+    "documents": {
+      "title": "Pièces requises",
+      "hint": "L'ordre de la liste est celui dans lequel les pièces seront demandées.",
+      "label": "Libellé",
+      "kind": "Nature",
+      "kindUnset": "Non précisée",
+      "maxSize": "Taille max (Mo)",
+      "maxSizeValue": "{mb} Mo max",
+      "mandatory": "Pièce obligatoire",
+      "required": "Obligatoire",
+      "optional": "Facultative",
+      "add": "Ajouter une pièce",
+      "remove": "Retirer la pièce {position}",
+      "moveUp": "Déplacer la pièce {position} vers le haut",
+      "moveDown": "Déplacer la pièce {position} vers le bas",
+      "empty": "Aucune pièce requise déclarée.",
+      "emptyDetail": "Aucune pièce requise pour cette obligation."
+    },
+    "filters": {
+      "search": "Recherche",
+      "searchPlaceholder": "Code, nom ou procédure…",
+      "searchHint": "La recherche porte aussi sur le texte de la procédure.",
+      "all": "Tous",
+      "reset": "Réinitialiser les filtres"
+    },
+    "recalculation": {
+      "title": "Recalculer les échéances ?",
+      "description": "La règle a changé. Seules les occurrences À FAIRE peuvent être recalculées ; les dossiers déjà engagés ne sont jamais déplacés.",
+      "loading": "Calcul de l'impact…",
+      "failed": "L'impact n'a pas pu être calculé.",
+      "summary": "{count} occurrence(s) sur {total} verraient leur échéance changer.",
+      "caption": "Échéances avant et après recalcul",
+      "period": "Période",
+      "before": "Avant",
+      "after": "Après",
+      "protected": "Dossiers conservés en l'état, par statut :",
+      "blind": "Vous pouvez modifier cette règle mais pas consulter les dossiers de son domaine : le recalcul devra être fait par une personne habilitée à les voir.",
+      "skip": "Ne pas recalculer",
+      "apply": "Recalculer {count} occurrence(s)",
+      "applying": "Recalcul en cours…",
+      "done": "{count} occurrence(s) recalculée(s)."
+    },
+    "history": {
+      "empty": "Aucune écriture enregistrée",
+      "emptyHint": "Aucune modification n'a encore été journalisée pour cette obligation.",
+      "notPermitted": "Historique non accessible",
+      "notPermittedHint": "La consultation du journal d'audit demande une habilitation dédiée.",
+      "action": {
+        "INSERT": "a créé l'obligation",
+        "UPDATE": "a modifié l'obligation",
+        "DELETE": "a retiré l'obligation"
+      }
+    },
+    "errors": {
+      "FORBIDDEN": "Vous n'avez pas le droit de modifier le référentiel.",
+      "CONFLICT": "Opération refusée : une obligation active dépend de celle-ci, ou son code existe déjà.",
+      "VALIDATION_FAILED": "Les informations saisies sont invalides.",
+      "NOT_FOUND": "Obligation introuvable.",
+      "UNAUTHENTICATED": "Votre session a expiré. Reconnectez-vous.",
+      "INTERNAL": "Une erreur inattendue est survenue.",
+      "PERIOD_LOCKED": "La période est clôturée.",
+      "INVALID_TRANSITION": "Ce changement n'est pas autorisé.",
+      "STORAGE_FAILED": "Le stockage n'a pas répondu.",
+      "INTEGRITY_CHECK_FAILED": "Contrôle d'intégrité en échec.",
+      "RATE_LIMITED": "Trop de requêtes. Patientez avant de réessayer.",
+      "EXTERNAL_SERVICE_FAILED": "Un service externe n'a pas répondu."
+    },
+    "periodicityColumn": "Périodicité",
+    "criticalityColumn": "Criticité"
   },
   "occurrences": {
     "title": "Échéances",
@@ -391,6 +592,14 @@
     "calendarFeed": {
       "title": "Flux calendrier",
       "description": "Abonnement iCalendar à vos échéances."
+    },
+    "obligationCreate": {
+      "title": "Nouvelle obligation",
+      "description": "Décrivez l'obligation, sa règle d'échéance et ses pièces requises."
+    },
+    "obligationEdit": {
+      "title": "Modifier l'obligation",
+      "description": "Une modification de la règle proposera de recalculer les échéances à faire."
     }
   },
   "validation": {
@@ -400,7 +609,11 @@
     "maxLength": "{max} caractères maximum.",
     "invalidDate": "Date invalide.",
     "fileTooLarge": "Fichier trop volumineux : {maxSizeMb} Mo maximum.",
-    "fileTypeNotAllowed": "Ce type de fichier n'est pas accepté."
+    "fileTypeNotAllowed": "Ce type de fichier n'est pas accepté.",
+    "codeFormat": "Majuscules, chiffres, tiret et sous-tiret uniquement.",
+    "effectiveRangeReversed": "La date de fin précède la date de début.",
+    "validationLevelsWithoutValidation": "Plusieurs niveaux de validation exigent que la validation soit demandée.",
+    "duplicateRequiredDocument": "Deux pièces portent le même libellé."
   },
   "workflow": {
     "transition": "Changement de statut",

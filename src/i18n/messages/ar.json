@@ -230,7 +230,8 @@
       "overdue": "{count, plural, =0 {لا استحقاق متأخر} one {استحقاق واحد متأخر} two {استحقاقان متأخران} few {# استحقاقات متأخرة} many {# استحقاقًا متأخرًا} other {# استحقاق متأخر}}",
       "pendingValidation": "{count, plural, =0 {لا ملف للمصادقة} one {ملف واحد للمصادقة} two {ملفان للمصادقة} few {# ملفات للمصادقة} many {# ملفًا للمصادقة} other {# ملف للمصادقة}}",
       "myTasks": "{count, plural, =0 {لا مهام} one {مهمة واحدة} two {مهمتان} few {# مهام} many {# مهمة} other {# مهمة}}"
-    }
+    },
+    "obligationCreate": "التزام جديد"
   },
   "notifications": {
     "title": "الإشعارات",
@@ -247,23 +248,28 @@
     "code": "الرمز",
     "name": "التسمية",
     "domain": "المجال",
-    "authority": "الإدارة",
-    "legalBasis": "الأساس القانوني",
-    "procedure": "دليل الإجراء",
+    "authority": "الهيئة",
+    "legalBasis": "السند القانوني",
+    "procedure": {
+      "write": "تحرير",
+      "preview": "معاينة",
+      "hint": "Markdown مدعوم : عناوين، قوائم، خط عريض، روابط.",
+      "emptyPreview": "لا شيء لعرضه حاليًا."
+    },
     "requiredDocuments": "الوثائق المطلوبة",
     "periodicity": {
-      "MONTHLY": "شهرية",
-      "QUARTERLY": "فصلية",
-      "SEMIANNUAL": "نصف سنوية",
-      "ANNUAL": "سنوية",
+      "MONTHLY": "شهري",
+      "QUARTERLY": "فصلي",
+      "SEMIANNUAL": "سداسي",
+      "ANNUAL": "سنوي",
       "BIENNIAL": "كل سنتين",
       "ON_EVENT": "عند وقوع حدث",
       "CUSTOM": "تواريخ ثابتة"
     },
     "criticality": {
-      "LOW": "منخفضة",
+      "LOW": "ضعيفة",
       "MEDIUM": "متوسطة",
-      "HIGH": "مرتفعة",
+      "HIGH": "عالية",
       "CRITICAL": "حرجة"
     },
     "domainCode": {
@@ -271,7 +277,202 @@
       "SOCIAL": "اجتماعي",
       "REGLEMENTAIRE": "تنظيمي",
       "JURIDIQUE": "قانوني"
-    }
+    },
+    "defaultOwner": "المسؤول الافتراضي",
+    "defaultValidator": "المصادِق الافتراضي",
+    "nextDueDate": "الاستحقاق القادم",
+    "status": "الحالة",
+    "active": "مفعَّل",
+    "inactive": "معطَّل",
+    "actions": "إجراءات",
+    "actionsFor": "إجراءات {code}",
+    "create": "التزام جديد",
+    "edit": "تعديل",
+    "duplicate": "نسخ",
+    "deactivate": "تعطيل",
+    "reactivate": "إعادة التفعيل",
+    "created": "أُنشئ الالتزام.",
+    "updated": "حُفظ الالتزام.",
+    "duplicated": "نُسخ الالتزام. النسخة معطَّلة : راجعها قبل تفعيلها.",
+    "deactivated": "عُطِّل الالتزام. تبقى الملفات المولَّدة محفوظة.",
+    "reactivated": "أُعيد تفعيل الالتزام.",
+    "tableCaption": "قائمة التزامات المرجع",
+    "emptyList": "لا التزامات",
+    "emptyListHint": "لا يطابق أي التزام هذه المرشِّحات.",
+    "loadFailed": "تعذّر تحميل المرجع.",
+    "codeHint": "أحرف كبيرة وأرقام وشرطة. يظهر في التصدير والمراسلات.",
+    "internalLeadDays": "الهامش الداخلي (أيام عمل)",
+    "internalLeadDaysHint": "التقدّم الذي يمنحه الفريق لنفسه قبل الاستحقاق القانوني.",
+    "effectiveFrom": "ساري منذ",
+    "effectiveTo": "إلى غاية",
+    "effectiveToHint": "اتركه فارغًا ما دام الالتزام ساريًا.",
+    "portalUrl": "بوابة الإيداع",
+    "openPortal": "فتح البوابة",
+    "dependsOn": "يتوقف على",
+    "dependsOnHint": "الالتزام الذي يجب إنجازه قبل هذا.",
+    "unset": "غير محدَّد",
+    "procedureLabel": "الإجراء",
+    "noProcedure": "لم يُحرَّر أي إجراء.",
+    "requiresValidation": "يستوجب مصادقة",
+    "requiresProof": "يستوجب إثبات الإيداع",
+    "allowSelfValidation": "المصادقة الذاتية مسموحة",
+    "period": "الفترة",
+    "legalDueDate": "الاستحقاق القانوني",
+    "occurrencesCaption": "الفترات المولَّدة لهذا الالتزام",
+    "noOccurrences": "لا فترة مولَّدة",
+    "noOccurrencesHint": "لا فترة ظاهرة لهذا الالتزام. لا تظهر هنا ملفات المجالات التي لا تملك صلاحية الاطّلاع عليها.",
+    "tabs": {
+      "general": "عام",
+      "documents": "الوثائق المطلوبة",
+      "rule": "قاعدة الاستحقاق",
+      "occurrences": "الاستحقاقات",
+      "history": "السجل"
+    },
+    "anchor": {
+      "PERIOD_END": "نهاية الفترة",
+      "PERIOD_START": "بداية الفترة",
+      "FIXED_DATE": "تاريخ مدني ثابت",
+      "EXPIRY_DATE": "تاريخ انتهاء الصلاحية",
+      "EVENT_DATE": "تاريخ الحدث",
+      "hint": {
+        "PERIOD_END": "يُحسب الاستحقاق ابتداءً من آخر يوم في الفترة.",
+        "PERIOD_START": "يُحسب الاستحقاق ابتداءً من أول يوم في الفترة.",
+        "FIXED_DATE": "يقع الاستحقاق كل سنة في التاريخ المدني نفسه.",
+        "EXPIRY_DATE": "يسبق الاستحقاق انتهاء صلاحية السند المعني.",
+        "EVENT_DATE": "يُحسب الاستحقاق ابتداءً من تاريخ الحدث."
+      }
+    },
+    "shift": {
+      "NEXT_BUSINESS_DAY": "التأجيل إلى يوم العمل الموالي",
+      "PREVIOUS_BUSINESS_DAY": "الإرجاع إلى يوم العمل السابق",
+      "NONE": "دون تأجيل"
+    },
+    "rule": {
+      "title": "قاعدة الاستحقاق",
+      "anchor": "نقطة الانطلاق",
+      "offsetAfterPeriodEnd": "أيام بعد نهاية الفترة",
+      "offsetAfterPeriodEndHint": "مثال : 20 لاستحقاق في العشرين من الشهر الموالي.",
+      "offsetAfterPeriodStart": "أيام بعد بداية الفترة",
+      "offsetAfterPeriodStartHint": "يُحسب ابتداءً من أول يوم في الفترة.",
+      "offsetBeforeExpiry": "أيام قبل انتهاء الصلاحية",
+      "offsetBeforeExpiryHint": "مثال : 90 لتحضير التجديد ثلاثة أشهر قبل الأجل.",
+      "offsetAfterEvent": "أيام بعد الحدث",
+      "offsetAfterEventHint": "يُحسب ابتداءً من تاريخ الحدث المسجَّل في الملف.",
+      "fixedMonth": "الشهر",
+      "fixedDay": "اليوم",
+      "yearOffset": "إزاحة السنة",
+      "yearOffsetHint": "1 لاستحقاق يقع في السنة الموالية للفترة المعنية.",
+      "weekendShift": "إذا وقع الاستحقاق في عطلة نهاية الأسبوع",
+      "weekendShiftHint": "عطلة نهاية الأسبوع في الجزائر هي الجمعة والسبت.",
+      "holidayShift": "إذا وقع الاستحقاق في يوم عطلة",
+      "holidayShiftHint": "تُحدَّث أيام العطل في المراجع.",
+      "customDates": "التواريخ الثابتة في السنة",
+      "customDatesHint": "كل سطر يولّد استحقاقًا واحدًا في السنة.",
+      "customDatesEmpty": "لا تاريخ مصرَّح به. دورية « تواريخ ثابتة » تستوجب واحدًا على الأقل.",
+      "addCustomDate": "إضافة تاريخ",
+      "removeCustomDate": "حذف التاريخ {index}"
+    },
+    "preview": {
+      "title": "الاستحقاقات القادمة",
+      "caption": "معاينة الاستحقاقات القادمة التي تحسبها هذه القاعدة",
+      "period": "الفترة",
+      "computed": "المحسوب",
+      "legal": "الاستحقاق",
+      "internal": "داخلي",
+      "unavailable": "تعذّرت المعاينة",
+      "onEventNote": "الالتزام عند وقوع حدث لا يتكرّر في التقويم : يُعاين استحقاق واحد فقط.",
+      "shift": {
+        "WEEKEND": "عطلة أسبوعية",
+        "HOLIDAY": "عطلة رسمية"
+      },
+      "reasons": {
+        "DUE_RULE_MALFORMED": "القاعدة غير مكتملة.",
+        "FIXED_DATE_REQUIRES_MONTH_AND_DAY": "أدخل الشهر واليوم.",
+        "FIXED_DATE_REQUIRES_ANNUAL_PERIODICITY": "التاريخ المدني الثابت لا يتكرّر إلا مرة في السنة : اختر دورية سنوية أو كل سنتين.",
+        "OFFSET_DAYS_REQUIRED": "أدخل عدد الأيام.",
+        "FIXED_FIELDS_ONLY_FOR_FIXED_DATE": "الشهر واليوم لا ينطبقان إلا على تاريخ مدني ثابت.",
+        "CUSTOM_REQUIRES_OCCURRENCES": "صرّح بتاريخ ثابت واحد على الأقل.",
+        "CUSTOM_REQUIRES_PERIOD_ANCHOR": "مع التواريخ الثابتة، يجب أن تكون نقطة الانطلاق بداية الفترة أو نهايتها.",
+        "CUSTOM_DUPLICATE_DATE": "صُرِّح بتاريخين ثابتين متطابقين.",
+        "OCCURRENCES_ONLY_FOR_CUSTOM": "التواريخ الثابتة لا توجد إلا مع دورية « تواريخ ثابتة ».",
+        "ON_EVENT_REQUIRES_EVENT_ANCHOR": "الالتزام عند وقوع حدث يجب أن ينطلق من تاريخ الحدث أو من انتهاء صلاحية.",
+        "SHIFTS_MUST_AGREE": "يجب أن يتّجه التأجيلان في الاتجاه نفسه، وإلا لم يستقرّ الحساب.",
+        "SHIFT_DOES_NOT_CONVERGE": "لم يجد التأجيل أي يوم عمل.",
+        "ANCHOR_DATE_REQUIRED": "تتوقف هذه القاعدة على تاريخ يحمله الملف : لا يمكن للمعاينة تخمينه.",
+        "PERIOD_RANGE_REVERSED": "مجال الفترة غير متّسق.",
+        "CUSTOM_DATE_INVALID": "أحد التواريخ الثابتة غير صالح.",
+        "UNKNOWN": "القاعدة غير قابلة للاستغلال في وضعها الحالي."
+      }
+    },
+    "documents": {
+      "title": "الوثائق المطلوبة",
+      "hint": "ترتيب القائمة هو الترتيب الذي ستُطلب به الوثائق.",
+      "label": "التسمية",
+      "kind": "الطبيعة",
+      "kindUnset": "غير محدَّدة",
+      "maxSize": "الحجم الأقصى (م.ب)",
+      "maxSizeValue": "{mb} م.ب كحد أقصى",
+      "mandatory": "وثيقة إلزامية",
+      "required": "إلزامية",
+      "optional": "اختيارية",
+      "add": "إضافة وثيقة",
+      "remove": "حذف الوثيقة {position}",
+      "moveUp": "نقل الوثيقة {position} إلى الأعلى",
+      "moveDown": "نقل الوثيقة {position} إلى الأسفل",
+      "empty": "لا وثيقة مطلوبة مصرَّح بها.",
+      "emptyDetail": "لا وثيقة مطلوبة لهذا الالتزام."
+    },
+    "filters": {
+      "search": "بحث",
+      "searchPlaceholder": "رمز أو تسمية أو إجراء…",
+      "searchHint": "يشمل البحث أيضًا نص الإجراء.",
+      "all": "الكل",
+      "reset": "إعادة ضبط المرشِّحات"
+    },
+    "recalculation": {
+      "title": "إعادة حساب الاستحقاقات ؟",
+      "description": "تغيّرت القاعدة. لا تُعاد حساب إلا الاستحقاقات « للإنجاز » ؛ أما الملفات التي شُرع فيها فلا تُزحزح أبدًا.",
+      "loading": "جارٍ حساب الأثر…",
+      "failed": "تعذّر حساب الأثر.",
+      "summary": "{count} استحقاق من {total} سيتغيّر تاريخه.",
+      "caption": "الاستحقاقات قبل إعادة الحساب وبعدها",
+      "period": "الفترة",
+      "before": "قبل",
+      "after": "بعد",
+      "protected": "ملفات تبقى على حالها، حسب الوضعية :",
+      "blind": "يمكنك تعديل هذه القاعدة دون الاطّلاع على ملفات مجالها : ستُسنَد إعادة الحساب إلى شخص مخوَّل لرؤيتها.",
+      "skip": "دون إعادة حساب",
+      "apply": "إعادة حساب {count} استحقاق",
+      "applying": "جارٍ إعادة الحساب…",
+      "done": "أُعيد حساب {count} استحقاق."
+    },
+    "history": {
+      "empty": "لا كتابة مسجَّلة",
+      "emptyHint": "لم تُسجَّل بعد أي تعديلات على هذا الالتزام.",
+      "notPermitted": "السجل غير متاح",
+      "notPermittedHint": "يتطلب الاطّلاع على سجل التدقيق صلاحية مخصَّصة.",
+      "action": {
+        "INSERT": "أنشأ الالتزام",
+        "UPDATE": "عدّل الالتزام",
+        "DELETE": "سحب الالتزام"
+      }
+    },
+    "errors": {
+      "FORBIDDEN": "لا تملك صلاحية تعديل المرجع.",
+      "CONFLICT": "رُفضت العملية : التزام مفعَّل يتوقف على هذا، أو الرمز موجود مسبقًا.",
+      "VALIDATION_FAILED": "المعلومات المُدخلة غير صالحة.",
+      "NOT_FOUND": "الالتزام غير موجود.",
+      "UNAUTHENTICATED": "انتهت جلستك. أعد تسجيل الدخول.",
+      "INTERNAL": "حدث خطأ غير متوقّع.",
+      "PERIOD_LOCKED": "الفترة مقفلة.",
+      "INVALID_TRANSITION": "هذا التغيير غير مسموح.",
+      "STORAGE_FAILED": "لم يستجب التخزين.",
+      "INTEGRITY_CHECK_FAILED": "فشل التحقق من السلامة.",
+      "RATE_LIMITED": "طلبات كثيرة. انتظر قبل إعادة المحاولة.",
+      "EXTERNAL_SERVICE_FAILED": "لم تستجب خدمة خارجية."
+    },
+    "periodicityColumn": "الدورية",
+    "criticalityColumn": "الأهمية"
   },
   "occurrences": {
     "title": "الاستحقاقات",
@@ -391,6 +592,14 @@
     "calendarFeed": {
       "title": "تدفق التقويم",
       "description": "اشتراك iCalendar في استحقاقاتك."
+    },
+    "obligationCreate": {
+      "title": "التزام جديد",
+      "description": "صف الالتزام وقاعدة استحقاقه ووثائقه المطلوبة."
+    },
+    "obligationEdit": {
+      "title": "تعديل الالتزام",
+      "description": "تعديل القاعدة سيقترح إعادة حساب الاستحقاقات للإنجاز."
     }
   },
   "validation": {
@@ -400,7 +609,11 @@
     "maxLength": "{max} حرفًا كحد أقصى.",
     "invalidDate": "تاريخ غير صالح.",
     "fileTooLarge": "الملف كبير جدًا: {maxSizeMb} ميغابايت كحد أقصى.",
-    "fileTypeNotAllowed": "هذا النوع من الملفات غير مقبول."
+    "fileTypeNotAllowed": "هذا النوع من الملفات غير مقبول.",
+    "codeFormat": "أحرف كبيرة وأرقام وشرطة وشرطة سفلية فقط.",
+    "effectiveRangeReversed": "تاريخ النهاية يسبق تاريخ البداية.",
+    "validationLevelsWithoutValidation": "تعدّد مستويات المصادقة يستوجب طلب المصادقة.",
+    "duplicateRequiredDocument": "وثيقتان تحملان التسمية نفسها."
   },
   "workflow": {
     "transition": "تغيير الحالة",

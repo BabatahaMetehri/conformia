@@ -17,7 +17,7 @@ import {
 import { Dialog, DialogContent, DialogDescription, DialogTitle } from "@/components/ui/dialog";
 import { SEARCH_DEBOUNCE_MS } from "@/config/ui";
 import { searchAction } from "@/features/search/actions";
-import { useDebouncedValue } from "@/features/search/hooks/use-debounced-value";
+import { useDebouncedValue } from "@/hooks/use-debounced-value";
 import { useRouter } from "@/i18n/navigation";
 import { queryKeys } from "@/lib/query-keys";
 import type { SearchKind } from "@/services/search";
@@ -48,7 +48,7 @@ const ICONS: Readonly<Record<SearchKind, LucideIcon>> = {
 };
 
 const PATH_PREFIX: Readonly<Record<SearchKind, string>> = {
-  OBLIGATION: "/obligations",
+  OBLIGATION: "/referentiel",
   OCCURRENCE: "/occurrences",
   DOCUMENT: "/documents",
 };

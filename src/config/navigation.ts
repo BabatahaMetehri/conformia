@@ -123,7 +123,18 @@ export const NAVIGATION: readonly NavItem[] = [
   },
   {
     id: "obligations",
-    href: "/obligations",
+    /*
+     * ⚠️ L'URL est `/referentiel`, alors que CLAUDE.md §4 nomme le dossier
+     * `obligations/`. Le prompt de ce module fixe explicitement l'adresse de la
+     * liste et de la fiche ; on suit l'instruction la plus précise. L'identifiant
+     * d'entrée reste `obligations` — c'est la feature qui porte ce nom, et les
+     * tests s'y accrochent.
+     *
+     * Contrepartie assumée : c'est la seule route en français d'un sommaire
+     * autrement anglophone (`/my-tasks`, `/documents`, `/audit`…). Revenir en
+     * arrière tient en une ligne ici, plus le dossier de routage.
+     */
+    href: "/referentiel",
     icon: "obligations",
     labelKey: "obligations",
     requires: { kind: "all", permissions: ["obligation.read"] },

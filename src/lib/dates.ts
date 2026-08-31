@@ -618,6 +618,17 @@ export function shiftDate(
 
 // ─── Formatage et écarts ─────────────────────────────────────────────────────
 
+/**
+ * Date du jour au format ISO (`2026-01-15`), calendrier d ALGER.
+ *
+ * ⚠️ `new Date().toISOString().slice(0, 10)` donnerait la date UTC : entre 23 h
+ * et minuit a Alger, elle est encore celle de la veille. C est exactement le
+ * genre d ecart d un jour qui ne se voit qu en production.
+ */
+export function formatISODateInAppTz(instant?: Date): string {
+  return formatInTimeZone(instant ?? new Date(), APP_TIMEZONE, "yyyy-MM-dd");
+}
+
 /** `15/01/2026`, heure d'Alger. */
 export function formatDateFr(instant: Date): string {
   return formatInTimeZone(instant, APP_TIMEZONE, "dd/MM/yyyy", { locale: fr });

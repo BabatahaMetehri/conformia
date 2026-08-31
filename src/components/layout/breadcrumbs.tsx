@@ -31,6 +31,7 @@ import { Link, usePathname } from "@/i18n/navigation";
 const LABEL_KEY_BY_HREF: ReadonlyMap<string, string> = new Map([
   ...flattenNavigation(NAVIGATION).map<[string, string]>((item) => [item.href, item.labelKey]),
   // Écrans hors sommaire, atteignables par le menu utilisateur.
+  ["/referentiel/nouveau", "obligationCreate"],
   ["/profile", "profile"],
   ["/profile/calendar", "calendarFeed"],
 ]);

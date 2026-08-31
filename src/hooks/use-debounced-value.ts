@@ -3,6 +3,10 @@
 import { useEffect, useState } from "react";
 
 /**
+ * Vit dans src/hooks et non dans une feature : deux features s en servent
+ * deja (recherche globale, filtres du referentiel), et une feature n importe
+ * jamais une autre.
+ *
  * Retarde la propagation d'une valeur qui change vite.
  *
  * Sans cela, la palette déclenche une requête par touche : « déclaration » en
