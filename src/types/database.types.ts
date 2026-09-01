@@ -2717,6 +2717,13 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "document_upload_tickets_occurrence_id_fkey"
+            columns: ["occurrence_id"]
+            isOneToOne: false
+            referencedRelation: "validation_queue"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "document_upload_tickets_supersedes_id_fkey"
             columns: ["supersedes_id"]
             isOneToOne: false
@@ -2856,6 +2863,13 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "documents_occurrence_id_fkey"
+            columns: ["occurrence_id"]
+            isOneToOne: false
+            referencedRelation: "validation_queue"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "documents_supersedes_id_fkey"
             columns: ["supersedes_id"]
             isOneToOne: false
@@ -2960,6 +2974,89 @@ export type Database = {
           source?: string | null
         }
         Relationships: []
+      }
+      notifications: {
+        Row: {
+          actor_id: string | null
+          created_at: string
+          id: number
+          kind: string
+          occurrence_id: string | null
+          read_at: string | null
+          reason: string | null
+          recipient_id: string
+        }
+        Insert: {
+          actor_id?: string | null
+          created_at?: string
+          id?: number
+          kind: string
+          occurrence_id?: string | null
+          read_at?: string | null
+          reason?: string | null
+          recipient_id: string
+        }
+        Update: {
+          actor_id?: string | null
+          created_at?: string
+          id?: number
+          kind?: string
+          occurrence_id?: string | null
+          read_at?: string | null
+          reason?: string | null
+          recipient_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "notifications_actor_id_fkey"
+            columns: ["actor_id"]
+            isOneToOne: false
+            referencedRelation: "profile_directory"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "notifications_actor_id_fkey"
+            columns: ["actor_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "notifications_occurrence_id_fkey"
+            columns: ["occurrence_id"]
+            isOneToOne: false
+            referencedRelation: "obligation_occurrences"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "notifications_occurrence_id_fkey"
+            columns: ["occurrence_id"]
+            isOneToOne: false
+            referencedRelation: "occurrence_list"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "notifications_occurrence_id_fkey"
+            columns: ["occurrence_id"]
+            isOneToOne: false
+            referencedRelation: "validation_queue"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "notifications_recipient_id_fkey"
+            columns: ["recipient_id"]
+            isOneToOne: false
+            referencedRelation: "profile_directory"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "notifications_recipient_id_fkey"
+            columns: ["recipient_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       obligation_occurrences: {
         Row: {
@@ -3141,6 +3238,13 @@ export type Database = {
             columns: ["rectifies_occurrence_id"]
             isOneToOne: false
             referencedRelation: "occurrence_list"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "obligation_occurrences_rectifies_occurrence_id_fkey"
+            columns: ["rectifies_occurrence_id"]
+            isOneToOne: false
+            referencedRelation: "validation_queue"
             referencedColumns: ["id"]
           },
           {
@@ -3516,6 +3620,13 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "occurrence_checklist_items_occurrence_id_fkey"
+            columns: ["occurrence_id"]
+            isOneToOne: false
+            referencedRelation: "validation_queue"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "occurrence_checklist_items_required_document_id_fkey"
             columns: ["required_document_id"]
             isOneToOne: false
@@ -3584,6 +3695,13 @@ export type Database = {
             referencedRelation: "occurrence_list"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "occurrence_comments_occurrence_id_fkey"
+            columns: ["occurrence_id"]
+            isOneToOne: false
+            referencedRelation: "validation_queue"
+            referencedColumns: ["id"]
+          },
         ]
       }
       occurrence_transitions: {
@@ -3647,6 +3765,13 @@ export type Database = {
             columns: ["occurrence_id"]
             isOneToOne: false
             referencedRelation: "occurrence_list"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "occurrence_transitions_occurrence_id_fkey"
+            columns: ["occurrence_id"]
+            isOneToOne: false
+            referencedRelation: "validation_queue"
             referencedColumns: ["id"]
           },
           {
@@ -3861,6 +3986,33 @@ export type Database = {
           locks_occurrence?: boolean
           required_permission?: string
           requires_reason?: boolean
+          to_status?: Database["public"]["Enums"]["occurrence_status"]
+        }
+        Relationships: []
+      }
+      transition_notifications: {
+        Row: {
+          from_status: Database["public"]["Enums"]["occurrence_status"]
+          id: string
+          include_reason: boolean
+          kind: string
+          recipient: string
+          to_status: Database["public"]["Enums"]["occurrence_status"]
+        }
+        Insert: {
+          from_status: Database["public"]["Enums"]["occurrence_status"]
+          id?: string
+          include_reason?: boolean
+          kind: string
+          recipient: string
+          to_status: Database["public"]["Enums"]["occurrence_status"]
+        }
+        Update: {
+          from_status?: Database["public"]["Enums"]["occurrence_status"]
+          id?: string
+          include_reason?: boolean
+          kind?: string
+          recipient?: string
           to_status?: Database["public"]["Enums"]["occurrence_status"]
         }
         Relationships: []
@@ -4185,6 +4337,13 @@ export type Database = {
             referencedRelation: "occurrence_list"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "documents_occurrence_id_fkey"
+            columns: ["occurrence_id"]
+            isOneToOne: false
+            referencedRelation: "validation_queue"
+            referencedColumns: ["id"]
+          },
         ]
       }
       documents_pending_purge: {
@@ -4212,6 +4371,13 @@ export type Database = {
             columns: ["occurrence_id"]
             isOneToOne: false
             referencedRelation: "occurrence_list"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "documents_occurrence_id_fkey"
+            columns: ["occurrence_id"]
+            isOneToOne: false
+            referencedRelation: "validation_queue"
             referencedColumns: ["id"]
           },
         ]
@@ -4272,6 +4438,13 @@ export type Database = {
             columns: ["occurrence_id"]
             isOneToOne: false
             referencedRelation: "occurrence_list"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "documents_occurrence_id_fkey"
+            columns: ["occurrence_id"]
+            isOneToOne: false
+            referencedRelation: "validation_queue"
             referencedColumns: ["id"]
           },
           {
@@ -4403,6 +4576,13 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "obligation_occurrences_rectifies_occurrence_id_fkey"
+            columns: ["rectifies_occurrence_id"]
+            isOneToOne: false
+            referencedRelation: "validation_queue"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "obligation_occurrences_validator_id_fkey"
             columns: ["validator_id"]
             isOneToOne: false
@@ -4503,6 +4683,74 @@ export type Database = {
           },
         ]
       }
+      validation_queue: {
+        Row: {
+          authority_name: string | null
+          criticality: Database["public"]["Enums"]["criticality"] | null
+          days_to_internal: number | null
+          domain_code: string | null
+          id: string | null
+          internal_due_date: string | null
+          legal_due_date: string | null
+          obligation_code: string | null
+          obligation_name: string | null
+          obligation_type_id: string | null
+          owner_id: string | null
+          owner_name: string | null
+          period_key: string | null
+          period_start: string | null
+          status: Database["public"]["Enums"]["occurrence_status"] | null
+          submitted_for_validation_at: string | null
+          validation_levels: number | null
+          validations_obtained: number | null
+          validator_id: string | null
+          version: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "obligation_occurrences_obligation_type_id_fkey"
+            columns: ["obligation_type_id"]
+            isOneToOne: false
+            referencedRelation: "documents_search"
+            referencedColumns: ["obligation_type_id"]
+          },
+          {
+            foreignKeyName: "obligation_occurrences_obligation_type_id_fkey"
+            columns: ["obligation_type_id"]
+            isOneToOne: false
+            referencedRelation: "obligation_types"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "obligation_occurrences_owner_id_fkey"
+            columns: ["owner_id"]
+            isOneToOne: false
+            referencedRelation: "profile_directory"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "obligation_occurrences_owner_id_fkey"
+            columns: ["owner_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "obligation_occurrences_validator_id_fkey"
+            columns: ["validator_id"]
+            isOneToOne: false
+            referencedRelation: "profile_directory"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "obligation_occurrences_validator_id_fkey"
+            columns: ["validator_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Functions: {
       abandoned_upload_objects: {
@@ -4577,6 +4825,15 @@ export type Database = {
         Returns: undefined
       }
       current_profile_id: { Args: never; Returns: string }
+      dispatch_transition_notifications: {
+        Args: {
+          p_from: Database["public"]["Enums"]["occurrence_status"]
+          p_occurrence: Database["public"]["Tables"]["obligation_occurrences"]["Row"]
+          p_reason: string
+          p_to: Database["public"]["Enums"]["occurrence_status"]
+        }
+        Returns: undefined
+      }
       document_search_vector: {
         Args: { p_normalized_filename: string; p_original_filename: string }
         Returns: unknown
@@ -4585,6 +4842,16 @@ export type Database = {
       ensure_month_partition: {
         Args: { base_table: string; month_start: string }
         Returns: undefined
+      }
+      evaluate_transition: {
+        Args: {
+          p_late_reason_code?: Database["public"]["Enums"]["late_reason_code"]
+          p_occurrence_id: string
+          p_reason?: string
+          p_reference_number?: string
+          p_to_status: Database["public"]["Enums"]["occurrence_status"]
+        }
+        Returns: Json
       }
       global_search: {
         Args: { p_limit?: number; p_query: string }
@@ -4608,6 +4875,7 @@ export type Database = {
         Args: { p_email: string; p_ip?: unknown }
         Returns: boolean
       }
+      is_direction: { Args: { p_user_id: string }; Returns: boolean }
       is_ip_allowed_for_admin: { Args: { p_ip: unknown }; Returns: boolean }
       is_valid_due_rule: {
         Args: { p: Database["public"]["Enums"]["periodicity"]; rule: Json }
@@ -4696,6 +4964,7 @@ export type Database = {
         Args: never
         Returns: Database["public"]["Enums"]["occurrence_status"][]
       }
+      pending_validation_count: { Args: never; Returns: number }
       purge_auth_attempts: { Args: never; Returns: undefined }
       reassign_occurrences: {
         Args: { p_occurrence_ids: string[]; p_owner_id: string }
@@ -4724,9 +4993,17 @@ export type Database = {
         }
         Returns: number
       }
+      record_validation_step: {
+        Args: { p_occurrence_id: string }
+        Returns: number
+      }
       refresh_occurrence_stats: { Args: never; Returns: undefined }
       reject_document_upload_ticket: {
         Args: { p_reason: string; p_ticket_id: string }
+        Returns: boolean
+      }
+      revoke_validation_delegation: {
+        Args: { p_delegation_id: string; p_reason: string }
         Returns: boolean
       }
       sample_documents_for_integrity: {
@@ -4768,6 +5045,14 @@ export type Database = {
         Returns: boolean
       }
       storage_path_segment: { Args: { p_value: string }; Returns: string }
+      validation_levels_required: {
+        Args: { p_occurrence_id: string }
+        Returns: number
+      }
+      validation_steps_obtained: {
+        Args: { p_occurrence_id: string }
+        Returns: number
+      }
     }
     Enums: {
       criticality: "LOW" | "MEDIUM" | "HIGH" | "CRITICAL"

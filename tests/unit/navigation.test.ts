@@ -56,7 +56,23 @@ describe("filterNavigation", () => {
   it("ne laisse jamais un enfant non autorisé dans un groupe autorisé", () => {
     const items = filterNavigation(NAVIGATION, permissionsOf("user.manage"));
     const admin = items.find((item) => item.id === "admin");
-    expect(admin?.children?.map((child) => child.id)).toEqual(["admin-users"]);
+    // `user.manage` ouvre la gestion des comptes ET celle des délégations
+    // d'autrui — mais rien d'autre du groupe : ni référentiels, ni réglages.
+    expect(admin?.children?.map((child) => child.id)).toEqual(["admin-users", "admin-delegations"]);
+  });
+
+  it("ouvre les délégations à qui a un droit de validation à déléguer", () => {
+    // ⚠️ On ne délègue que ce que l'on détient. Un validateur doit pouvoir
+    // déléguer ses propres droits sans passer par un administrateur — sans quoi
+    // il prêtera son mot de passe, ce que la délégation existe pour remplacer.
+    const validator = idsOf(permissionsOf("occurrence.validate"));
+    expect(validator).toContain("admin-delegations");
+
+    // Et personne d'autre : qui n'a rien à déléguer ne voit pas l'entrée, et le
+    // groupe Administration reste invisible pour lui.
+    const reader = idsOf(permissionsOf("occurrence.read"));
+    expect(reader).not.toContain("admin-delegations");
+    expect(reader).not.toContain("admin");
   });
 
   it("rend un objet NEUF, sans muter l'arbre source", () => {

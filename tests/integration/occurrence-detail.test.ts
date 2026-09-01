@@ -630,12 +630,22 @@ describe("permissions", () => {
   });
 
   it("refuse la validation à qui ne détient pas occurrence.validate", async () => {
+    /*
+     * ⚠️ CONTRAT MODIFIÉ EN 0010. Le refus n'est plus une EXCEPTION mais une
+     * ISSUE : `apply_occurrence_transition` consulte `evaluate_transition`, qui
+     * rend un verdict. C'est ce que veut la machine à états — un refus est un
+     * fait métier que l'interface doit pouvoir expliquer, pas un incident.
+     *
+     * Le dernier rempart, lui, n'a pas changé : un UPDATE direct lève toujours,
+     * et c'est éprouvé dans `tests/integration/workflow.test.ts`.
+     */
     await asUser(USER.agent, async (client) => {
-      await expect(
-        client.query("select public.apply_occurrence_transition($1, 'VALIDATED', 1)", [
-          MAIN("2026-04"),
-        ]),
-      ).rejects.toThrow(/occurrence\.validate/);
+      const { rows } = await client.query<{ result: { outcome: string; permission: string } }>(
+        "select public.apply_occurrence_transition($1, 'VALIDATED', 1) as result",
+        [MAIN("2026-04")],
+      );
+      expect(rows[0]?.result.outcome).toBe("FORBIDDEN");
+      expect(rows[0]?.result.permission).toBe("occurrence.validate");
     });
   });
 
@@ -663,11 +673,12 @@ describe("permissions", () => {
 
   it("refuse une transition absente de status_transition_rules", async () => {
     await asUser(USER.manager, async (client) => {
-      await expect(
-        client.query("select public.apply_occurrence_transition($1, 'ARCHIVED', 1)", [
-          MAIN("2026-01"),
-        ]),
-      ).rejects.toThrow(/Transition interdite/);
+      const { rows } = await client.query<{ result: { outcome: string } }>(
+        "select public.apply_occurrence_transition($1, 'ARCHIVED', 1) as result",
+        [MAIN("2026-01")],
+      );
+      // Issue et non exception depuis 0010 — l'interdiction, elle, est intacte.
+      expect(rows[0]?.result.outcome).toBe("INVALID_TRANSITION");
     });
   });
 
@@ -729,11 +740,11 @@ describe("permissions", () => {
         USER.manager,
       ]);
 
-      await expect(
-        client.query("select public.apply_occurrence_transition($1, 'VALIDATED', 2)", [
-          MAIN("2026-04"),
-        ]),
-      ).rejects.toThrow(/Séparation des tâches/);
+      const { rows } = await client.query<{ result: { outcome: string } }>(
+        "select public.apply_occurrence_transition($1, 'VALIDATED', 2) as result",
+        [MAIN("2026-04")],
+      );
+      expect(rows[0]?.result.outcome).toBe("SELF_VALIDATION_BLOCKED");
     });
   });
 });

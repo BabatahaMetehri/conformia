@@ -15,7 +15,15 @@ import { createSupabaseServerClient } from "@/lib/supabase/server";
 import type { OccurrenceStatus } from "@/config/constants";
 import type { OccurrenceId, ProfileId } from "@/types/domain";
 
-/** Vocabulaire des issues rendues par `apply_occurrence_transition`. */
+/**
+ * Vocabulaire des issues rendues par `apply_occurrence_transition`.
+ *
+ * ⚠️ Depuis 0010, la fonction délègue TOUTE la décision à `evaluate_transition` :
+ * ce vocabulaire est donc celui des verdicts, augmenté de ce que seule
+ * l'application peut constater — le conflit de version et l'issue effective.
+ * L'énumérer ici n'est pas une seconde source de règles : c'est la liste des
+ * réponses possibles, et le service doit toutes les traiter.
+ */
 export type TransitionOutcomeCode =
   | "APPLIED"
   | "NO_CHANGE"
@@ -24,7 +32,15 @@ export type TransitionOutcomeCode =
   | "INCOMPLETE"
   | "REFERENCE_REQUIRED"
   | "PROOF_REQUIRED"
-  | "LATE_REASON_REQUIRED";
+  | "LATE_REASON_REQUIRED"
+  | "INVALID_TRANSITION"
+  | "LOCKED"
+  | "FORBIDDEN"
+  | "REASON_REQUIRED"
+  | "SELF_VALIDATION_BLOCKED"
+  | "SECOND_LEVEL_REQUIRES_DIRECTION"
+  /** Première des deux validations : enregistrée, mais l'état ne change pas. */
+  | "PARTIALLY_VALIDATED";
 
 export interface TransitionOutcome {
   readonly outcome: TransitionOutcomeCode;
@@ -32,6 +48,9 @@ export interface TransitionOutcome {
   readonly status: OccurrenceStatus | null;
   readonly missing: readonly string[];
   readonly dueDate: string | null;
+  /** Validations obtenues / exigées, quand l'obligation en demande deux. */
+  readonly obtained: number | null;
+  readonly required: number | null;
 }
 
 export type LateReasonCode =
@@ -61,6 +80,8 @@ function readOutcome(payload: unknown): TransitionOutcome {
     status: (record["status"] as OccurrenceStatus | undefined) ?? null,
     missing: Array.isArray(missing) ? missing.map((entry) => String(entry)) : [],
     dueDate: typeof record["dueDate"] === "string" ? record["dueDate"] : null,
+    obtained: typeof record["obtained"] === "number" ? record["obtained"] : null,
+    required: typeof record["required"] === "number" ? record["required"] : null,
   };
 }
 

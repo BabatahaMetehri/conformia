@@ -96,14 +96,6 @@ cross join (values
 ) as p(key, s, e, legal, internal, status)
 where ot.code = '${PREFIX}MAIN';
 
--- ⚠️ La colonne is_locked n'est posée que par le trigger de transition, jamais à
--- l'insertion : un dossier semé directement en ARCHIVED reste déverrouillé.
-update public.obligation_occurrences oc
-set is_locked = true, locked_at = now()
-from public.obligation_types ot
-where ot.id = oc.obligation_type_id and ot.code = '${PREFIX}MAIN'
-  and oc.period_key = '2026-05';
-
 -- La liste de contrôle n'est pas générée par un trigger à la création de
 -- l'occurrence : on la dérive du référentiel, comme le fait la génération.
 insert into public.occurrence_checklist_items
@@ -119,6 +111,16 @@ insert into public.obligation_occurrences
    legal_due_date, internal_due_date, status)
 select id, '2026-03', '2026-03-01', '2026-03-31', '2026-04-20', '2026-04-15', 'IN_PROGRESS'
 from public.obligation_types where code = '${PREFIX}SOCIAL';
+
+-- ⚠️ Le verrou est posé EN DERNIER, une fois les lignes filles en place : depuis
+-- 0010, un dossier verrouillé refuse aussi sa liste de contrôle et ses pièces.
+-- Le poser plus tôt ferait échouer le jeu d'essai lui-même — ce qui est, en soi,
+-- la preuve que la garde fonctionne.
+update public.obligation_occurrences oc
+set is_locked = true, locked_at = now()
+from public.obligation_types ot
+where ot.id = oc.obligation_type_id and ot.code = '${PREFIX}MAIN'
+  and oc.period_key = '2026-05';
 `;
 
 const CLEANUP = `
@@ -706,8 +708,14 @@ describe("suppression", () => {
   it("REFUSE de retirer une pièce d'un dossier ARCHIVÉ", async () => {
     await asUser(USER.manager, async (client) => {
       // Le dossier 2026-05 est archivé : on y installe une pièce hors RLS, comme
-      // le ferait l'histoire d'un dossier déposé puis archivé.
+      // le ferait l'histoire d'un dossier déposé PUIS archivé.
+      //
+      // ⚠️ Le trigger de 0010 doit être neutralisé le temps de POSER cette
+      // histoire : depuis lui, un dossier verrouillé refuse jusqu'à ses pièces.
+      // Devoir le désactiver pour installer l'état de départ est, en soi, la
+      // preuve que la garde tient.
       const documentId = await withoutRls(client, async () => {
+        await client.query("alter table public.documents disable trigger trg_parent_lock");
         const { rows } = await client.query<{ id: string }>(
           `insert into public.documents
              (occurrence_id, storage_path, original_filename, normalized_filename,
@@ -716,6 +724,7 @@ describe("suppression", () => {
                    'application/pdf', 10, $2, $3) returning id`,
           [MAIN("2026-05"), "a".repeat(64), USER.agent],
         );
+        await client.query("alter table public.documents enable trigger trg_parent_lock");
         return rows[0]?.id ?? "";
       });
 

@@ -176,7 +176,25 @@ export const NAVIGATION: readonly NavItem[] = [
         href: "/admin/delegations",
         icon: "delegations",
         labelKey: "adminDelegations",
-        requires: { kind: "all", permissions: ["role.manage"] },
+        /*
+         * ⚠️ ÉLARGI au prompt du circuit de validation, et de façon PRÉCISE.
+         *
+         * Exiger `role.manage` obligeait un responsable partant en congé à
+         * passer par un administrateur pour déléguer SES PROPRES droits —
+         * c'est-à-dire, en pratique, à ne pas le faire et à prêter son mot de
+         * passe : exactement la pratique que la délégation existe pour remplacer.
+         *
+         * `always` serait l'excès inverse : l'entrée rendrait le groupe
+         * Administration visible à tous, y compris à qui n'a rien à y faire.
+         *
+         * La règle juste est celle-ci : on ne délègue que ce que l'on détient.
+         * Détenir `occurrence.validate` est donc la condition exacte pour avoir
+         * quelque chose à déléguer ; `user.manage` ouvre en plus la gestion des
+         * délégations d'autrui. Le reste est décidé par les politiques de 0002 :
+         * on n'insère que pour soi-même sauf à détenir `user.manage`, et on ne
+         * lit que ses propres délégations.
+         */
+        requires: { kind: "any", permissions: ["occurrence.validate", "user.manage"] },
       },
       {
         id: "admin-referentials",
