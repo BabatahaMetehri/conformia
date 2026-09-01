@@ -15,7 +15,7 @@
     "test:rls": "vitest run --config vitest.integration.mts",
     "test:e2e": "playwright test",
     "db:migrate": "supabase migration up",
-    "db:types": "supabase gen types typescript --local --schema public > src/types/database.types.ts",
+    "db:types": "supabase gen types typescript --local --schema public > src/types/database.types.ts.tmp && node -e \"const fs=require('fs');const f='src/types/database.types.ts.tmp';if(fs.statSync(f).size<1000){fs.unlinkSync(f);console.error('Generation des types vide ou tronquee : fichier conserve.');process.exit(1)}fs.renameSync(f,'src/types/database.types.ts')\"",
     "db:reset": "supabase db reset",
     "db:seed": "supabase db execute --file supabase/seed/seed.sql",
     "prepare": "husky"
@@ -49,6 +49,7 @@
     "react-day-picker": "^10.0.1",
     "react-dom": "19.1.0",
     "react-hook-form": "^7.87.0",
+    "recharts": "^3.10.1",
     "server-only": "0.0.1",
     "sonner": "^2.0.8",
     "tailwind-merge": "3.6.0",

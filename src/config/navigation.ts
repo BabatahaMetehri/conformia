@@ -31,6 +31,7 @@ export const NAV_ICON_NAMES = [
   "reports",
   "admin",
   "users",
+  "roles",
   "delegations",
   "referentials",
   "notifications",
@@ -170,6 +171,13 @@ export const NAVIGATION: readonly NavItem[] = [
         icon: "users",
         labelKey: "adminUsers",
         requires: { kind: "all", permissions: ["user.manage"] },
+      },
+      {
+        id: "admin-roles",
+        href: "/admin/roles",
+        icon: "roles",
+        labelKey: "adminRoles",
+        requires: { kind: "all", permissions: ["role.manage"] },
       },
       {
         id: "admin-delegations",

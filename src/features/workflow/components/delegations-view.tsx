@@ -234,7 +234,7 @@ export function DelegationsView({
                     setForm({ ...form, delegatorId: value });
                   }}
                 >
-                  <SelectTrigger>
+                  <SelectTrigger aria-label={t("delegator")}>
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
@@ -256,7 +256,7 @@ export function DelegationsView({
                   setForm({ ...form, delegateId: value });
                 }}
               >
-                <SelectTrigger>
+                <SelectTrigger aria-label={t("delegate")}>
                   <SelectValue placeholder={t("delegatePlaceholder")} />
                 </SelectTrigger>
                 <SelectContent>
@@ -280,7 +280,7 @@ export function DelegationsView({
                     setForm({ ...form, domainId: value === "__all__" ? "" : value });
                   }}
                 >
-                  <SelectTrigger>
+                  <SelectTrigger aria-label={t("scope")}>
                     <SelectValue placeholder={t("allDomains")} />
                   </SelectTrigger>
                   <SelectContent>

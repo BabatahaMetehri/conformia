@@ -1,18 +1,36 @@
-import { SectionHeader, SectionPlaceholder } from "@/components/layout/section";
+import { getTranslations } from "next-intl/server";
+
+import { SectionHeader } from "@/components/layout/section";
+import { ErrorState } from "@/components/shared/states";
+import { SettingsView } from "@/features/admin/components/settings-view";
+import { getSettings } from "@/services/admin";
 import { requireSectionAccess } from "@/services/navigation/guard";
 
 /**
- * Coquille de section. La garde précède TOUT rendu : un accès refusé produit
- * l'écran « introuvable », jamais un écran « accès refusé »
- * (cf. `src/services/navigation/guard.ts`).
+ * Réglages de l'installation.
+ *
+ * Chaque clé porte sa description et son type : la validation suit le type
+ * DÉCLARÉ EN BASE, pas une liste tenue dans l'écran.
  */
 export default async function Page() {
   await requireSectionAccess("/admin/settings");
 
+  const t = await getTranslations("admin.settings");
+  const settings = await getSettings();
+
+  if (!settings.ok) {
+    return (
+      <>
+        <SectionHeader titleKey="adminSettings" descriptionKey="adminSettings" />
+        <ErrorState title={t("loadFailed")} />
+      </>
+    );
+  }
+
   return (
     <>
       <SectionHeader titleKey="adminSettings" descriptionKey="adminSettings" />
-      <SectionPlaceholder />
+      <SettingsView settings={settings.value} />
     </>
   );
 }

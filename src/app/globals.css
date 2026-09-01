@@ -68,6 +68,38 @@
   --due-imminent: oklch(0.52 0.16 45);
   --due-overdue: oklch(0.5 0.19 25);
 
+  /*
+   * SÉRIES DE GRAPHIQUE — distinctes des jetons de statut, volontairement.
+   *
+   * ⚠️ Les couleurs de statut (--status-*) sont conçues pour du TEXTE et des
+   * pastilles : ce qui compte pour elles est le contraste WCAG sur un fond
+   * clair. Employées comme aplats ADJACENTS dans un graphique, elles échouent :
+   * mesuré avec le validateur de palette, `--status-pending` (ambre, teinte 75)
+   * et `--status-rejected` (orange, teinte 45) sont séparées de ΔE 0,2 sous
+   * deutéranopie — c'est-à-dire IDENTIQUES pour un lecteur daltonien. Aucun
+   * ordre d'empilement ne les sépare : la palette entière tient dans une bande
+   * de clarté de 0,47 à 0,52.
+   *
+   * Ces huit fentes-ci sont validées pour l'usage graphique dans les DEUX modes
+   * (bande de clarté, plancher de chroma, séparation ΔE sous protanopie et
+   * deutéranopie, contraste sur la surface du projet). Le mode sombre n'est pas
+   * un basculement automatique : ce sont d'autres pas, validés contre le fond
+   * sombre.
+   *
+   * L'identité n'est jamais portée par la seule couleur : chaque graphique a sa
+   * légende ET sa table de données.
+   */
+  --chart-1: #2a78d6;
+  --chart-2: #eb6834;
+  --chart-3: #1baf7a;
+  --chart-4: #eda100;
+  --chart-5: #e87ba4;
+  --chart-6: #008300;
+  --chart-7: #4a3aa7;
+  --chart-8: #e34948;
+  --chart-grid: oklch(0.93 0.004 250);
+  --chart-axis: oklch(0.83 0.01 250);
+
   --ring: oklch(0.45 0.077 162);
   --radius: 0.5rem;
 }
@@ -117,6 +149,18 @@
   --due-imminent: oklch(0.79 0.14 45);
   --due-overdue: oklch(0.76 0.16 25);
 
+  /* Pas sombres de la même famille, validés contre la surface sombre. */
+  --chart-1: #3987e5;
+  --chart-2: #d95926;
+  --chart-3: #199e70;
+  --chart-4: #c98500;
+  --chart-5: #d55181;
+  --chart-6: #008300;
+  --chart-7: #9085e9;
+  --chart-8: #e66767;
+  --chart-grid: oklch(0.27 0.01 250);
+  --chart-axis: oklch(0.38 0.012 250);
+
   --ring: oklch(0.72 0.11 160);
 }
 
@@ -159,6 +203,17 @@
   --color-due-soon: var(--due-soon);
   --color-due-imminent: var(--due-imminent);
   --color-due-overdue: var(--due-overdue);
+
+  --color-chart-1: var(--chart-1);
+  --color-chart-2: var(--chart-2);
+  --color-chart-3: var(--chart-3);
+  --color-chart-4: var(--chart-4);
+  --color-chart-5: var(--chart-5);
+  --color-chart-6: var(--chart-6);
+  --color-chart-7: var(--chart-7);
+  --color-chart-8: var(--chart-8);
+  --color-chart-grid: var(--chart-grid);
+  --color-chart-axis: var(--chart-axis);
 
   --color-ring: var(--ring);
 

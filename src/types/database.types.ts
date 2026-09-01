@@ -1635,6 +1635,33 @@ export type Database = {
         }
         Relationships: []
       }
+      backup_runs: {
+        Row: {
+          detail: string | null
+          finished_at: string | null
+          id: number
+          size_bytes: number | null
+          started_at: string
+          status: string
+        }
+        Insert: {
+          detail?: string | null
+          finished_at?: string | null
+          id?: number
+          size_bytes?: number | null
+          started_at?: string
+          status: string
+        }
+        Update: {
+          detail?: string | null
+          finished_at?: string | null
+          id?: number
+          size_bytes?: number | null
+          started_at?: string
+          status?: string
+        }
+        Relationships: []
+      }
       departments: {
         Row: {
           code: string
@@ -2951,6 +2978,7 @@ export type Database = {
       holidays: {
         Row: {
           created_at: string
+          created_by: string | null
           holiday_date: string
           id: string
           is_recurring: boolean
@@ -2959,6 +2987,7 @@ export type Database = {
         }
         Insert: {
           created_at?: string
+          created_by?: string | null
           holiday_date: string
           id?: string
           is_recurring?: boolean
@@ -2967,13 +2996,29 @@ export type Database = {
         }
         Update: {
           created_at?: string
+          created_by?: string | null
           holiday_date?: string
           id?: string
           is_recurring?: boolean
           label?: string
           source?: string | null
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "holidays_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profile_directory"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "holidays_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       notifications: {
         Row: {
@@ -4017,6 +4062,97 @@ export type Database = {
         }
         Relationships: []
       }
+      user_invitations: {
+        Row: {
+          accepted_at: string | null
+          cancelled_at: string | null
+          created_at: string
+          department_id: string | null
+          dispatched_at: string | null
+          domain_id: string | null
+          email: string
+          expires_at: string
+          full_name: string
+          id: string
+          invited_by: string
+          role_expires_at: string | null
+          role_id: string
+        }
+        Insert: {
+          accepted_at?: string | null
+          cancelled_at?: string | null
+          created_at?: string
+          department_id?: string | null
+          dispatched_at?: string | null
+          domain_id?: string | null
+          email: string
+          expires_at?: string
+          full_name: string
+          id?: string
+          invited_by: string
+          role_expires_at?: string | null
+          role_id: string
+        }
+        Update: {
+          accepted_at?: string | null
+          cancelled_at?: string | null
+          created_at?: string
+          department_id?: string | null
+          dispatched_at?: string | null
+          domain_id?: string | null
+          email?: string
+          expires_at?: string
+          full_name?: string
+          id?: string
+          invited_by?: string
+          role_expires_at?: string | null
+          role_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "user_invitations_department_id_fkey"
+            columns: ["department_id"]
+            isOneToOne: false
+            referencedRelation: "departments"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "user_invitations_domain_id_fkey"
+            columns: ["domain_id"]
+            isOneToOne: false
+            referencedRelation: "documents_search"
+            referencedColumns: ["domain_id"]
+          },
+          {
+            foreignKeyName: "user_invitations_domain_id_fkey"
+            columns: ["domain_id"]
+            isOneToOne: false
+            referencedRelation: "domains"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "user_invitations_invited_by_fkey"
+            columns: ["invited_by"]
+            isOneToOne: false
+            referencedRelation: "profile_directory"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "user_invitations_invited_by_fkey"
+            columns: ["invited_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "user_invitations_role_id_fkey"
+            columns: ["role_id"]
+            isOneToOne: false
+            referencedRelation: "roles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       user_roles: {
         Row: {
           created_at: string
@@ -4284,6 +4420,150 @@ export type Database = {
       }
     }
     Views: {
+      dashboard_compliance_monthly: {
+        Row: {
+          domain_id: string | null
+          due_count: number | null
+          month: string | null
+          on_time_count: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "obligation_types_domain_id_fkey"
+            columns: ["domain_id"]
+            isOneToOne: false
+            referencedRelation: "documents_search"
+            referencedColumns: ["domain_id"]
+          },
+          {
+            foreignKeyName: "obligation_types_domain_id_fkey"
+            columns: ["domain_id"]
+            isOneToOne: false
+            referencedRelation: "domains"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      dashboard_health: {
+        Row: {
+          documents_provided: number | null
+          documents_required: number | null
+          domain_id: string | null
+          pending_avg_days: number | null
+          pending_validation: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "obligation_types_domain_id_fkey"
+            columns: ["domain_id"]
+            isOneToOne: false
+            referencedRelation: "documents_search"
+            referencedColumns: ["domain_id"]
+          },
+          {
+            foreignKeyName: "obligation_types_domain_id_fkey"
+            columns: ["domain_id"]
+            isOneToOne: false
+            referencedRelation: "domains"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      dashboard_late_reasons: {
+        Row: {
+          domain_id: string | null
+          late_reason_code:
+            | Database["public"]["Enums"]["late_reason_code"]
+            | null
+          total: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "obligation_types_domain_id_fkey"
+            columns: ["domain_id"]
+            isOneToOne: false
+            referencedRelation: "documents_search"
+            referencedColumns: ["domain_id"]
+          },
+          {
+            foreignKeyName: "obligation_types_domain_id_fkey"
+            columns: ["domain_id"]
+            isOneToOne: false
+            referencedRelation: "domains"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      dashboard_upcoming_load: {
+        Row: {
+          domain_id: string | null
+          not_started: number | null
+          total: number | null
+          week_start: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "obligation_types_domain_id_fkey"
+            columns: ["domain_id"]
+            isOneToOne: false
+            referencedRelation: "documents_search"
+            referencedColumns: ["domain_id"]
+          },
+          {
+            foreignKeyName: "obligation_types_domain_id_fkey"
+            columns: ["domain_id"]
+            isOneToOne: false
+            referencedRelation: "domains"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      dashboard_workload: {
+        Row: {
+          department_id: string | null
+          domain_id: string | null
+          late_total: number | null
+          open_total: number | null
+          owner_id: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "obligation_occurrences_owner_id_fkey"
+            columns: ["owner_id"]
+            isOneToOne: false
+            referencedRelation: "profile_directory"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "obligation_occurrences_owner_id_fkey"
+            columns: ["owner_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "obligation_types_domain_id_fkey"
+            columns: ["domain_id"]
+            isOneToOne: false
+            referencedRelation: "documents_search"
+            referencedColumns: ["domain_id"]
+          },
+          {
+            foreignKeyName: "obligation_types_domain_id_fkey"
+            columns: ["domain_id"]
+            isOneToOne: false
+            referencedRelation: "domains"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "profiles_department_id_fkey"
+            columns: ["department_id"]
+            isOneToOne: false
+            referencedRelation: "departments"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       document_integrity_alerts: {
         Row: {
           actual_sha256: string | null
@@ -4773,6 +5053,10 @@ export type Database = {
       }
       app_actor_id: { Args: never; Returns: string }
       app_transition_reason: { Args: never; Returns: string }
+      apply_due_date_updates: {
+        Args: { p_reason: string; p_updates: Json }
+        Returns: number
+      }
       apply_occurrence_transition: {
         Args: {
           p_expected_version: number
@@ -4825,6 +5109,65 @@ export type Database = {
         Returns: undefined
       }
       current_profile_id: { Args: never; Returns: string }
+      dashboard_alerts: {
+        Args: never
+        Returns: {
+          code: string
+          detail: Json
+          severity: string
+          total: number
+        }[]
+      }
+      dashboard_compliance_for_caller: {
+        Args: never
+        Returns: {
+          domain_id: string
+          due_count: number
+          month: string
+          on_time_count: number
+        }[]
+      }
+      dashboard_health_for_caller: {
+        Args: never
+        Returns: {
+          documents_provided: number
+          documents_required: number
+          domain_id: string
+          pending_avg_days: number
+          pending_validation: number
+        }[]
+      }
+      dashboard_late_reasons_for_caller: {
+        Args: never
+        Returns: {
+          domain_id: string
+          late_reason_code: Database["public"]["Enums"]["late_reason_code"]
+          total: number
+        }[]
+      }
+      dashboard_upcoming_for_caller: {
+        Args: never
+        Returns: {
+          domain_id: string
+          not_started: number
+          total: number
+          week_start: string
+        }[]
+      }
+      dashboard_workload_for_caller: {
+        Args: never
+        Returns: {
+          department_id: string
+          domain_id: string
+          late_total: number
+          open_total: number
+          owner_id: string
+        }[]
+      }
+      deactivate_user: {
+        Args: { p_handover_to?: string; p_reason: string; p_user_id: string }
+        Returns: number
+      }
       dispatch_transition_notifications: {
         Args: {
           p_from: Database["public"]["Enums"]["occurrence_status"]
@@ -4880,6 +5223,10 @@ export type Database = {
       is_valid_due_rule: {
         Args: { p: Database["public"]["Enums"]["periodicity"]; rule: Json }
         Returns: boolean
+      }
+      log_audit_export: {
+        Args: { p_filters: Json; p_row_count: number }
+        Returns: undefined
       }
       log_auth_event: {
         Args: {
@@ -4960,6 +5307,7 @@ export type Database = {
         }[]
       }
       open_occurrence_count: { Args: { p_user_id: string }; Returns: number }
+      open_task_count: { Args: { p_user_id: string }; Returns: number }
       overdue_exempt_statuses: {
         Args: never
         Returns: Database["public"]["Enums"]["occurrence_status"][]
@@ -4997,15 +5345,21 @@ export type Database = {
         Args: { p_occurrence_id: string }
         Returns: number
       }
+      refresh_dashboard_views: { Args: never; Returns: undefined }
       refresh_occurrence_stats: { Args: never; Returns: undefined }
       reject_document_upload_ticket: {
         Args: { p_reason: string; p_ticket_id: string }
+        Returns: boolean
+      }
+      reset_user_mfa: {
+        Args: { p_reason: string; p_user_id: string }
         Returns: boolean
       }
       revoke_validation_delegation: {
         Args: { p_delegation_id: string; p_reason: string }
         Returns: boolean
       }
+      role_holder_count: { Args: { p_role_id: string }; Returns: number }
       sample_documents_for_integrity: {
         Args: { p_sample_size: number }
         Returns: {

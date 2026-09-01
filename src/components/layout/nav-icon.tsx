@@ -14,6 +14,7 @@ import {
   SlidersHorizontal,
   Trash2,
   Users,
+  KeyRound,
   Bell,
   type LucideIcon,
 } from "lucide-react";
@@ -38,6 +39,7 @@ const ICONS: Readonly<Record<NavIconName, LucideIcon>> = {
   reports: FileChartColumn,
   admin: SlidersHorizontal,
   users: Users,
+  roles: KeyRound,
   delegations: ArrowLeftRight,
   referentials: BookMarked,
   notifications: Bell,
