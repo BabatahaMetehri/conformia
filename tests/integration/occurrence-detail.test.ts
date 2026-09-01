@@ -241,6 +241,19 @@ const MAIN = (period: string): string => {
  * compare à `current_profile_id()`. Le figer sur un compte unique faisait échouer
  * tout dépôt joué sous une autre identité.
  */
+/**
+ * Pose une pièce DÉJÀ déposée, pour installer un état de départ.
+ *
+ * ⚠️ Passe hors RLS depuis 0009 : l'insertion directe dans `documents` a été
+ * FERMÉE à `authenticated` (la policy `documents_insert` est retirée), parce
+ * qu'elle permettait d'adopter n'importe quel objet orphelin du bucket et donc
+ * de contourner la vérification de signature binaire. Une ligne ne naît plus
+ * que de `confirm_document_upload`.
+ *
+ * Ce que ces tests-ci veulent n'est pas d'éprouver le dépôt — il l'est dans
+ * `documents.test.ts` — mais de disposer d'un dossier déjà pourvu. On installe
+ * donc l'état directement, comme le ferait une migration.
+ */
 async function attachDocument(
   client: PoolClient,
   occurrenceId: string,
@@ -249,6 +262,7 @@ async function attachDocument(
   uploader: string,
 ): Promise<string> {
   const id = randomUUID();
+  await client.query("reset role");
   await client.query(
     `insert into public.documents
        (id, occurrence_id, checklist_item_id, storage_path, original_filename,
@@ -265,6 +279,7 @@ async function attachDocument(
       uploader,
     ],
   );
+  await client.query("set local role authenticated");
   return id;
 }
 
@@ -435,7 +450,7 @@ describe("complétude du dossier", () => {
 
       await expect(
         client.query("select public.soft_delete_document($1, '  ')", [documentId]),
-      ).rejects.toThrow(/Motif obligatoire/);
+      ).rejects.toThrow(/au moins 10 caractères/);
     });
   });
 });

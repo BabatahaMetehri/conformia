@@ -123,7 +123,9 @@
       "dark": "Sombre",
       "system": "Système"
     },
-    "notProvided": "Non renseigné"
+    "notProvided": "Non renseigné",
+    "all": "Tous",
+    "reason": "Motif"
   },
   "dashboard": {
     "title": "Tableau de bord",
@@ -161,7 +163,11 @@
     "filename": "Nom du fichier",
     "uploadedBy": "Déposé par",
     "uploadedAt": "Date de dépôt",
-    "size": "Taille",
+    "size": {
+      "bytes": "{value} o",
+      "kilobytes": "{value} ko",
+      "megabytes": "{value} Mo"
+    },
     "kind": {
       "JUSTIFICATIF": "Justificatif",
       "PREUVE_DEPOT": "Preuve de dépôt",
@@ -171,6 +177,122 @@
     "dropzone": {
       "prompt": "Glissez un fichier ici, ou cliquez pour parcourir",
       "constraints": "{maxSizeMb} Mo maximum · {count} formats acceptés"
+    },
+    "upload": {
+      "queueLabel": "Envois en cours",
+      "retry": "Reprendre",
+      "dismiss": "Retirer {name} de la liste",
+      "stage": {
+        "QUEUED": "En attente",
+        "REQUESTING": "Autorisation…",
+        "UPLOADING": "Envoi…",
+        "HASHING": "Empreinte…",
+        "CONFIRMING": "Enregistrement…",
+        "DONE": "Déposé",
+        "FAILED": "Échec"
+      },
+      "failure": {
+        "UPLOAD_FAILED": "Le dépôt a échoué. Reprenez l'envoi.",
+        "NETWORK": "Connexion interrompue pendant l'envoi.",
+        "ABORTED": "Envoi annulé.",
+        "REJECTED_BY_STORAGE": "Le stockage a refusé le fichier.",
+        "EMPTY_FILE": "Fichier vide.",
+        "TOO_LARGE": "Fichier trop volumineux.",
+        "EXTENSION_BLOCKED": "Ce type de fichier n'est jamais accepté.",
+        "MIME_NOT_ALLOWED": "Format non autorisé.",
+        "SIGNATURE_MISMATCH": "Le contenu du fichier ne correspond pas à son extension.",
+        "QUOTA_EXCEEDED": "Le dossier a atteint son volume maximal.",
+        "OCCURRENCE_LOCKED": "Ce dossier est verrouillé : plus aucune pièce ne peut y être déposée.",
+        "DENIED": "Vous n'avez pas le droit de déposer sur ce dossier.",
+        "NOT_FOUND": "Dossier introuvable.",
+        "INVALID_CHECKLIST_ITEM": "Pièce attendue inconnue pour ce dossier.",
+        "INVALID_NAME": "Nom de fichier refusé.",
+        "SIZE_MISMATCH": "Le fichier reçu ne fait pas la taille annoncée.",
+        "INVALID_HASH": "Empreinte du fichier invalide.",
+        "TICKET_EXPIRED": "Le délai d'envoi est écoulé. Reprenez le dépôt.",
+        "TICKET_REJECTED": "Ce dépôt a été refusé par le contrôle de sécurité.",
+        "TICKET_NOT_FOUND": "Dépôt introuvable.",
+        "ALREADY_CONSUMED": "Ce dépôt a déjà été enregistré.",
+        "UPLOAD_NOT_FOUND": "Aucun fichier n'est arrivé au stockage."
+      }
+    },
+    "search": {
+      "title": "Recherche de pièces",
+      "placeholder": "Nom de fichier, obligation, période, organisme…",
+      "obligation": "Obligation",
+      "authority": "Organisme",
+      "kind": "Type de pièce",
+      "uploader": "Déposant",
+      "from": "Déposé depuis le",
+      "to": "Déposé jusqu'au",
+      "currentOnly": "Versions courantes seulement",
+      "reset": "Réinitialiser",
+      "resultCount": "{count, plural, =0 {Aucune pièce} one {# pièce} other {# pièces}}",
+      "empty": "Aucune pièce ne correspond à cette recherche.",
+      "loadFailed": "La recherche a échoué.",
+      "previous": "Page précédente",
+      "next": "Page suivante",
+      "page": "Page {page} sur {total}"
+    },
+    "columns": {
+      "document": "Pièce",
+      "obligation": "Obligation",
+      "period": "Période",
+      "authority": "Organisme",
+      "version": "Version",
+      "integrity": "Intégrité",
+      "actions": "Actions"
+    },
+    "integrity": {
+      "title": "Intégrité",
+      "PENDING": "Non vérifiée",
+      "VERIFIED": "Vérifiée",
+      "MISMATCH": "Écart détecté",
+      "MISSING": "Fichier introuvable",
+      "pendingHint": "L'empreinte a été calculée au dépôt par le navigateur. Elle n'a pas encore été recalculée à partir du fichier stocké.",
+      "verifiedOn": "Vérifiée le {date}",
+      "neverChecked": "Jamais vérifiée",
+      "alertsTitle": "Alerte d'intégrité",
+      "alertsBody": "{count, plural, one {# pièce présente un écart d'empreinte non traité.} other {# pièces présentent un écart d'empreinte non traité.}}",
+      "acknowledge": "Acquitter",
+      "acknowledgeTitle": "Acquitter l'écart d'intégrité",
+      "acknowledgeHint": "Indiquez ce qui a été constaté et ce qui a été fait du fichier. Cette note sera lue lors du prochain contrôle.",
+      "noteLabel": "Note d'acquittement",
+      "noteHint": "{min} caractères minimum.",
+      "acknowledged": "Écart acquitté.",
+      "history": "Contrôles d'intégrité",
+      "noHistory": "Aucun contrôle n'a encore porté sur cette pièce."
+    },
+    "detail": {
+      "title": "Fiche de la pièce",
+      "openDossier": "Ouvrir le dossier",
+      "versions": "Versions",
+      "currentVersion": "Version courante",
+      "previousVersions": "Versions précédentes",
+      "accessLog": "Journal des accès",
+      "noAccess": "Aucun accès enregistré.",
+      "action": {
+        "SIGNED_URL_ISSUED": "Lien émis",
+        "VIEW": "Consultation",
+        "DOWNLOAD": "Téléchargement"
+      },
+      "checksum": "Empreinte SHA-256",
+      "storedSize": "Taille",
+      "notFound": "Pièce introuvable."
+    },
+    "purge": {
+      "title": "Purge à examiner",
+      "intro": "Ces pièces ont dépassé leur durée de conservation. Aucune n'est supprimée automatiquement : la décision revient à une personne, et reste tracée.",
+      "empty": "Aucune pièce n'a dépassé sa durée de conservation.",
+      "eligibleOn": "Éligible depuis le",
+      "retention": "Conservation",
+      "retentionYears": "{years} ans",
+      "loadFailed": "La file de purge n'a pas pu être chargée."
+    },
+    "actions": {
+      "view": "Consulter",
+      "download": "Télécharger",
+      "remove": "Retirer"
     }
   },
   "errors": {

@@ -18,7 +18,7 @@ import { z } from "zod";
 import { OCCURRENCE_STATUSES } from "@/config/constants";
 import { toClientError } from "@/lib/errors";
 import type { Result } from "@/lib/result";
-import { depositDocument, removeDocument } from "@/services/documents/deposit";
+import { removeDocument, requestUpload, confirmUpload } from "@/services/documents/upload";
 import { requireAuthContext, requirePermission } from "@/services/auth/context";
 import {
   createRectification,
@@ -34,6 +34,7 @@ import type {
   PlainOutcome,
   RectificationOutcome,
   TransitionActionOutcome,
+  UploadTicketOutcome,
 } from "@/features/occurrences/actions/detail-types";
 
 /**
@@ -182,53 +183,51 @@ export async function removeCommentAction(commentId: unknown): Promise<PlainOutc
     : { status: "error", error: toClientError(result.error) };
 }
 
-// ─── Pièces ──────────────────────────────────────────────────────────────────
-
-const DOCUMENT_KINDS = ["JUSTIFICATIF", "PREUVE_DEPOT", "ANNEXE", "CORRESPONDANCE"] as const;
-
-const DepositMetaSchema = z.object({
-  occurrenceId: z.uuid(),
-  checklistItemId: z.uuid().nullable(),
-  pieceLabel: z.string().trim().min(1).max(200),
-  documentKind: z.enum(DOCUMENT_KINDS).nullable(),
-});
+// ─── Pièces : dépôt direct ───────────────────────────────────────────────────
 
 /**
- * Dépôt d'une pièce.
+ * Dépôt d'une pièce — DEUX TEMPS, et aucun octet ici.
  *
- * ⚠️ Reçoit un `FormData` et non un objet sérialisé : c'est la seule forme qui
- * transporte un fichier binaire jusqu'à une Server Action sans le convertir en
- * base64, ce qui gonflerait la requête d'un tiers.
+ * ⚠️ Ces actions ne reçoivent PLUS de `FormData` portant un fichier. Depuis 0009,
+ * le binaire va du navigateur au stockage sans traverser ce processus : la
+ * première action rend une autorisation d'écrire bornée à un chemin, la seconde
+ * constate ce qui a été écrit et en vérifie la signature.
  *
- * Le contenu est lu ICI, côté serveur, et c'est de LUI que sont tirés l'empreinte
- * et le type réel. Rien de ce que le navigateur annonce n'est cru sur parole.
+ * Elles vivent ici, et non dans `features/documents`, parce que la barrière
+ * inter-features interdit à l'onglet « Dossier » d'importer l'autre feature. Le
+ * MÉTIER, lui, n'est pas dupliqué : les deux appellent le même service.
  */
-export async function depositDocumentAction(form: FormData): Promise<DepositOutcome> {
+const RequestUploadSchema = z.object({
+  occurrenceId: z.uuid(),
+  checklistItemId: z.uuid().nullable(),
+  filename: z.string().trim().min(1).max(400),
+  declaredMimeType: z.string().trim().min(1).max(200),
+  sizeBytes: z.number().int().positive(),
+});
+
+export async function requestUploadAction(input: unknown): Promise<UploadTicketOutcome> {
   const context = await requirePermission("document.upload");
   if (!context.ok) return { status: "error", error: toClientError(context.error) };
 
-  const file = form.get("file");
-  if (!(file instanceof File)) return invalid();
-
-  const rawKind = form.get("documentKind");
-  const parsed = DepositMetaSchema.safeParse({
-    occurrenceId: form.get("occurrenceId"),
-    checklistItemId: form.get("checklistItemId") === "" ? null : form.get("checklistItemId"),
-    pieceLabel: form.get("pieceLabel"),
-    documentKind: rawKind === "" || rawKind === null ? null : rawKind,
-  });
+  const parsed = RequestUploadSchema.safeParse(input);
   if (!parsed.success) return invalid();
 
-  const result = await depositDocument({
-    occurrenceId: parsed.data.occurrenceId,
-    checklistItemId: parsed.data.checklistItemId,
-    pieceLabel: parsed.data.pieceLabel,
-    documentKind: parsed.data.documentKind,
-    filename: file.name,
-    declaredMimeType: file.type,
-    bytes: new Uint8Array(await file.arrayBuffer()),
-  });
+  return toOutcome(await requestUpload(parsed.data));
+}
 
+const ConfirmUploadSchema = z.object({
+  ticketId: z.uuid(),
+  sha256: z.string().regex(/^[0-9a-fA-F]{64}$/),
+});
+
+export async function confirmUploadAction(input: unknown): Promise<DepositOutcome> {
+  const context = await requirePermission("document.upload");
+  if (!context.ok) return { status: "error", error: toClientError(context.error) };
+
+  const parsed = ConfirmUploadSchema.safeParse(input);
+  if (!parsed.success) return invalid();
+
+  const result = await confirmUpload(parsed.data);
   if (result.ok) revalidatePath(DETAIL_PATH, "page");
   return toOutcome(result);
 }

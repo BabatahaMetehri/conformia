@@ -7,7 +7,7 @@ import { useState } from "react";
 import { EmptyState } from "@/components/shared/states";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { DocumentActions } from "@/features/occurrences/components/document-link";
+import { DocumentActions } from "@/components/shared/document-actions";
 import { formatDateTimeFr } from "@/lib/dates";
 import type { AttachedDocumentView, OccurrenceDetailView } from "@/services/occurrences/detail";
 
@@ -64,7 +64,7 @@ function DocumentRow({ document }: { readonly document: AttachedDocumentView }) 
           </p>
         </div>
 
-        <DocumentActions documentId={document.id} filename={document.normalizedFilename} />
+        <DocumentActions documentId={document.id} />
       </div>
 
       {document.previousVersions.length === 0 ? null : (
@@ -96,7 +96,7 @@ function DocumentRow({ document }: { readonly document: AttachedDocumentView }) 
                     {t("versionLabel", { version: version.version })} · {version.originalFilename} ·{" "}
                     {version.uploaderName ?? "—"} · {formatDateTimeFr(new Date(version.uploadedAt))}
                   </span>
-                  <DocumentActions documentId={version.id} filename={version.normalizedFilename} />
+                  <DocumentActions documentId={version.id} />
                 </li>
               ))}
             </ul>

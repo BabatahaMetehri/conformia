@@ -123,7 +123,9 @@
       "dark": "داكن",
       "system": "النظام"
     },
-    "notProvided": "غير محدد"
+    "notProvided": "غير محدد",
+    "all": "الكل",
+    "reason": "السبب"
   },
   "dashboard": {
     "title": "لوحة القيادة",
@@ -161,7 +163,11 @@
     "filename": "اسم الملف",
     "uploadedBy": "أودعه",
     "uploadedAt": "تاريخ الإيداع",
-    "size": "الحجم",
+    "size": {
+      "bytes": "{value} بايت",
+      "kilobytes": "{value} ك.بايت",
+      "megabytes": "{value} م.بايت"
+    },
     "kind": {
       "JUSTIFICATIF": "وثيقة ثبوتية",
       "PREUVE_DEPOT": "إثبات إيداع",
@@ -171,6 +177,122 @@
     "dropzone": {
       "prompt": "اسحب ملفًا إلى هنا، أو انقر للاستعراض",
       "constraints": "{maxSizeMb} ميغابايت كحد أقصى · {count} صيغة مقبولة"
+    },
+    "upload": {
+      "queueLabel": "عمليات الإرسال الجارية",
+      "retry": "إعادة المحاولة",
+      "dismiss": "إزالة {name} من القائمة",
+      "stage": {
+        "QUEUED": "في الانتظار",
+        "REQUESTING": "طلب الإذن…",
+        "UPLOADING": "جارٍ الإرسال…",
+        "HASHING": "حساب البصمة…",
+        "CONFIRMING": "جارٍ التسجيل…",
+        "DONE": "تم الإيداع",
+        "FAILED": "فشل"
+      },
+      "failure": {
+        "UPLOAD_FAILED": "فشل الإيداع. أعد الإرسال.",
+        "NETWORK": "انقطع الاتصال أثناء الإرسال.",
+        "ABORTED": "أُلغي الإرسال.",
+        "REJECTED_BY_STORAGE": "رفض التخزين هذا الملف.",
+        "EMPTY_FILE": "ملف فارغ.",
+        "TOO_LARGE": "حجم الملف كبير جدًا.",
+        "EXTENSION_BLOCKED": "هذا النوع من الملفات غير مقبول إطلاقًا.",
+        "MIME_NOT_ALLOWED": "صيغة غير مسموح بها.",
+        "SIGNATURE_MISMATCH": "محتوى الملف لا يطابق امتداده.",
+        "QUOTA_EXCEEDED": "بلغ الملف حده الأقصى من الحجم.",
+        "OCCURRENCE_LOCKED": "هذا الملف مقفل: لا يمكن إيداع أي وثيقة فيه.",
+        "DENIED": "ليس لديك حق الإيداع في هذا الملف.",
+        "NOT_FOUND": "الملف غير موجود.",
+        "INVALID_CHECKLIST_ITEM": "الوثيقة المطلوبة غير معروفة في هذا الملف.",
+        "INVALID_NAME": "اسم الملف مرفوض.",
+        "SIZE_MISMATCH": "حجم الملف المستلم لا يطابق الحجم المعلن.",
+        "INVALID_HASH": "بصمة الملف غير صالحة.",
+        "TICKET_EXPIRED": "انقضت مهلة الإرسال. أعد الإيداع.",
+        "TICKET_REJECTED": "رفض فحص الأمان هذا الإيداع.",
+        "TICKET_NOT_FOUND": "الإيداع غير موجود.",
+        "ALREADY_CONSUMED": "سُجّل هذا الإيداع من قبل.",
+        "UPLOAD_NOT_FOUND": "لم يصل أي ملف إلى التخزين."
+      }
+    },
+    "search": {
+      "title": "البحث عن الوثائق",
+      "placeholder": "اسم الملف، الالتزام، الفترة، الهيئة…",
+      "obligation": "الالتزام",
+      "authority": "الهيئة",
+      "kind": "نوع الوثيقة",
+      "uploader": "المودِع",
+      "from": "مودعة منذ",
+      "to": "مودعة حتى",
+      "currentOnly": "النسخ الحالية فقط",
+      "reset": "إعادة التعيين",
+      "resultCount": "{count, plural, =0 {لا توجد وثائق} one {وثيقة واحدة} other {# وثائق}}",
+      "empty": "لا توجد وثيقة تطابق هذا البحث.",
+      "loadFailed": "فشل البحث.",
+      "previous": "الصفحة السابقة",
+      "next": "الصفحة التالية",
+      "page": "الصفحة {page} من {total}"
+    },
+    "columns": {
+      "document": "الوثيقة",
+      "obligation": "الالتزام",
+      "period": "الفترة",
+      "authority": "الهيئة",
+      "version": "النسخة",
+      "integrity": "السلامة",
+      "actions": "الإجراءات"
+    },
+    "integrity": {
+      "title": "السلامة",
+      "PENDING": "غير مُتحقَّق منها",
+      "VERIFIED": "مُتحقَّق منها",
+      "MISMATCH": "اكتُشف اختلاف",
+      "MISSING": "الملف غير موجود",
+      "pendingHint": "حُسبت البصمة عند الإيداع في المتصفح. لم يُعَد حسابها بعد انطلاقًا من الملف المخزَّن.",
+      "verifiedOn": "تم التحقق في {date}",
+      "neverChecked": "لم يتم التحقق قط",
+      "alertsTitle": "تنبيه سلامة",
+      "alertsBody": "{count, plural, one {وثيقة واحدة تُظهر اختلافًا في البصمة لم يُعالَج.} other {# وثائق تُظهر اختلافًا في البصمة لم يُعالَج.}}",
+      "acknowledge": "الإقرار",
+      "acknowledgeTitle": "الإقرار باختلاف السلامة",
+      "acknowledgeHint": "بيّن ما لوحظ وما تم فعله بالملف. ستُقرأ هذه الملاحظة عند الفحص القادم.",
+      "noteLabel": "ملاحظة الإقرار",
+      "noteHint": "{min} حرفًا على الأقل.",
+      "acknowledged": "تم الإقرار بالاختلاف.",
+      "history": "فحوص السلامة",
+      "noHistory": "لم يشمل أي فحص هذه الوثيقة بعد."
+    },
+    "detail": {
+      "title": "بطاقة الوثيقة",
+      "openDossier": "فتح الملف",
+      "versions": "النسخ",
+      "currentVersion": "النسخة الحالية",
+      "previousVersions": "النسخ السابقة",
+      "accessLog": "سجل الوصول",
+      "noAccess": "لم يُسجَّل أي وصول.",
+      "action": {
+        "SIGNED_URL_ISSUED": "أُصدر الرابط",
+        "VIEW": "اطّلاع",
+        "DOWNLOAD": "تنزيل"
+      },
+      "checksum": "بصمة SHA-256",
+      "storedSize": "الحجم",
+      "notFound": "الوثيقة غير موجودة."
+    },
+    "purge": {
+      "title": "حذف قيد المراجعة",
+      "intro": "تجاوزت هذه الوثائق مدة حفظها. لا تُحذف أي منها تلقائيًا: القرار يعود إلى شخص، ويبقى موثّقًا.",
+      "empty": "لم تتجاوز أي وثيقة مدة حفظها.",
+      "eligibleOn": "مؤهلة منذ",
+      "retention": "مدة الحفظ",
+      "retentionYears": "{years} سنوات",
+      "loadFailed": "تعذّر تحميل قائمة الحذف."
+    },
+    "actions": {
+      "view": "اطّلاع",
+      "download": "تنزيل",
+      "remove": "إزالة"
     }
   },
   "errors": {

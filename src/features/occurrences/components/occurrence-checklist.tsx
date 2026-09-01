@@ -1,12 +1,14 @@
 "use client";
 
-import { Check, Loader2, RefreshCw, Trash2 } from "lucide-react";
+import { Check, RefreshCw, Trash2 } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { useRouter } from "next/navigation";
-import { useState, useTransition } from "react";
+import { useMemo, useState, useTransition } from "react";
 import { toast } from "sonner";
 
 import { FileDropzone } from "@/components/shared/file-dropzone";
+import { UploadQueue } from "@/components/shared/upload-queue";
+import { useDirectUpload } from "@/components/shared/use-direct-upload";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -20,8 +22,12 @@ import { Label } from "@/components/ui/label";
 import { Progress } from "@/components/ui/progress";
 import { Textarea } from "@/components/ui/textarea";
 import { ALLOWED_MIME_TYPES, MAX_UPLOAD_MB } from "@/config/constants";
-import { depositDocumentAction, removeDocumentAction } from "@/features/occurrences/actions/detail";
-import { DocumentActions } from "@/features/occurrences/components/document-link";
+import {
+  confirmUploadAction,
+  removeDocumentAction,
+  requestUploadAction,
+} from "@/features/occurrences/actions/detail";
+import { DocumentActions } from "@/components/shared/document-actions";
 import { formatDateTimeFr } from "@/lib/dates";
 import { cn } from "@/lib/utils";
 import type { OccurrenceDetailView } from "@/services/occurrences/detail";
@@ -41,40 +47,61 @@ export function OccurrenceChecklist({ detail }: { readonly detail: OccurrenceDet
   const t = useTranslations("occurrences.detail");
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
-  const [uploading, setUploading] = useState<string | null>(null);
   const [removing, setRemoving] = useState<{ id: string; label: string } | null>(null);
   const [reason, setReason] = useState("");
 
-  const { required, provided, isComplete } = detail.completeness;
+  /**
+   * ⚠️ Les deux Server Actions sont REMISES au hook partagé, jamais importées
+   * par lui : `components/shared` ne connaît aucune feature, et c'est ce qui lui
+   * permet de servir aussi bien cet onglet que l'écran /documents sans franchir
+   * la barrière inter-features.
+   */
+  const ports = useMemo(
+    () => ({
+      requestTicket: requestUploadAction,
+      confirm: confirmUploadAction,
+      // Un dépôt abouti change la complétude, donc le bandeau, donc les boutons
+      // de la barre d'actions : on redemande la page au serveur.
+      runInTransition: (run: () => Promise<void>) => {
+        void run().then(() => {
+          startTransition(() => {
+            router.refresh();
+          });
+        });
+      },
+    }),
+    [router],
+  );
+  const upload = useDirectUpload(detail.id, ports);
+
+  /**
+   * Complétude AFFICHÉE : celle du serveur, augmentée des dépôts que le serveur
+   * vient de confirmer mais que cette page n'a pas encore relus.
+   *
+   * ⚠️ Ce n'est pas de l'optimisme : on ne compte QUE des pièces dont
+   * `confirm_document_upload` a rendu un identifiant, donc inscrites en base.
+   * L'ajout existe parce que `router.refresh()` ne rafraîchit PAS cette page
+   * après un dépôt — mesuré : le rendu serveur de la même URL contient bien
+   * « 1 sur 2 » pendant que le DOM affiche encore « 0 sur 2 », et toutes les
+   * variantes de rafraîchissement essayées donnent le même résultat. Sans cet
+   * ajustement, l'utilisateur voit son dossier rester incomplet après un dépôt
+   * réussi, et le recommence.
+   *
+   * ⚠️ Ceci ne relâche AUCUNE garantie : la soumission d'un dossier incomplet
+   * est refusée par la base, jamais par ce compteur. Il informe, il n'autorise pas.
+   */
+  const confirmedItemIds = new Set(
+    upload.entries
+      .filter((entry) => entry.stage === "DONE" && entry.checklistItemId !== null)
+      .map((entry) => entry.checklistItemId),
+  );
+
+  const required = detail.completeness.required;
+  const provided = detail.checklist.filter(
+    (line) => line.isMandatory && (line.document !== null || confirmedItemIds.has(line.id)),
+  ).length;
+  const isComplete = provided >= required;
   const percent = required === 0 ? 100 : Math.round((provided / required) * 100);
-
-  function deposit(
-    files: readonly File[],
-    line: { readonly id: string; readonly label: string; readonly documentKind: string | null },
-  ): void {
-    const file = files.at(0);
-    if (file === undefined) return;
-
-    setUploading(line.id);
-    startTransition(async () => {
-      const form = new FormData();
-      form.set("file", file);
-      form.set("occurrenceId", detail.id);
-      form.set("checklistItemId", line.id);
-      form.set("pieceLabel", line.label);
-      form.set("documentKind", line.documentKind ?? "");
-
-      const outcome = await depositDocumentAction(form);
-      setUploading(null);
-
-      if (outcome.status === "error") {
-        toast.error(t("depositFailed"), { description: t("depositFailedHint") });
-        return;
-      }
-      toast.success(t("deposited", { name: outcome.data.normalizedFilename }));
-      router.refresh();
-    });
-  }
 
   return (
     <div className="space-y-4">
@@ -127,10 +154,7 @@ export function OccurrenceChecklist({ detail }: { readonly detail: OccurrenceDet
 
               {line.document === null ? null : (
                 <div className="flex items-center gap-1">
-                  <DocumentActions
-                    documentId={line.document.id}
-                    filename={line.document.normalizedFilename}
-                  />
+                  <DocumentActions documentId={line.document.id} />
                   {detail.abilities.canDeleteDocument ? (
                     <Button
                       size="sm"
@@ -149,32 +173,31 @@ export function OccurrenceChecklist({ detail }: { readonly detail: OccurrenceDet
 
             {detail.abilities.canUpload ? (
               <div className="mt-3">
-                {uploading === line.id ? (
-                  <p className="flex items-center gap-2 text-sm text-text-secondary">
-                    <Loader2 aria-hidden="true" className="size-4 animate-spin" />
-                    {t("uploading")}
+                <FileDropzone
+                  accept={ALLOWED_MIME_TYPES}
+                  maxSizeMb={MAX_UPLOAD_MB}
+                  multiple
+                  disabled={isPending}
+                  onFilesSelected={(files) => {
+                    upload.enqueue(files, line.id);
+                  }}
+                />
+                {line.document === null ? null : (
+                  <p className="mt-1.5 flex items-center gap-1.5 text-xs text-text-muted">
+                    <RefreshCw aria-hidden="true" className="size-3" />
+                    {/* Remplacer ne remplace rien : une version de plus est
+                        déposée, l'ancienne reste consultable. */}
+                    {t("replaceKeepsHistory")}
                   </p>
-                ) : (
-                  <>
-                    <FileDropzone
-                      accept={ALLOWED_MIME_TYPES}
-                      maxSizeMb={MAX_UPLOAD_MB}
-                      multiple={false}
-                      disabled={isPending}
-                      onFilesSelected={(files) => {
-                        deposit(files, line);
-                      }}
-                    />
-                    {line.document === null ? null : (
-                      <p className="mt-1.5 flex items-center gap-1.5 text-xs text-text-muted">
-                        <RefreshCw aria-hidden="true" className="size-3" />
-                        {/* Remplacer ne remplace rien : une version de plus est
-                            déposée, l'ancienne reste consultable. */}
-                        {t("replaceKeepsHistory")}
-                      </p>
-                    )}
-                  </>
                 )}
+
+                <div className="mt-2">
+                  <UploadQueue
+                    entries={upload.entries.filter((entry) => entry.checklistItemId === line.id)}
+                    onRetry={upload.retry}
+                    onDismiss={upload.dismiss}
+                  />
+                </div>
               </div>
             ) : null}
           </li>

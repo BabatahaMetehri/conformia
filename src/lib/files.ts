@@ -84,25 +84,32 @@ export interface FileInspection {
 }
 
 /**
- * Contrôle complet d'un fichier avant dépôt.
+ * Contrôle d'un fichier sur ses PREMIERS OCTETS.
+ *
+ * ⚠️ Ne porte PAS sur la taille, délibérément. Depuis 0009 le serveur ne voit
+ * jamais le fichier entier : il relit l'en-tête de l'objet stocké, quelques
+ * kilo-octets. Y appliquer une borne de taille conclurait « fichier de 4 Ko »
+ * sur un PDF de 8 Mo. La taille réelle est vérifiée ailleurs, en confrontant
+ * celle de l'objet stocké à celle qu'annonçait le billet.
+ *
+ * Tout le reste — extension bannie, type hors liste blanche, signature qui
+ * dément le type annoncé — se tranche sur l'en-tête seul, et c'est là que se
+ * joue le refus d'un exécutable rebaptisé en .pdf.
  *
  * ⚠️ Un format TEXTE n'a aucune signature : refuser l'absence de signature
  * bloquerait tout CSV. On accepte donc « pas de signature » UNIQUEMENT quand le
- * type annoncé est lui-même textuel, et jamais l'inverse — un .exe annoncé en
- * PDF n'a pas la signature PDF et se fait refuser.
+ * type annoncé est lui-même textuel, et jamais l'inverse.
  */
-export function inspectFile(
+export function inspectHeader(
   filename: string,
   declaredMime: string,
-  bytes: Uint8Array,
-  maxSizeBytes: number,
+  headerBytes: Uint8Array,
 ): FileInspection {
   const extension = extensionOf(filename);
-  const detected = sniffFamily(bytes);
+  const detected = sniffFamily(headerBytes);
 
   const rejection = ((): FileRejection | null => {
-    if (bytes.length === 0) return "EMPTY_FILE";
-    if (bytes.length > maxSizeBytes) return "TOO_LARGE";
+    if (headerBytes.length === 0) return "EMPTY_FILE";
     if (BLOCKED_EXTENSIONS.includes(extension)) return "EXTENSION_BLOCKED";
     if (!ALLOWED_MIME_TYPES.includes(declaredMime.toLowerCase())) return "MIME_NOT_ALLOWED";
 
@@ -151,36 +158,6 @@ export function sanitize(value: string, maxLength = 60): string {
   return cleaned.slice(0, maxLength).replace(/-+$/, "");
 }
 
-export interface StoragePathParts {
-  readonly entityCode: string;
-  readonly domainCode: string;
-  readonly obligationCode: string;
-  readonly periodKey: string;
-  readonly documentId: string;
-  readonly originalFilename: string;
-}
-
-/**
- * Chemin de stockage, CONSTRUIT CÔTÉ SERVEUR EXCLUSIVEMENT.
- *
- * Chaque segment est passé au slug, y compris ceux qui viennent de la base :
- * un code d'obligation reste une saisie humaine.
- */
-export function buildStoragePath(parts: StoragePathParts): string {
-  const extension = extensionOf(parts.originalFilename);
-  const stem = parts.originalFilename.replace(/\.[^.]*$/, "");
-  const slug = slugify(stem) || "piece";
-  const suffix = extension.length > 0 ? `.${extension}` : "";
-
-  return [
-    slugify(parts.entityCode) || "entite",
-    slugify(parts.domainCode) || "domaine",
-    slugify(parts.obligationCode) || "obligation",
-    slugify(parts.periodKey) || "periode",
-    `${parts.documentId}_${slug}${suffix}`,
-  ].join("/");
-}
-
 export interface NormalizedNameParts {
   readonly obligationCode: string;
   readonly periodKey: string;
@@ -192,25 +169,45 @@ export interface NormalizedNameParts {
 }
 
 /**
- * Nom proposé au téléchargement.
+ * Racine du nom normalisé, SANS le numéro de version ni l'extension.
  *
- * ⚠️ La convention de 0003 s'arrêtait à `{CODE}_{PERIODE}_{KIND}_v{N}` : deux
- * pièces DIFFÉRENTES de même nature sur le même dossier — deux JUSTIFICATIF —
- * produisaient le même nom en v1 et violaient la contrainte d'unicité
- * (occurrence_id, normalized_filename, version). Le libellé de la pièce a donc
- * été intercalé ; il est ce qui les distingue aux yeux de l'utilisateur.
+ * ⚠️ Cette découpe n'est pas cosmétique. Depuis 0009, le numéro de version est
+ * arrêté par la base au moment où elle émet le billet de dépôt — c'est ce qui
+ * empêche deux envois simultanés de revendiquer tous deux « v2 ». Le nom complet
+ * ne peut donc plus être composé ici : le serveur fournit la racine assainie,
+ * `create_document_upload_ticket` y appose la version qu'elle vient de réserver.
+ *
+ * Le jeu de caractères produit est celui qu'exige la contrainte de forme de cette
+ * fonction SQL (`^[A-Za-z0-9_-]{1,180}$`) : les deux doivent rester d'accord.
  */
-export function buildNormalizedFilename(parts: NormalizedNameParts): string {
-  const segments = [
+export function buildNormalizedStem(parts: Omit<NormalizedNameParts, "version" | "extension">) {
+  return [
     sanitize(parts.obligationCode, 40).toUpperCase() || "OBLIGATION",
     sanitize(parts.periodKey, 40) || "periode",
     sanitize(parts.documentKind ?? "PIECE", 40).toUpperCase() || "PIECE",
     slugify(parts.pieceLabel, 40) || "piece",
-    `v${String(parts.version)}`,
-  ];
-  const suffix = parts.extension.length > 0 ? `.${parts.extension}` : "";
+  ].join("_");
+}
 
-  return `${segments.join("_")}${suffix}`;
+/** Nombre d'octets de tête suffisant pour trancher toutes les signatures connues. */
+export const HEADER_SNIFF_BYTES = 4096;
+
+/**
+ * Nom sûr pour un en-tête `Content-Disposition`.
+ *
+ * ⚠️ Un `\r` ou un `\n` dans un nom de fichier permet d'injecter un en-tête HTTP
+ * entier. Le nom que nous servons est déjà produit par `buildNormalizedFilename`
+ * et ne peut pas en contenir — raison de plus pour ne pas s'en remettre à cette
+ * propriété : elle est vraie aujourd'hui parce que personne n'a encore introduit
+ * un chemin où le nom d'origine ressortirait tel quel.
+ */
+export function sanitizeDownloadFilename(filename: string, fallback = "document"): string {
+  const cleaned = filename
+    .replace(/[\u0000-\u001f\u007f"\\/]/g, "")
+    .trim()
+    .slice(0, 200);
+
+  return cleaned.length > 0 ? cleaned : fallback;
 }
 
 /** Empreinte SHA-256 en hexadécimal minuscule, calculée à la frontière du dépôt. */

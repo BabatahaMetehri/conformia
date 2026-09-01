@@ -10,6 +10,7 @@ import type { ActionOutcome } from "@/features/occurrences/actions/types";
 // ⚠️ Le type vient du SERVICE, jamais de `src/data` : la couche UI ne traverse pas
 // jusqu'aux données, même pour un type (CLAUDE.md §3.1). Le service le réexporte.
 import type { TransitionOutcome } from "@/services/occurrences/detail";
+import type { UploadTicketView } from "@/services/documents/upload";
 
 export type TransitionActionOutcome = ActionOutcome<TransitionOutcome>;
 export type RectificationOutcome = ActionOutcome<{ readonly id: string }>;
@@ -20,3 +21,6 @@ export type DepositOutcome = ActionOutcome<{
   readonly normalizedFilename: string;
   readonly version: number;
 }>;
+
+/** Billet de dépôt : autorisation d'écrire, jamais le fichier lui-même. */
+export type UploadTicketOutcome = ActionOutcome<UploadTicketView>;

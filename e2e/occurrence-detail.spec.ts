@@ -186,6 +186,13 @@ test.afterAll(async () => {
       `delete from public.occurrence_transitions where occurrence_id in (
          select id from public.obligation_occurrences where ${scope})`,
     );
+    // ⚠️ Les billets de dépôt (0009) référencent l'occurrence : sans ce retrait,
+    // la suppression du jeu d'essai bute sur la clé étrangère et fait échouer
+    // l'`afterAll`, qui se signale sur un test sans rapport.
+    await client.query(
+      `delete from public.document_upload_tickets where occurrence_id in (
+         select id from public.obligation_occurrences where ${scope})`,
+    );
     await client.query(
       `delete from public.documents where occurrence_id in (
          select id from public.obligation_occurrences where ${scope})`,
@@ -276,6 +283,13 @@ test.describe("dossier", () => {
         buffer: Buffer.from("%PDF-1.7\n%\xE2\xE3\xCF\xD3\n", "latin1"),
       });
 
+    // ⚠️ Depuis 0009 le dépôt est DIRECT et se déroule en plusieurs temps :
+    // billet, envoi vers le stockage, empreinte, confirmation. La file d'envoi
+    // annonce l'issue avant que la page ne soit rafraîchie — attendre d'abord
+    // « Déposé » évite de conclure sur un compteur pas encore recalculé.
+    await expect(page.getByText("Déposé", { exact: true }).first()).toBeVisible({
+      timeout: 30_000,
+    });
     await expect(page.getByText("1 sur 2")).toBeVisible({ timeout: 30_000 });
     // Le nom d'origine reste affiché : l'utilisateur doit retrouver sa pièce.
     await expect(page.getByText("bordereau.pdf").first()).toBeVisible();
@@ -307,7 +321,15 @@ test.describe("dossier", () => {
         buffer: Buffer.from([0x4d, 0x5a, 0x90, 0x00, 0x03, 0x00, 0x00, 0x00]),
       });
 
-    await expect(page.getByText(/dépôt a été refusé/i)).toBeVisible({ timeout: 30_000 });
+    // ⚠️ Le refus est désormais prononcé AVANT tout envoi : l'interface lit les
+    // premiers octets du fichier et constate que la signature dément l'extension.
+    // Ce n'est PAS ce qui protège — un client hostile n'exécute pas ce code — et
+    // le même contrôle est refait par le serveur sur les octets réellement
+    // stockés, éprouvé dans `tests/integration/document-storage.test.ts`. Ici,
+    // on vérifie seulement que l'utilisateur honnête est prévenu immédiatement.
+    await expect(
+      page.getByText(/ne correspond pas à son extension|dépôt a été refusé/i).first(),
+    ).toBeVisible({ timeout: 30_000 });
   });
 });
 

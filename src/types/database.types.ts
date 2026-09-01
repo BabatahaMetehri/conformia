@@ -2507,6 +2507,238 @@ export type Database = {
         }
         Relationships: []
       }
+      document_integrity_checks: {
+        Row: {
+          acknowledged_at: string | null
+          acknowledged_by: string | null
+          acknowledgement_note: string | null
+          actual_sha256: string | null
+          checked_at: string
+          document_id: string
+          expected_sha256: string
+          id: number
+          observed_size_bytes: number | null
+          run_id: string
+          status: Database["public"]["Enums"]["document_integrity_status"]
+        }
+        Insert: {
+          acknowledged_at?: string | null
+          acknowledged_by?: string | null
+          acknowledgement_note?: string | null
+          actual_sha256?: string | null
+          checked_at?: string
+          document_id: string
+          expected_sha256: string
+          id?: number
+          observed_size_bytes?: number | null
+          run_id: string
+          status: Database["public"]["Enums"]["document_integrity_status"]
+        }
+        Update: {
+          acknowledged_at?: string | null
+          acknowledged_by?: string | null
+          acknowledgement_note?: string | null
+          actual_sha256?: string | null
+          checked_at?: string
+          document_id?: string
+          expected_sha256?: string
+          id?: number
+          observed_size_bytes?: number | null
+          run_id?: string
+          status?: Database["public"]["Enums"]["document_integrity_status"]
+        }
+        Relationships: [
+          {
+            foreignKeyName: "document_integrity_checks_acknowledged_by_fkey"
+            columns: ["acknowledged_by"]
+            isOneToOne: false
+            referencedRelation: "profile_directory"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "document_integrity_checks_acknowledged_by_fkey"
+            columns: ["acknowledged_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "document_integrity_checks_document_id_fkey"
+            columns: ["document_id"]
+            isOneToOne: false
+            referencedRelation: "documents"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "document_integrity_checks_document_id_fkey"
+            columns: ["document_id"]
+            isOneToOne: false
+            referencedRelation: "documents_pending_purge"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "document_integrity_checks_document_id_fkey"
+            columns: ["document_id"]
+            isOneToOne: false
+            referencedRelation: "documents_search"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      document_upload_tickets: {
+        Row: {
+          bucket: string
+          checklist_item_id: string | null
+          consumed_at: string | null
+          consumed_document_id: string | null
+          created_at: string
+          created_by: string
+          declared_mime_type: string
+          declared_size_bytes: number
+          document_kind: string | null
+          entity_id: string
+          expires_at: string
+          id: string
+          normalized_filename: string
+          occurrence_id: string
+          original_filename: string
+          rejected_at: string | null
+          rejection_reason: string | null
+          storage_path: string
+          supersedes_id: string | null
+          version: number
+        }
+        Insert: {
+          bucket?: string
+          checklist_item_id?: string | null
+          consumed_at?: string | null
+          consumed_document_id?: string | null
+          created_at?: string
+          created_by: string
+          declared_mime_type: string
+          declared_size_bytes: number
+          document_kind?: string | null
+          entity_id: string
+          expires_at: string
+          id?: string
+          normalized_filename: string
+          occurrence_id: string
+          original_filename: string
+          rejected_at?: string | null
+          rejection_reason?: string | null
+          storage_path: string
+          supersedes_id?: string | null
+          version: number
+        }
+        Update: {
+          bucket?: string
+          checklist_item_id?: string | null
+          consumed_at?: string | null
+          consumed_document_id?: string | null
+          created_at?: string
+          created_by?: string
+          declared_mime_type?: string
+          declared_size_bytes?: number
+          document_kind?: string | null
+          entity_id?: string
+          expires_at?: string
+          id?: string
+          normalized_filename?: string
+          occurrence_id?: string
+          original_filename?: string
+          rejected_at?: string | null
+          rejection_reason?: string | null
+          storage_path?: string
+          supersedes_id?: string | null
+          version?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "document_upload_tickets_checklist_item_id_fkey"
+            columns: ["checklist_item_id"]
+            isOneToOne: false
+            referencedRelation: "occurrence_checklist_items"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "document_upload_tickets_consumed_document_id_fkey"
+            columns: ["consumed_document_id"]
+            isOneToOne: false
+            referencedRelation: "documents"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "document_upload_tickets_consumed_document_id_fkey"
+            columns: ["consumed_document_id"]
+            isOneToOne: false
+            referencedRelation: "documents_pending_purge"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "document_upload_tickets_consumed_document_id_fkey"
+            columns: ["consumed_document_id"]
+            isOneToOne: false
+            referencedRelation: "documents_search"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "document_upload_tickets_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profile_directory"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "document_upload_tickets_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "document_upload_tickets_entity_id_fkey"
+            columns: ["entity_id"]
+            isOneToOne: false
+            referencedRelation: "entities"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "document_upload_tickets_occurrence_id_fkey"
+            columns: ["occurrence_id"]
+            isOneToOne: false
+            referencedRelation: "obligation_occurrences"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "document_upload_tickets_occurrence_id_fkey"
+            columns: ["occurrence_id"]
+            isOneToOne: false
+            referencedRelation: "occurrence_list"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "document_upload_tickets_supersedes_id_fkey"
+            columns: ["supersedes_id"]
+            isOneToOne: false
+            referencedRelation: "documents"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "document_upload_tickets_supersedes_id_fkey"
+            columns: ["supersedes_id"]
+            isOneToOne: false
+            referencedRelation: "documents_pending_purge"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "document_upload_tickets_supersedes_id_fkey"
+            columns: ["supersedes_id"]
+            isOneToOne: false
+            referencedRelation: "documents_search"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       documents: {
         Row: {
           bucket: string
@@ -2519,6 +2751,7 @@ export type Database = {
           entity_id: string
           id: string
           integrity_checked_at: string | null
+          integrity_status: Database["public"]["Enums"]["document_integrity_status"]
           mime_type: string
           normalized_filename: string
           occurrence_id: string
@@ -2542,6 +2775,7 @@ export type Database = {
           entity_id?: string
           id?: string
           integrity_checked_at?: string | null
+          integrity_status?: Database["public"]["Enums"]["document_integrity_status"]
           mime_type: string
           normalized_filename: string
           occurrence_id: string
@@ -2565,6 +2799,7 @@ export type Database = {
           entity_id?: string
           id?: string
           integrity_checked_at?: string | null
+          integrity_status?: Database["public"]["Enums"]["document_integrity_status"]
           mime_type?: string
           normalized_filename?: string
           occurrence_id?: string
@@ -2632,6 +2867,13 @@ export type Database = {
             columns: ["supersedes_id"]
             isOneToOne: false
             referencedRelation: "documents_pending_purge"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "documents_supersedes_id_fkey"
+            columns: ["supersedes_id"]
+            isOneToOne: false
+            referencedRelation: "documents_search"
             referencedColumns: ["id"]
           },
           {
@@ -2863,6 +3105,13 @@ export type Database = {
             foreignKeyName: "obligation_occurrences_obligation_type_id_fkey"
             columns: ["obligation_type_id"]
             isOneToOne: false
+            referencedRelation: "documents_search"
+            referencedColumns: ["obligation_type_id"]
+          },
+          {
+            foreignKeyName: "obligation_occurrences_obligation_type_id_fkey"
+            columns: ["obligation_type_id"]
+            isOneToOne: false
             referencedRelation: "obligation_types"
             referencedColumns: ["id"]
           },
@@ -2980,6 +3229,13 @@ export type Database = {
             foreignKeyName: "obligation_required_documents_obligation_type_id_fkey"
             columns: ["obligation_type_id"]
             isOneToOne: false
+            referencedRelation: "documents_search"
+            referencedColumns: ["obligation_type_id"]
+          },
+          {
+            foreignKeyName: "obligation_required_documents_obligation_type_id_fkey"
+            columns: ["obligation_type_id"]
+            isOneToOne: false
             referencedRelation: "obligation_types"
             referencedColumns: ["id"]
           },
@@ -3091,6 +3347,13 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "obligation_types_authority_id_fkey"
+            columns: ["authority_id"]
+            isOneToOne: false
+            referencedRelation: "documents_search"
+            referencedColumns: ["authority_id"]
+          },
+          {
             foreignKeyName: "obligation_types_created_by_fkey"
             columns: ["created_by"]
             isOneToOne: false
@@ -3136,8 +3399,22 @@ export type Database = {
             foreignKeyName: "obligation_types_depends_on_obligation_type_id_fkey"
             columns: ["depends_on_obligation_type_id"]
             isOneToOne: false
+            referencedRelation: "documents_search"
+            referencedColumns: ["obligation_type_id"]
+          },
+          {
+            foreignKeyName: "obligation_types_depends_on_obligation_type_id_fkey"
+            columns: ["depends_on_obligation_type_id"]
+            isOneToOne: false
             referencedRelation: "obligation_types"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "obligation_types_domain_id_fkey"
+            columns: ["domain_id"]
+            isOneToOne: false
+            referencedRelation: "documents_search"
+            referencedColumns: ["domain_id"]
           },
           {
             foreignKeyName: "obligation_types_domain_id_fkey"
@@ -3633,6 +3910,13 @@ export type Database = {
             foreignKeyName: "user_roles_domain_id_fkey"
             columns: ["domain_id"]
             isOneToOne: false
+            referencedRelation: "documents_search"
+            referencedColumns: ["domain_id"]
+          },
+          {
+            foreignKeyName: "user_roles_domain_id_fkey"
+            columns: ["domain_id"]
+            isOneToOne: false
             referencedRelation: "domains"
             referencedColumns: ["id"]
           },
@@ -3813,6 +4097,13 @@ export type Database = {
             foreignKeyName: "validation_delegations_domain_id_fkey"
             columns: ["domain_id"]
             isOneToOne: false
+            referencedRelation: "documents_search"
+            referencedColumns: ["domain_id"]
+          },
+          {
+            foreignKeyName: "validation_delegations_domain_id_fkey"
+            columns: ["domain_id"]
+            isOneToOne: false
             referencedRelation: "domains"
             referencedColumns: ["id"]
           },
@@ -3841,6 +4132,61 @@ export type Database = {
       }
     }
     Views: {
+      document_integrity_alerts: {
+        Row: {
+          actual_sha256: string | null
+          checked_at: string | null
+          document_id: string | null
+          expected_sha256: string | null
+          id: number | null
+          normalized_filename: string | null
+          obligation_code: string | null
+          occurrence_id: string | null
+          original_filename: string | null
+          period_key: string | null
+          run_id: string | null
+          status:
+            | Database["public"]["Enums"]["document_integrity_status"]
+            | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "document_integrity_checks_document_id_fkey"
+            columns: ["document_id"]
+            isOneToOne: false
+            referencedRelation: "documents"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "document_integrity_checks_document_id_fkey"
+            columns: ["document_id"]
+            isOneToOne: false
+            referencedRelation: "documents_pending_purge"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "document_integrity_checks_document_id_fkey"
+            columns: ["document_id"]
+            isOneToOne: false
+            referencedRelation: "documents_search"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "documents_occurrence_id_fkey"
+            columns: ["occurrence_id"]
+            isOneToOne: false
+            referencedRelation: "obligation_occurrences"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "documents_occurrence_id_fkey"
+            columns: ["occurrence_id"]
+            isOneToOne: false
+            referencedRelation: "occurrence_list"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       documents_pending_purge: {
         Row: {
           id: string | null
@@ -3866,6 +4212,101 @@ export type Database = {
             columns: ["occurrence_id"]
             isOneToOne: false
             referencedRelation: "occurrence_list"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      documents_search: {
+        Row: {
+          authority_id: string | null
+          authority_name: string | null
+          checklist_item_id: string | null
+          document_kind: string | null
+          domain_code: string | null
+          domain_id: string | null
+          id: string | null
+          integrity_checked_at: string | null
+          integrity_status:
+            | Database["public"]["Enums"]["document_integrity_status"]
+            | null
+          is_current_version: boolean | null
+          legal_due_date: string | null
+          mime_type: string | null
+          normalized_filename: string | null
+          obligation_code: string | null
+          obligation_name: string | null
+          obligation_type_id: string | null
+          occurrence_id: string | null
+          occurrence_status:
+            | Database["public"]["Enums"]["occurrence_status"]
+            | null
+          original_filename: string | null
+          period_key: string | null
+          period_start: string | null
+          search_text: string | null
+          sha256: string | null
+          size_bytes: number | null
+          supersedes_id: string | null
+          uploaded_at: string | null
+          uploaded_by: string | null
+          uploader_name: string | null
+          version: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "documents_checklist_item_id_fkey"
+            columns: ["checklist_item_id"]
+            isOneToOne: false
+            referencedRelation: "occurrence_checklist_items"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "documents_occurrence_id_fkey"
+            columns: ["occurrence_id"]
+            isOneToOne: false
+            referencedRelation: "obligation_occurrences"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "documents_occurrence_id_fkey"
+            columns: ["occurrence_id"]
+            isOneToOne: false
+            referencedRelation: "occurrence_list"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "documents_supersedes_id_fkey"
+            columns: ["supersedes_id"]
+            isOneToOne: false
+            referencedRelation: "documents"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "documents_supersedes_id_fkey"
+            columns: ["supersedes_id"]
+            isOneToOne: false
+            referencedRelation: "documents_pending_purge"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "documents_supersedes_id_fkey"
+            columns: ["supersedes_id"]
+            isOneToOne: false
+            referencedRelation: "documents_search"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "documents_uploaded_by_fkey"
+            columns: ["uploaded_by"]
+            isOneToOne: false
+            referencedRelation: "profile_directory"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "documents_uploaded_by_fkey"
+            columns: ["uploaded_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
             referencedColumns: ["id"]
           },
         ]
@@ -3918,6 +4359,13 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "entities"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "obligation_occurrences_obligation_type_id_fkey"
+            columns: ["obligation_type_id"]
+            isOneToOne: false
+            referencedRelation: "documents_search"
+            referencedColumns: ["obligation_type_id"]
           },
           {
             foreignKeyName: "obligation_occurrences_obligation_type_id_fkey"
@@ -3976,6 +4424,20 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "obligation_types_authority_id_fkey"
+            columns: ["authority_id"]
+            isOneToOne: false
+            referencedRelation: "documents_search"
+            referencedColumns: ["authority_id"]
+          },
+          {
+            foreignKeyName: "obligation_types_domain_id_fkey"
+            columns: ["domain_id"]
+            isOneToOne: false
+            referencedRelation: "documents_search"
+            referencedColumns: ["domain_id"]
+          },
+          {
             foreignKeyName: "obligation_types_domain_id_fkey"
             columns: ["domain_id"]
             isOneToOne: false
@@ -3996,6 +4458,13 @@ export type Database = {
           total: number | null
         }
         Relationships: [
+          {
+            foreignKeyName: "obligation_types_domain_id_fkey"
+            columns: ["domain_id"]
+            isOneToOne: false
+            referencedRelation: "documents_search"
+            referencedColumns: ["domain_id"]
+          },
           {
             foreignKeyName: "obligation_types_domain_id_fkey"
             columns: ["domain_id"]
@@ -4036,7 +4505,20 @@ export type Database = {
       }
     }
     Functions: {
+      abandoned_upload_objects: {
+        Args: { p_older_than_hours?: number }
+        Returns: {
+          bucket: string
+          reason: string
+          storage_path: string
+          ticket_id: string
+        }[]
+      }
       accessible_domains: { Args: never; Returns: string[] }
+      acknowledge_integrity_alert: {
+        Args: { p_check_id: number; p_note: string }
+        Returns: boolean
+      }
       add_business_days: {
         Args: { day_count: number; from_date: string }
         Returns: string
@@ -4062,6 +4544,29 @@ export type Database = {
       can_validate_occurrence: {
         Args: { occurrence_id: string }
         Returns: boolean
+      }
+      confirm_document_upload: {
+        Args: {
+          p_actual_size: number
+          p_detected_mime_type?: string
+          p_sha256: string
+          p_ticket_id: string
+        }
+        Returns: Json
+      }
+      create_document_upload_ticket: {
+        Args: {
+          p_checklist_item_id?: string
+          p_document_kind?: string
+          p_extension?: string
+          p_mime_type: string
+          p_name_stem: string
+          p_occurrence_id: string
+          p_original_filename: string
+          p_size_bytes: number
+          p_slug: string
+        }
+        Returns: Json
       }
       create_occurrence_rectification: {
         Args: { p_occurrence_id: string; p_reason: string }
@@ -4209,7 +4714,31 @@ export type Database = {
         }
         Returns: undefined
       }
+      record_document_integrity_check: {
+        Args: {
+          p_actual_sha256?: string
+          p_document_id: string
+          p_observed_size?: number
+          p_run_id: string
+          p_status: Database["public"]["Enums"]["document_integrity_status"]
+        }
+        Returns: number
+      }
       refresh_occurrence_stats: { Args: never; Returns: undefined }
+      reject_document_upload_ticket: {
+        Args: { p_reason: string; p_ticket_id: string }
+        Returns: boolean
+      }
+      sample_documents_for_integrity: {
+        Args: { p_sample_size: number }
+        Returns: {
+          bucket: string
+          id: string
+          sha256: string
+          size_bytes: number
+          storage_path: string
+        }[]
+      }
       search_tsquery: { Args: { p_text: string }; Returns: unknown }
       searchable_text: { Args: { p_text: string }; Returns: string }
       self_validation_blocked: {
@@ -4238,9 +4767,11 @@ export type Database = {
         Args: { p_document_id: string; p_reason: string }
         Returns: boolean
       }
+      storage_path_segment: { Args: { p_value: string }; Returns: string }
     }
     Enums: {
       criticality: "LOW" | "MEDIUM" | "HIGH" | "CRITICAL"
+      document_integrity_status: "PENDING" | "VERIFIED" | "MISMATCH" | "MISSING"
       late_reason_code:
         | "MISSING_DOCUMENT"
         | "VALIDATOR_UNAVAILABLE"
@@ -4392,6 +4923,7 @@ export const Constants = {
   public: {
     Enums: {
       criticality: ["LOW", "MEDIUM", "HIGH", "CRITICAL"],
+      document_integrity_status: ["PENDING", "VERIFIED", "MISMATCH", "MISSING"],
       late_reason_code: [
         "MISSING_DOCUMENT",
         "VALIDATOR_UNAVAILABLE",
