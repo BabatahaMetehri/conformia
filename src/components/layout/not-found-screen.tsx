@@ -30,7 +30,7 @@ export async function NotFoundScreen() {
         description={t("notFoundDescription")}
         action={
           <Button asChild variant="outline" size="sm">
-            <Link href="/my-tasks">{t("backHome")}</Link>
+            <Link href="/mes-taches">{t("backHome")}</Link>
           </Button>
         }
       />

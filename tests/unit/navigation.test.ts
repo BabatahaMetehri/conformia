@@ -87,7 +87,7 @@ describe("firstLeafPath", () => {
     );
 
     expect(path).not.toBe("/dashboard");
-    expect(path).toBe("/my-tasks");
+    expect(path).toBe("/mes-taches");
   });
 
   it("ne renvoie jamais vers un groupe, qui n'est pas une page", () => {
@@ -95,13 +95,13 @@ describe("firstLeafPath", () => {
   });
 
   it("retombe sur /my-tasks quand rien n'est ouvert", () => {
-    expect(firstLeafPath([])).toBe("/my-tasks");
+    expect(firstLeafPath([])).toBe("/mes-taches");
   });
 });
 
 describe("requirementForPath", () => {
   it("retrouve la condition d'une section, enfants compris", () => {
-    expect(requirementForPath("/occurrences")).toEqual({
+    expect(requirementForPath("/echeancier")).toEqual({
       kind: "all",
       permissions: ["occurrence.read"],
     });

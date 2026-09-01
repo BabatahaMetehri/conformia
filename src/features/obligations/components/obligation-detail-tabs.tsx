@@ -245,7 +245,7 @@ export function ObligationDetailTabs({
                   <tr key={occurrence.id} className="border-t border-border">
                     <td className="px-3 py-2" data-numeric>
                       <Link
-                        href={`/occurrences/${occurrence.id}`}
+                        href={`/echeancier/${occurrence.id}`}
                         className="font-medium text-text-primary underline-offset-2 hover:underline"
                       >
                         {occurrence.periodKey}

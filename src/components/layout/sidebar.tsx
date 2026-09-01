@@ -59,7 +59,7 @@ export function Sidebar({
       >
         {collapsed ? null : (
           <Link
-            href="/my-tasks"
+            href="/mes-taches"
             className="truncate text-sm font-semibold tracking-tight text-text-primary"
           >
             {APP_NAME}

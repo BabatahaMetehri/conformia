@@ -2614,6 +2614,13 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "documents_occurrence_id_fkey"
+            columns: ["occurrence_id"]
+            isOneToOne: false
+            referencedRelation: "occurrence_list"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "documents_supersedes_id_fkey"
             columns: ["supersedes_id"]
             isOneToOne: false
@@ -2869,6 +2876,13 @@ export type Database = {
             columns: ["rectifies_occurrence_id"]
             isOneToOne: false
             referencedRelation: "obligation_occurrences"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "obligation_occurrences_rectifies_occurrence_id_fkey"
+            columns: ["rectifies_occurrence_id"]
+            isOneToOne: false
+            referencedRelation: "occurrence_list"
             referencedColumns: ["id"]
           },
           {
@@ -3209,6 +3223,13 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "occurrence_checklist_items_occurrence_id_fkey"
+            columns: ["occurrence_id"]
+            isOneToOne: false
+            referencedRelation: "occurrence_list"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "occurrence_checklist_items_required_document_id_fkey"
             columns: ["required_document_id"]
             isOneToOne: false
@@ -3270,6 +3291,13 @@ export type Database = {
             referencedRelation: "obligation_occurrences"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "occurrence_comments_occurrence_id_fkey"
+            columns: ["occurrence_id"]
+            isOneToOne: false
+            referencedRelation: "occurrence_list"
+            referencedColumns: ["id"]
+          },
         ]
       }
       occurrence_transitions: {
@@ -3326,6 +3354,13 @@ export type Database = {
             columns: ["occurrence_id"]
             isOneToOne: false
             referencedRelation: "obligation_occurrences"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "occurrence_transitions_occurrence_id_fkey"
+            columns: ["occurrence_id"]
+            isOneToOne: false
+            referencedRelation: "occurrence_list"
             referencedColumns: ["id"]
           },
           {
@@ -3643,6 +3678,42 @@ export type Database = {
           },
         ]
       }
+      user_view_preferences: {
+        Row: {
+          filters: Json
+          updated_at: string
+          user_id: string
+          view_key: string
+        }
+        Insert: {
+          filters?: Json
+          updated_at?: string
+          user_id: string
+          view_key: string
+        }
+        Update: {
+          filters?: Json
+          updated_at?: string
+          user_id?: string
+          view_key?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "user_view_preferences_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profile_directory"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "user_view_preferences_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       validation_delegations: {
         Row: {
           created_at: string
@@ -3781,6 +3852,148 @@ export type Database = {
             referencedRelation: "obligation_occurrences"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "documents_occurrence_id_fkey"
+            columns: ["occurrence_id"]
+            isOneToOne: false
+            referencedRelation: "occurrence_list"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      occurrence_list: {
+        Row: {
+          authority_id: string | null
+          authority_name: string | null
+          created_at: string | null
+          criticality: Database["public"]["Enums"]["criticality"] | null
+          days_to_internal: number | null
+          days_to_legal: number | null
+          documents_provided: number | null
+          documents_required: number | null
+          domain_code: string | null
+          domain_id: string | null
+          domain_label: string | null
+          entity_id: string | null
+          event_date: string | null
+          expiry_date: string | null
+          id: string | null
+          internal_due_date: string | null
+          is_internally_late: boolean | null
+          is_locked: boolean | null
+          is_overdue: boolean | null
+          legal_due_date: string | null
+          obligation_code: string | null
+          obligation_name: string | null
+          obligation_type_id: string | null
+          owner_id: string | null
+          owner_name: string | null
+          penalty_incurred: boolean | null
+          period_end: string | null
+          period_key: string | null
+          period_start: string | null
+          periodicity: Database["public"]["Enums"]["periodicity"] | null
+          rectification_index: number | null
+          rectifies_occurrence_id: string | null
+          reference_number: string | null
+          requires_proof: boolean | null
+          status: Database["public"]["Enums"]["occurrence_status"] | null
+          updated_at: string | null
+          validator_id: string | null
+          validator_name: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "obligation_occurrences_entity_id_fkey"
+            columns: ["entity_id"]
+            isOneToOne: false
+            referencedRelation: "entities"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "obligation_occurrences_obligation_type_id_fkey"
+            columns: ["obligation_type_id"]
+            isOneToOne: false
+            referencedRelation: "obligation_types"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "obligation_occurrences_owner_id_fkey"
+            columns: ["owner_id"]
+            isOneToOne: false
+            referencedRelation: "profile_directory"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "obligation_occurrences_owner_id_fkey"
+            columns: ["owner_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "obligation_occurrences_rectifies_occurrence_id_fkey"
+            columns: ["rectifies_occurrence_id"]
+            isOneToOne: false
+            referencedRelation: "obligation_occurrences"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "obligation_occurrences_rectifies_occurrence_id_fkey"
+            columns: ["rectifies_occurrence_id"]
+            isOneToOne: false
+            referencedRelation: "occurrence_list"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "obligation_occurrences_validator_id_fkey"
+            columns: ["validator_id"]
+            isOneToOne: false
+            referencedRelation: "profile_directory"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "obligation_occurrences_validator_id_fkey"
+            columns: ["validator_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "obligation_types_authority_id_fkey"
+            columns: ["authority_id"]
+            isOneToOne: false
+            referencedRelation: "authorities"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "obligation_types_domain_id_fkey"
+            columns: ["domain_id"]
+            isOneToOne: false
+            referencedRelation: "domains"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      occurrence_stats: {
+        Row: {
+          domain_id: string | null
+          due_within_month: number | null
+          due_within_week: number | null
+          internally_late: number | null
+          last_activity_at: string | null
+          overdue: number | null
+          status: Database["public"]["Enums"]["occurrence_status"] | null
+          total: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "obligation_types_domain_id_fkey"
+            columns: ["domain_id"]
+            isOneToOne: false
+            referencedRelation: "domains"
+            referencedColumns: ["id"]
+          },
         ]
       }
       profile_directory: {
@@ -3824,10 +4037,6 @@ export type Database = {
       can_validate_occurrence: {
         Args: { occurrence_id: string }
         Returns: boolean
-      }
-      closed_occurrence_statuses: {
-        Args: never
-        Returns: Database["public"]["Enums"]["occurrence_status"][]
       }
       create_upcoming_partitions: {
         Args: { months_ahead?: number }
@@ -3921,8 +4130,28 @@ export type Database = {
         }
         Returns: unknown
       }
+      occurrence_stats_for_caller: {
+        Args: never
+        Returns: {
+          domain_id: string
+          due_within_month: number
+          due_within_week: number
+          internally_late: number
+          overdue: number
+          status: Database["public"]["Enums"]["occurrence_status"]
+          total: number
+        }[]
+      }
       open_occurrence_count: { Args: { p_user_id: string }; Returns: number }
+      overdue_exempt_statuses: {
+        Args: never
+        Returns: Database["public"]["Enums"]["occurrence_status"][]
+      }
       purge_auth_attempts: { Args: never; Returns: undefined }
+      reassign_occurrences: {
+        Args: { p_occurrence_ids: string[]; p_owner_id: string }
+        Returns: number
+      }
       recalculate_todo_due_dates: {
         Args: { p_obligation_type_id: string; p_updates: Json }
         Returns: number
@@ -3936,6 +4165,7 @@ export type Database = {
         }
         Returns: undefined
       }
+      refresh_occurrence_stats: { Args: never; Returns: undefined }
       search_tsquery: { Args: { p_text: string }; Returns: unknown }
       searchable_text: { Args: { p_text: string }; Returns: string }
       session_gates: { Args: { p_ip?: unknown }; Returns: Json }

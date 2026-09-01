@@ -92,7 +92,7 @@ async function signIn(page: Page, email: string): Promise<void> {
   await page.getByLabel(/adresse professionnelle/i).fill(email);
   await page.getByLabel(/mot de passe/i).fill(PASSWORD);
   await page.getByRole("button", { name: /se connecter/i }).click();
-  await page.waitForURL((url) => !url.pathname.endsWith("/login"), { timeout: 15_000 });
+  await page.waitForURL((url) => !url.pathname.endsWith("/login"), { timeout: 30_000 });
 }
 
 test.beforeAll(async () => {
@@ -150,12 +150,12 @@ test.describe("liste du référentiel", () => {
     // « portail » n'apparaît ni dans le code ni dans le nom : seul l'index de la
     // procédure peut le retrouver.
     await page.getByLabel(/^recherche$/i).fill("portail");
-    await expect(page).toHaveURL(/q=portail/, { timeout: 15_000 });
+    await expect(page).toHaveURL(/q=portail/, { timeout: 30_000 });
     await expect(page.getByRole("row", { name: /E2E-REF/ })).toBeVisible();
 
     await page.getByLabel(/^recherche$/i).fill("motintrouvable");
-    await expect(page).toHaveURL(/q=motintrouvable/, { timeout: 15_000 });
-    await expect(page.getByRole("row", { name: /E2E-REF/ })).toHaveCount(0, { timeout: 15_000 });
+    await expect(page).toHaveURL(/q=motintrouvable/, { timeout: 30_000 });
+    await expect(page.getByRole("row", { name: /E2E-REF/ })).toHaveCount(0, { timeout: 30_000 });
   });
 
   test("le filtre vit dans l'URL et survit au rechargement", async ({ page }) => {

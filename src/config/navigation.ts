@@ -97,7 +97,7 @@ export const NAVIGATION: readonly NavItem[] = [
   },
   {
     id: "my-tasks",
-    href: "/my-tasks",
+    href: "/mes-taches",
     icon: "tasks",
     labelKey: "myTasks",
     // Toujours visible : chacun a le droit de constater qu'on ne lui a rien
@@ -107,7 +107,7 @@ export const NAVIGATION: readonly NavItem[] = [
   },
   {
     id: "occurrences",
-    href: "/occurrences",
+    href: "/echeancier",
     icon: "calendar",
     labelKey: "occurrences",
     requires: { kind: "all", permissions: ["occurrence.read"] },
@@ -130,9 +130,10 @@ export const NAVIGATION: readonly NavItem[] = [
      * d'entrée reste `obligations` — c'est la feature qui porte ce nom, et les
      * tests s'y accrochent.
      *
-     * Contrepartie assumée : c'est la seule route en français d'un sommaire
-     * autrement anglophone (`/my-tasks`, `/documents`, `/audit`…). Revenir en
-     * arrière tient en une ligne ici, plus le dossier de routage.
+     * Les sections métier suivent désormais la même convention française
+     * (`/echeancier`, `/mes-taches`, `/referentiel`), les sections techniques
+     * restant en anglais (`/dashboard`, `/admin`, `/audit`). La coupure n'est
+     * pas idéale ; elle est au moins régulière.
      */
     href: "/referentiel",
     icon: "obligations",
@@ -284,12 +285,12 @@ export function flattenNavigation(items: readonly NavItem[]): NavItem[] {
  * déposer après connexion lui présenterait un écran vide. On ignore les groupes
  * — « Administration » n'est pas une page, c'est un dossier.
  *
- * `/my-tasks` en dernier recours : l'entrée est déclarée toujours visible, la
+ * `/mes-taches` en dernier recours : l'entrée est déclarée toujours visible, la
  * valeur de repli ne peut donc pas être un cul-de-sac.
  */
 export function firstLeafPath(items: readonly NavItem[]): string {
   const leaf = flattenNavigation(items).find((item) => item.children === undefined);
-  return leaf?.href ?? "/my-tasks";
+  return leaf?.href ?? "/mes-taches";
 }
 
 /**

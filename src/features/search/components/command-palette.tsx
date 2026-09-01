@@ -49,7 +49,7 @@ const ICONS: Readonly<Record<SearchKind, LucideIcon>> = {
 
 const PATH_PREFIX: Readonly<Record<SearchKind, string>> = {
   OBLIGATION: "/referentiel",
-  OCCURRENCE: "/occurrences",
+  OCCURRENCE: "/echeancier",
   DOCUMENT: "/documents",
 };
 

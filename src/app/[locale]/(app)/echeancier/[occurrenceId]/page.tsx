@@ -2,14 +2,11 @@ import { SectionHeader, SectionPlaceholder } from "@/components/layout/section";
 import { requireSectionAccess } from "@/services/navigation/guard";
 
 /**
- * Coquille de détail. Elle porte la MÊME garde que sa section : le droit de
- * lister et le droit d'ouvrir une fiche ne se dissocient pas.
- *
- * L'identifiant est affiché tel quel — le fil d'Ariane le reprend comme dernier
- * segment, faute de libellé à lui donner tant que l'écran métier n'existe pas.
+ * Coquille du détail d'une occurrence. Elle porte la MÊME garde que la liste :
+ * le droit de lister et celui d'ouvrir un dossier ne se dissocient pas.
  */
 export default async function Page({ params }: { params: Promise<{ occurrenceId: string }> }) {
-  await requireSectionAccess("/occurrences");
+  await requireSectionAccess("/echeancier");
   const resolved = await params;
 
   return (

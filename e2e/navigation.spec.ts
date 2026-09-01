@@ -169,7 +169,7 @@ test.describe("barre latérale", () => {
     page,
   }) => {
     // Le vrai test du filtrage serveur : on lit la charge utile, pas le DOM.
-    const response = await page.goto("/fr/my-tasks");
+    const response = await page.goto("/fr/mes-taches");
     const html = (await response?.text()) ?? "";
 
     /*
@@ -181,8 +181,8 @@ test.describe("barre latérale", () => {
      * de chaque section. Un libellé présent ne prouve donc rien ; un `href`
      * présent, si — il n'apparaît que si le serveur a rendu l'entrée.
      */
-    expect(html).toContain('href="/fr/my-tasks"');
-    expect(html).toContain('href="/fr/occurrences"');
+    expect(html).toContain('href="/fr/mes-taches"');
+    expect(html).toContain('href="/fr/echeancier"');
     expect(html).not.toContain('href="/fr/audit"');
     expect(html).not.toContain('href="/fr/admin');
   });
@@ -223,7 +223,9 @@ test.describe("recherche globale", () => {
     await page.keyboard.press("ArrowDown");
     await page.keyboard.press("Enter");
 
-    await page.waitForURL(/\/(obligations|occurrences)\//, { timeout: 10_000 });
+    // Les sections métier ont été renommées : la palette mène à `/referentiel`
+    // ou `/echeancier`, jamais aux anciens chemins.
+    await page.waitForURL(/\/(referentiel|echeancier)\//, { timeout: 10_000 });
   });
 
   test("ne trouve RIEN du domaine fiscal", async ({ page }) => {
@@ -247,7 +249,7 @@ test.describe("recherche globale", () => {
 
 test.describe("routage", () => {
   test("le fil d'Ariane traduit les segments", async ({ page }) => {
-    await page.goto("/fr/occurrences");
+    await page.goto("/fr/echeancier");
     const crumbs = page.getByRole("navigation", { name: /fil d'ariane/i });
     await expect(crumbs.getByText("Échéancier")).toBeVisible();
   });
@@ -269,14 +271,14 @@ test.describe("routage", () => {
   });
 
   test("une URL sans locale est redirigée vers le français", async ({ page }) => {
-    await page.goto("/occurrences");
-    await expect(page).toHaveURL(/\/fr\/occurrences$/);
+    await page.goto("/echeancier");
+    await expect(page).toHaveURL(/\/fr\/echeancier$/);
   });
 });
 
 test.describe("accessibilité de la coquille", () => {
   test("aucune violation axe sur un écran de section", async ({ page }) => {
-    await page.goto("/fr/occurrences");
+    await page.goto("/fr/echeancier");
     await expect(page.getByRole("heading", { level: 1 })).toBeVisible();
 
     const results = await new AxeBuilder({ page })
@@ -289,7 +291,7 @@ test.describe("accessibilité de la coquille", () => {
   });
 
   test("le lien d'évitement est la première cible du clavier", async ({ page }) => {
-    await page.goto("/fr/occurrences");
+    await page.goto("/fr/echeancier");
     await page.keyboard.press("Tab");
 
     await expect(page.getByRole("link", { name: /aller au contenu principal/i })).toBeFocused();

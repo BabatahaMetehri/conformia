@@ -231,7 +231,8 @@
       "pendingValidation": "{count, plural, =0 {aucun dossier à valider} one {# dossier à valider} other {# dossiers à valider}}",
       "myTasks": "{count, plural, =0 {aucune tâche} one {# tâche} other {# tâches}}"
     },
-    "obligationCreate": "Nouvelle obligation"
+    "obligationCreate": "Nouvelle obligation",
+    "occurrencesCalendar": "Calendrier"
   },
   "notifications": {
     "title": "Notifications",
@@ -494,12 +495,105 @@
     },
     "due": {
       "remaining": "{days, plural, =0 {aujourd'hui} one {J-# jour} other {J-# jours}}",
-      "overdue": "{days, plural, one {# jour de retard} other {# jours de retard}}"
+      "overdue": "{days, plural, one {# jour de retard} other {# jours de retard}}",
+      "internallyLate": "objectif dépassé",
+      "legalLimit": "Limite légale :"
     },
     "rectification": {
       "badge": "Rectificative n° {index}",
       "linkToOriginal": "Rectificative n° {index} — voir la déclaration d'origine"
-    }
+    },
+    "code": "Code",
+    "obligation": "Obligation",
+    "domain": "Domaine",
+    "authority": "Organisme",
+    "documents": "Pièces",
+    "criticalityColumn": "Criticité",
+    "tableCaption": "Liste des échéances",
+    "emptyList": "Aucune échéance",
+    "emptyListHint": "Aucune échéance ne correspond à ces filtres.",
+    "loadFailed": "L'échéancier n'a pas pu être chargé.",
+    "noDocumentsExpected": "Aucune pièce attendue",
+    "documentsProgress": "{provided} pièce(s) déposée(s) sur {required} attendue(s)",
+    "selectAll": "Tout sélectionner sur cette page",
+    "selectRow": "Sélectionner {code}",
+    "selectedCount": "{count, plural, =0 {aucune ligne sélectionnée} one {# ligne sélectionnée} other {# lignes sélectionnées}}",
+    "reassign": "Réaffecter",
+    "reassignTo": "Réaffecter à…",
+    "reassigned": "{count, plural, =0 {aucun dossier réaffecté} one {# dossier réaffecté} other {# dossiers réaffectés}}",
+    "export": "Exporter (XLSX)",
+    "exported": "Export de {count} ligne(s) téléchargé.",
+    "exportTruncated": "Export limité à {count} lignes. Affinez vos filtres pour extraire le reste.",
+    "firstPage": "Première page",
+    "nextPage": "Page suivante",
+    "yes": "Oui",
+    "no": "Non",
+    "summary": {
+      "total": "Échéances suivies",
+      "overdue": "En retard",
+      "internallyLate": "Objectif interne dépassé",
+      "dueWithinWeek": "À traiter sous 7 jours",
+      "freshness": "Actualisé toutes les 15 min"
+    },
+    "filters": {
+      "all": "Tous",
+      "periodPlaceholder": "2026 ou 2026-01",
+      "overdueOnly": "En retard",
+      "internallyLateOnly": "Alerte précoce",
+      "rectificationsOnly": "Rectificatives",
+      "mineOnly": "Mes dossiers",
+      "reset": "Réinitialiser",
+      "switchToCalendar": "Calendrier",
+      "switchToList": "Liste"
+    },
+    "calendar": {
+      "previous": "Période précédente",
+      "next": "Période suivante",
+      "scale": "Échelle d'affichage",
+      "scales": {
+        "month": "Mois",
+        "quarter": "Trimestre",
+        "year": "Année"
+      },
+      "more": "+{count}",
+      "dayLabel": "{date} — {count} échéance(s)",
+      "dayPanel": "{count} échéance(s) ce jour",
+      "weekdays": {
+        "sun": "Dim",
+        "mon": "Lun",
+        "tue": "Mar",
+        "wed": "Mer",
+        "thu": "Jeu",
+        "fri": "Ven",
+        "sat": "Sam"
+      }
+    },
+    "myTasks": {
+      "empty": "Rien à traiter",
+      "emptyHint": "Aucun dossier ne vous est confié et aucun n'attend votre validation.",
+      "buckets": {
+        "overdue": "En retard",
+        "awaitingMe": "En attente de mon action",
+        "thisWeek": "Cette semaine",
+        "thisMonth": "Ce mois",
+        "later": "À venir"
+      }
+    },
+    "errors": {
+      "FORBIDDEN": "Vous n'avez pas les droits nécessaires pour cette action.",
+      "VALIDATION_FAILED": "La sélection est invalide.",
+      "NOT_FOUND": "Élément introuvable.",
+      "CONFLICT": "Certains dossiers n'ont pas pu être modifiés.",
+      "UNAUTHENTICATED": "Votre session a expiré. Reconnectez-vous.",
+      "INTERNAL": "Une erreur inattendue est survenue.",
+      "PERIOD_LOCKED": "La période est clôturée.",
+      "INVALID_TRANSITION": "Ce changement n'est pas autorisé.",
+      "STORAGE_FAILED": "Le stockage n'a pas répondu.",
+      "INTEGRITY_CHECK_FAILED": "Contrôle d'intégrité en échec.",
+      "RATE_LIMITED": "Trop de requêtes. Patientez avant de réessayer.",
+      "EXTERNAL_SERVICE_FAILED": "Un service externe n'a pas répondu."
+    },
+    "statusColumn": "Statut"
   },
   "routing": {
     "notFoundTitle": "Page introuvable",
@@ -600,6 +694,10 @@
     "obligationEdit": {
       "title": "Modifier l'obligation",
       "description": "Une modification de la règle proposera de recalculer les échéances à faire."
+    },
+    "occurrencesCalendar": {
+      "title": "Calendrier des échéances",
+      "description": "Les échéances positionnées à leur objectif interne, colorées par statut."
     }
   },
   "validation": {

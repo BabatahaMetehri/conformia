@@ -231,7 +231,8 @@
       "pendingValidation": "{count, plural, =0 {لا ملف للمصادقة} one {ملف واحد للمصادقة} two {ملفان للمصادقة} few {# ملفات للمصادقة} many {# ملفًا للمصادقة} other {# ملف للمصادقة}}",
       "myTasks": "{count, plural, =0 {لا مهام} one {مهمة واحدة} two {مهمتان} few {# مهام} many {# مهمة} other {# مهمة}}"
     },
-    "obligationCreate": "التزام جديد"
+    "obligationCreate": "التزام جديد",
+    "occurrencesCalendar": "التقويم"
   },
   "notifications": {
     "title": "الإشعارات",
@@ -479,8 +480,8 @@
     "period": "الفترة",
     "owner": "المسؤول",
     "validator": "المصادِق",
-    "legalDueDate": "الأجل القانوني",
-    "internalDueDate": "الأجل الداخلي",
+    "legalDueDate": "الاستحقاق القانوني",
+    "internalDueDate": "الاستحقاق الداخلي",
     "reference": "رقم الإيداع",
     "status": {
       "TODO": "للإنجاز",
@@ -494,12 +495,105 @@
     },
     "due": {
       "remaining": "{days, plural, =0 {اليوم} one {يوم واحد متبقٍ} two {يومان متبقيان} few {# أيام متبقية} other {# يومًا متبقيًا}}",
-      "overdue": "{days, plural, one {يوم تأخير} two {يومان تأخير} few {# أيام تأخير} other {# يومًا تأخير}}"
+      "overdue": "{days, plural, one {يوم تأخير} two {يومان تأخير} few {# أيام تأخير} other {# يومًا تأخير}}",
+      "internallyLate": "تجاوز الهدف",
+      "legalLimit": "الحد القانوني :"
     },
     "rectification": {
       "badge": "تصحيحية رقم {index}",
       "linkToOriginal": "تصحيحية رقم {index} — عرض التصريح الأصلي"
-    }
+    },
+    "code": "الرمز",
+    "obligation": "الالتزام",
+    "domain": "المجال",
+    "authority": "الهيئة",
+    "documents": "الوثائق",
+    "criticalityColumn": "الأهمية",
+    "tableCaption": "قائمة الاستحقاقات",
+    "emptyList": "لا استحقاقات",
+    "emptyListHint": "لا يطابق أي استحقاق هذه المرشِّحات.",
+    "loadFailed": "تعذّر تحميل الروزنامة.",
+    "noDocumentsExpected": "لا وثيقة مطلوبة",
+    "documentsProgress": "أُودعت {provided} وثيقة من أصل {required}",
+    "selectAll": "تحديد الكل في هذه الصفحة",
+    "selectRow": "تحديد {code}",
+    "selectedCount": "{count, plural, =0 {لا سطر محدَّد} one {سطر واحد محدَّد} two {سطران محدَّدان} few {# أسطر محدَّدة} many {# سطرًا محدَّدًا} other {# سطر محدَّد}}",
+    "reassign": "إعادة الإسناد",
+    "reassignTo": "إعادة الإسناد إلى…",
+    "reassigned": "{count, plural, =0 {لم يُعَد إسناد أي ملف} one {أُعيد إسناد ملف واحد} two {أُعيد إسناد ملفين} few {أُعيد إسناد # ملفات} many {أُعيد إسناد # ملفًا} other {أُعيد إسناد # ملف}}",
+    "export": "تصدير (XLSX)",
+    "exported": "نُزِّل تصدير {count} سطر.",
+    "exportTruncated": "اقتصر التصدير على {count} سطر. حسِّن مرشِّحاتك لاستخراج الباقي.",
+    "firstPage": "الصفحة الأولى",
+    "nextPage": "الصفحة التالية",
+    "yes": "نعم",
+    "no": "لا",
+    "summary": {
+      "total": "الاستحقاقات المتابَعة",
+      "overdue": "متأخرة",
+      "internallyLate": "تجاوز الهدف الداخلي",
+      "dueWithinWeek": "للإنجاز خلال 7 أيام",
+      "freshness": "يُحدَّث كل 15 دقيقة"
+    },
+    "filters": {
+      "all": "الكل",
+      "periodPlaceholder": "2026 أو 2026-01",
+      "overdueOnly": "متأخرة",
+      "internallyLateOnly": "إنذار مبكر",
+      "rectificationsOnly": "تصحيحية",
+      "mineOnly": "ملفاتي",
+      "reset": "إعادة الضبط",
+      "switchToCalendar": "التقويم",
+      "switchToList": "القائمة"
+    },
+    "calendar": {
+      "previous": "الفترة السابقة",
+      "next": "الفترة التالية",
+      "scale": "مقياس العرض",
+      "scales": {
+        "month": "شهر",
+        "quarter": "فصل",
+        "year": "سنة"
+      },
+      "more": "+{count}",
+      "dayLabel": "{date} — {count} استحقاق",
+      "dayPanel": "{count} استحقاق في هذا اليوم",
+      "weekdays": {
+        "sun": "أحد",
+        "mon": "إثن",
+        "tue": "ثلا",
+        "wed": "أرب",
+        "thu": "خمي",
+        "fri": "جمع",
+        "sat": "سبت"
+      }
+    },
+    "myTasks": {
+      "empty": "لا شيء للإنجاز",
+      "emptyHint": "لا ملف مسنَد إليك ولا ملف ينتظر مصادقتك.",
+      "buckets": {
+        "overdue": "متأخرة",
+        "awaitingMe": "في انتظار إجرائي",
+        "thisWeek": "هذا الأسبوع",
+        "thisMonth": "هذا الشهر",
+        "later": "لاحقًا"
+      }
+    },
+    "errors": {
+      "FORBIDDEN": "لا تملك الصلاحيات اللازمة لهذا الإجراء.",
+      "VALIDATION_FAILED": "التحديد غير صالح.",
+      "NOT_FOUND": "العنصر غير موجود.",
+      "CONFLICT": "تعذّر تعديل بعض الملفات.",
+      "UNAUTHENTICATED": "انتهت جلستك. أعد تسجيل الدخول.",
+      "INTERNAL": "حدث خطأ غير متوقّع.",
+      "PERIOD_LOCKED": "الفترة مقفلة.",
+      "INVALID_TRANSITION": "هذا التغيير غير مسموح.",
+      "STORAGE_FAILED": "لم يستجب التخزين.",
+      "INTEGRITY_CHECK_FAILED": "فشل التحقق من السلامة.",
+      "RATE_LIMITED": "طلبات كثيرة. انتظر قبل إعادة المحاولة.",
+      "EXTERNAL_SERVICE_FAILED": "لم تستجب خدمة خارجية."
+    },
+    "statusColumn": "الوضعية"
   },
   "routing": {
     "notFoundTitle": "الصفحة غير موجودة",
@@ -600,6 +694,10 @@
     "obligationEdit": {
       "title": "تعديل الالتزام",
       "description": "تعديل القاعدة سيقترح إعادة حساب الاستحقاقات للإنجاز."
+    },
+    "occurrencesCalendar": {
+      "title": "تقويم الاستحقاقات",
+      "description": "الاستحقاقات موضوعة على هدفها الداخلي، ملوَّنة حسب الوضعية."
     }
   },
   "validation": {
