@@ -58,6 +58,14 @@ export default defineConfig({
   resolve: {
     alias: {
       "@": fileURLToPath(new URL("./src", import.meta.url)),
+      /*
+       * ⚠️ `server-only` lève à l'import hors composant serveur. La suite
+       * d'intégration éprouve les services en Node, hors de tout rendu React :
+       * elle doit pouvoir les importer. Le remplaçant est CANTONNÉ à ce
+       * lanceur — la garantie de production reste le build Next.js, qui échoue
+       * si un module `server-only` atteint un bundle client.
+       */
+      "server-only": fileURLToPath(new URL("./tests/stubs/server-only.ts", import.meta.url)),
     },
   },
   test: {

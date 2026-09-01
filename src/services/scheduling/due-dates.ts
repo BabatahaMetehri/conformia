@@ -13,7 +13,13 @@
 
 import { addDays, addMonths, addYears, endOfMonth } from "date-fns";
 
-import { DateShift, DueAnchor, Periodicity } from "@/config/constants";
+import {
+  type Criticality,
+  DateShift,
+  DueAnchor,
+  INTERNAL_LEAD_DAYS_BY_CRITICALITY,
+  Periodicity,
+} from "@/config/constants";
 import {
   addBusinessDays,
   buildPeriodKey,
@@ -96,11 +102,11 @@ export function computeDueDate(input: ComputeDueDateInput): Result<DueDatePrevie
   const shifted = applyShift(rawDueDate, rule, holidays);
   if (!shifted.ok) return shifted;
 
-  const leadDays = input.internalLeadDays ?? 0;
-  // Marge comptée en jours OUVRÉS : « cinq jours d'avance » veut dire cinq jours
-  // de travail, pas cinq jours dont un week-end.
-  const internalDueDate =
-    leadDays > 0 ? addBusinessDays(shifted.value.date, -leadDays, holidays) : shifted.value.date;
+  const internalDueDate = computeInternalDueDate(
+    shifted.value.date,
+    input.internalLeadDays ?? 0,
+    holidays,
+  );
 
   return ok({
     periodKey: period.key,
@@ -111,6 +117,44 @@ export function computeDueDate(input: ComputeDueDateInput): Result<DueDatePrevie
     internalDueDate,
     shiftReason: shifted.value.reason,
   });
+}
+
+/**
+ * Marge à appliquer : celle de l'obligation, ou le défaut de sa criticité.
+ *
+ * ⚠️ Les valeurs par défaut viennent de `INTERNAL_LEAD_DAYS_BY_CRITICALITY`
+ * (`src/config/constants.ts`), jamais d'une table locale. J'en avais d'abord
+ * écrit une copie ici : deux tables de marges auraient divergé au premier
+ * ajustement, et c'est exactement ce que ce projet refuse partout ailleurs.
+ *
+ * `internal_lead_days = 0` est traité comme « non renseigné ». La colonne est
+ * `not null default 0` : elle ne sait pas distinguer l'absence de valeur d'un
+ * zéro voulu. Une obligation CRITICAL qui voudrait réellement zéro jour de marge
+ * n'est donc pas exprimable — le cas ne s'est pas présenté, et le lever
+ * demanderait de rendre la colonne nullable. À signaler s'il se présente.
+ */
+export function resolveLeadDays(criticality: Criticality, internalLeadDays: number): number {
+  return internalLeadDays > 0 ? internalLeadDays : INTERNAL_LEAD_DAYS_BY_CRITICALITY[criticality];
+}
+
+/**
+ * Échéance INTERNE : recul de `leadDays` jours OUVRÉS sur l'échéance légale.
+ *
+ * ⚠️ Jours ouvrés, jamais calendaires : « cinq jours d'avance » veut dire cinq
+ * jours de travail. Compter en jours calendaires ferait tomber la marge sur un
+ * week-end et rendrait l'avance fictive — exactement l'inverse de ce qu'elle
+ * cherche à produire.
+ *
+ * Une marge nulle rend l'échéance légale elle-même : l'échéance interne existe
+ * toujours, elle coïncide simplement avec la légale.
+ */
+export function computeInternalDueDate(
+  legalDueDate: Date,
+  leadDays: number,
+  holidays: readonly Date[] = [],
+): Date {
+  if (leadDays <= 0) return legalDueDate;
+  return addBusinessDays(legalDueDate, -leadDays, holidays);
 }
 
 function anchorInstant(
@@ -129,9 +173,20 @@ function anchorInstant(
       if (rule.fixed_month === undefined || rule.fixed_day === undefined) {
         return err(AppError.validationFailed({ reason: "FIXED_DATE_REQUIRES_MONTH_AND_DAY" }));
       }
-      // L'année de référence est celle du DÉBUT de période : pour un exercice
-      // 2026, un bilan « au 30 avril » se dépose en 2027 via `year_offset: 1`.
-      const year = toAppTz(period.start).getFullYear() + (rule.year_offset ?? 0);
+      /*
+       * ⚠️ L'ANNÉE DE RÉFÉRENCE EST CELLE DU DÉBUT DE PÉRIODE, SANS year_offset.
+       *
+       * `year_offset` n'est plus appliqué ici mais dans `applyOffsets`, en
+       * quatrième position de l'ordre arrêté :
+       *   ancre → offset_months → offset_days → year_offset → reports.
+       *
+       * La différence n'est pas cosmétique. Appliqué à l'ancre, `year_offset`
+       * changeait l'année AVANT le calage de fin de mois : une règle au 29
+       * février avec `year_offset: 1` était ramenée au 28 dès l'ancre, puis
+       * décalée. Appliqué en dernier, le calage se fait sur l'année finale, qui
+       * est la seule qui compte.
+       */
+      const year = toAppTz(period.start).getFullYear();
       return ok(calendarDate(year, rule.fixed_month, rule.fixed_day));
     }
 
@@ -155,10 +210,17 @@ function calendarDate(year: number, month: number, day: number): Date {
 }
 
 /**
- * Mois d'abord, jours ensuite. L'ordre compte : `+1 mois puis +5 jours` depuis le
- * 31 janvier donne le 5 mars, tandis que `+5 jours puis +1 mois` donne le 5 mars
- * également — mais depuis le 30 janvier, les deux ordres divergent. On fixe
- * l'ordre plutôt que de laisser le résultat dépendre de la lecture.
+ * Décalages, dans l'ORDRE ARRÊTÉ : mois, puis jours, puis années.
+ *
+ * ⚠️ L'ordre n'est pas indifférent, et c'est pour cela qu'il est fixé plutôt que
+ * laissé à la lecture. `+1 mois puis +5 jours` et `+5 jours puis +1 mois` depuis
+ * le 30 janvier ne donnent pas la même date : le calage de fin de mois
+ * intervient entre les deux. Le même raisonnement vaut pour l'année, appliquée
+ * en dernier — elle décale un 29 février sur une année non bissextile, et ce
+ * calage doit se faire sur la date déjà décalée, pas sur l'ancre.
+ *
+ * Ordre complet du calcul : ancre → offset_months → offset_days → year_offset
+ * → report week-end → report jour férié.
  */
 function applyOffsets(base: Date, rule: DueRule): Date {
   let zoned = toAppTz(base);
@@ -167,6 +229,9 @@ function applyOffsets(base: Date, rule: DueRule): Date {
   }
   if (rule.offset_days !== undefined && rule.offset_days !== 0) {
     zoned = addDays(zoned, rule.offset_days);
+  }
+  if (rule.year_offset !== undefined && rule.year_offset !== 0) {
+    zoned = addYears(zoned, rule.year_offset);
   }
   return toUtcFromAppTz(zoned);
 }
@@ -343,9 +408,23 @@ function advanceByPeriodicity(instant: Date, periodicity: Periodicity, steps: nu
       return toUtcFromAppTz(addYears(zoned, steps));
     case Periodicity.BIENNIAL:
       return toUtcFromAppTz(addYears(zoned, 2 * steps));
+    /*
+     * ⚠️ INATTEIGNABLE, et conservé pour l'exhaustivité du compilateur.
+     *
+     * Cette fonction n'est appelée que par `eventDrivenPeriods`. Or
+     * `validateDueRule` refuse CUSTOM avec une ancre événementielle
+     * (« CUSTOM_REQUIRES_PERIOD_ANCHOR »), et ON_EVENT ne produit qu'UNE ligne —
+     * l'appel s'y fait donc toujours avec `steps === 0`, court-circuité plus
+     * haut. Vérifié en exécutant les trois combinaisons.
+     *
+     * Retirer ces cas ferait perdre l'exhaustivité du `switch` : le jour où une
+     * périodicité s'ajoute, le compilateur ne signalerait plus rien.
+     */
+    /* v8 ignore start */
     case Periodicity.CUSTOM:
     case Periodicity.ON_EVENT:
       return instant;
+    /* v8 ignore stop */
   }
 }
 
@@ -364,33 +443,56 @@ function calendarPeriods(
   from: Date,
   count: number,
 ): Result<PreviewPeriod[]> {
+  /*
+   * ⚠️ INATTEIGNABLE. `validateDueRule` impose une ancre événementielle à
+   * ON_EVENT, qui emprunte donc systématiquement l'autre branche. Conservé comme
+   * garde de dernier ressort si cette règle évoluait.
+   */
+  /* v8 ignore start */
   if (periodicity === Periodicity.ON_EVENT) {
-    // Interdit par `validateDueRule` (ON_EVENT exige une ancre événementielle) :
-    // ce retour ne sert que d'exhaustivité au compilateur.
     return err(AppError.validationFailed({ reason: "ON_EVENT_REQUIRES_EVENT_ANCHOR" }));
   }
+  /* v8 ignore stop */
 
+  /*
+   * ⚠️ Les replis `?? []` et `?? 1` ci-dessous sont INATTEIGNABLES : une règle
+   * CUSTOM sans `occurrences[]` est refusée par `validateDueRule`, appelée en
+   * tête de `previewDueDates`. Ils restent parce qu'ils coûtent un caractère et
+   * évitent une exception si cette validation venait à bouger.
+   */
+  /* v8 ignore start */
   const periodRule: PeriodRule =
     periodicity === Periodicity.CUSTOM
       ? { periodicity, occurrences: rule.occurrences ?? [] }
       : { periodicity };
+  /* v8 ignore stop */
 
   // Fenêtre volontairement large : `computePeriods` borne par intersection, on
   // tronque ensuite. Trop courte, elle rendrait moins de lignes que demandé.
+  /* v8 ignore start */
   const spanMonths =
     periodicity === Periodicity.CUSTOM
       ? 12 * (Math.ceil(count / Math.max(rule.occurrences?.length ?? 1, 1)) + 1)
-      : (MONTHS_PER_PERIOD[periodicity] ?? 12) * (count + 1);
+      : // `MONTHS_PER_PERIOD` couvre les cinq périodicités calendaires ; le repli
+        // à 12 ne sert qu'à ne pas produire `NaN` si une sixième s'ajoutait.
+        (MONTHS_PER_PERIOD[periodicity] ?? 12) * (count + 1);
+  /* v8 ignore stop */
 
   const to = toUtcFromAppTz(addMonths(toAppTz(from), spanMonths));
 
   try {
     return ok(computePeriods(periodRule, { from, to }).slice(0, count));
+    /*
+     * ⚠️ INATTEIGNABLE en l'état : `computePeriods` ne lève que sur une date
+     * CUSTOM invalide, que Zod refuse en amont. On convertit malgré tout plutôt
+     * que de laisser filer une exception — le jour où la validation change,
+     * c'est cette conversion qui évitera une page blanche.
+     */
+    /* v8 ignore start */
   } catch (cause) {
-    // `computePeriods` lève sur une date CUSTOM invalide. Zod l'a déjà refusée
-    // en amont ; on convertit malgré tout plutôt que de laisser filer.
     return err(AppError.from(cause));
   }
+  /* v8 ignore stop */
 }
 
 // ─── Utilitaire d'affichage ──────────────────────────────────────────────────

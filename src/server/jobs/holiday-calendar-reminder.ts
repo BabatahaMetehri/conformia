@@ -19,6 +19,10 @@
  * la traite comme un succès plutôt que comme une erreur.
  */
 
+// ⚠️ EN PREMIER, avant le client de service : ce module pose le marqueur
+// que la garde d'emplacement attend (cf. admin-guard.ts).
+import "@/server/jobs/_job-context";
+
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 import { logger } from "@/lib/logger";
 

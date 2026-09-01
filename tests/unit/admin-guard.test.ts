@@ -1,9 +1,12 @@
-import { describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it } from "vitest";
 
 import {
   ADMIN_CLIENT_MISUSE_MESSAGE,
   assertLoadedFromJobs,
+  isJobContext,
   isLoadedFromJobs,
+  markJobContext,
+  resetJobContext,
 } from "@/lib/supabase/admin-guard";
 
 /** Pile d'appels réaliste, telle que V8 la produit au chargement d'un module. */
@@ -75,5 +78,43 @@ describe("assertLoadedFromJobs", () => {
 
   it("mentionne l'alternative soumise à la RLS", () => {
     expect(ADMIN_CLIENT_MISUSE_MESSAGE).toContain("@/lib/supabase/server");
+  });
+});
+
+describe("marqueur de contexte job", () => {
+  afterEach(() => {
+    resetJobContext();
+  });
+
+  it("est ABSENT par défaut", () => {
+    expect(isJobContext()).toBe(false);
+  });
+
+  it("autorise le client de service une fois posé, MÊME sans chemin dans la pile", () => {
+    /*
+     * ⚠️ LE FAUX POSITIF QUE CE MARQUEUR CORRIGE. La lecture de pile ne survit
+     * pas au bundling Next.js : les chemins deviennent
+     * `.next/server/chunks/8340.js`, et `/server/jobs/` disparaît. La garde
+     * refusait donc un job LÉGITIME dès qu'il était invoqué depuis le serveur
+     * applicatif — constaté sur la route de secours de génération, qui rendait
+     * une erreur 500.
+     */
+    expect(() => {
+      assertLoadedFromJobs("at .next/server/chunks/8340.js:1:238");
+    }).toThrow(ADMIN_CLIENT_MISUSE_MESSAGE);
+
+    markJobContext();
+    expect(() => {
+      assertLoadedFromJobs("at .next/server/chunks/8340.js:1:238");
+    }).not.toThrow();
+  });
+
+  it("n'affaiblit RIEN : sans marqueur ni chemin, le refus tient", () => {
+    // La barrière principale reste la règle ESLint, qui interdit statiquement
+    // d'importer le marqueur hors de `src/server/jobs/`.
+    expect(isLoadedFromJobs("at src/app/page.tsx:12:3")).toBe(false);
+    expect(() => {
+      assertLoadedFromJobs("at src/app/page.tsx:12:3");
+    }).toThrow(ADMIN_CLIENT_MISUSE_MESSAGE);
   });
 });

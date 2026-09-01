@@ -98,6 +98,10 @@ export default tseslint.config(
     ignores: [
       ".next/**",
       "node_modules/**",
+      // Code DENO : autre runtime, autres globales (`Deno.serve`), imports par
+      // URL. Il est exclu du programme TypeScript, donc illisible pour le
+      // service de projet d'ESLint.
+      "supabase/functions/**",
       "out/**",
       "build/**",
       "coverage/**",

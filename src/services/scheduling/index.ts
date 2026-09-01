@@ -9,6 +9,8 @@
 
 export {
   computeDueDate,
+  computeInternalDueDate,
+  resolveLeadDays,
   previewDueDates,
   landsOnBusinessDay,
   wasShifted,
@@ -31,3 +33,25 @@ export {
   type DueRuleInput,
   type DueRuleValidationInput,
 } from "@/services/scheduling/due-rule";
+
+/**
+ * Découpage en périodes.
+ *
+ * ⚠️ Réexporté depuis `@/lib/dates` plutôt que réimplémenté : le découpage
+ * calendaire est une opération de DATE, pas de métier, et il sert aussi au
+ * calendrier et aux compteurs. Une seconde implémentation dans le service
+ * produirait tôt ou tard des périodes qui ne coïncident plus avec celles que
+ * l'écran affiche.
+ *
+ * `ON_EVENT` rend un tableau VIDE : ces obligations naissent d'un fait, pas
+ * d'un calendrier, et sont créées à la main. `CUSTOM` lit `occurrences[]` de la
+ * règle.
+ */
+export {
+  computePeriods,
+  buildPeriodKey,
+  endOfPeriod,
+  startOfPeriod,
+  type PeriodDescriptor,
+  type PeriodRule,
+} from "@/lib/dates";

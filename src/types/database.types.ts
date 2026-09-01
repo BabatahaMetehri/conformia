@@ -3020,6 +3020,39 @@ export type Database = {
           },
         ]
       }
+      job_runs: {
+        Row: {
+          details: Json
+          error_count: number
+          finished_at: string | null
+          id: number
+          job_name: string
+          processed_count: number
+          started_at: string
+          status: string
+        }
+        Insert: {
+          details?: Json
+          error_count?: number
+          finished_at?: string | null
+          id?: number
+          job_name: string
+          processed_count?: number
+          started_at?: string
+          status?: string
+        }
+        Update: {
+          details?: Json
+          error_count?: number
+          finished_at?: string | null
+          id?: number
+          job_name?: string
+          processed_count?: number
+          started_at?: string
+          status?: string
+        }
+        Relationships: []
+      }
       notifications: {
         Row: {
           actor_id: string | null
@@ -5100,6 +5133,18 @@ export type Database = {
         }
         Returns: Json
       }
+      create_occurrence_if_absent: {
+        Args: {
+          p_internal_due_date: string
+          p_legal_due_date: string
+          p_obligation_type_id: string
+          p_period_end: string
+          p_period_key: string
+          p_period_start: string
+          p_status?: Database["public"]["Enums"]["occurrence_status"]
+        }
+        Returns: string
+      }
       create_occurrence_rectification: {
         Args: { p_occurrence_id: string; p_reason: string }
         Returns: string
@@ -5181,6 +5226,10 @@ export type Database = {
         Args: { p_normalized_filename: string; p_original_filename: string }
         Returns: unknown
       }
+      domains_with_permission: {
+        Args: { p_permission: string }
+        Returns: string[]
+      }
       effective_principals: { Args: never; Returns: string[] }
       ensure_month_partition: {
         Args: { base_table: string; month_start: string }
@@ -5195,6 +5244,16 @@ export type Database = {
           p_to_status: Database["public"]["Enums"]["occurrence_status"]
         }
         Returns: Json
+      }
+      finish_job_run: {
+        Args: {
+          p_details?: Json
+          p_errors: number
+          p_processed: number
+          p_run_id: number
+          p_status: string
+        }
+        Returns: undefined
       }
       global_search: {
         Args: { p_limit?: number; p_query: string }
@@ -5398,7 +5457,10 @@ export type Database = {
         Args: { p_document_id: string; p_reason: string }
         Returns: boolean
       }
+      start_job_run: { Args: { p_job_name: string }; Returns: number }
       storage_path_segment: { Args: { p_value: string }; Returns: string }
+      try_lock_job: { Args: { p_job_name: string }; Returns: boolean }
+      unlock_job: { Args: { p_job_name: string }; Returns: boolean }
       validation_levels_required: {
         Args: { p_occurrence_id: string }
         Returns: number

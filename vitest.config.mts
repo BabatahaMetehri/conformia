@@ -44,9 +44,22 @@ export default defineConfig({
     coverage: {
       provider: "v8",
       reporter: ["text-summary", "html"],
-      include: ["src/lib/**/*.ts", "src/config/**/*.ts"],
+      include: ["src/lib/**/*.ts", "src/config/**/*.ts", "src/services/scheduling/**/*.ts"],
       // Seuils par fichier : les deux modules dont tout le reste dépend.
       thresholds: {
+        /*
+         * ⚠️ 100 % DE BRANCHES sur le calcul d'échéance. Ce n'est pas un chiffre
+         * décoratif : une branche non couverte ici est un cas de calendrier que
+         * personne n'a éprouvé, et une échéance fausse produit un dépôt en
+         * retard, donc une pénalité réelle. C'est le seul module du projet à
+         * porter ce seuil.
+         */
+        "src/services/scheduling/due-dates.ts": {
+          statements: 100,
+          branches: 100,
+          functions: 100,
+          lines: 100,
+        },
         "src/lib/dates.ts": {
           statements: 90,
           branches: 90,

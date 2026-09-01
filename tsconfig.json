@@ -37,5 +37,11 @@
     "*.config.ts",
     "*.mts"
   ],
-  "exclude": ["node_modules", ".next"]
+  /*
+   * ⚠️ `supabase/functions` est du code DENO, pas du Next.js : il a son propre
+   * runtime, ses propres globales (`Deno.serve`) et ses propres imports par URL.
+   * L'inclure dans ce programme TypeScript ferait échouer le typecheck sur des
+   * symboles qui existent réellement — à l'exécution, ailleurs.
+   */
+  "exclude": ["node_modules", ".next", "supabase/functions"]
 }

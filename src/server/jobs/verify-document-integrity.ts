@@ -25,6 +25,10 @@
 
 import { randomUUID } from "node:crypto";
 
+// ⚠️ EN PREMIER, avant le client de service : ce module pose le marqueur
+// que la garde d'emplacement attend (cf. admin-guard.ts).
+import "@/server/jobs/_job-context";
+
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 import { sha256Hex } from "@/lib/files";
 import { sampleSize } from "@/lib/integrity-sampling";
