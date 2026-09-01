@@ -110,3 +110,101 @@ export async function createSignedUrl(
   if (error !== null) return err(AppError.storageFailed("create-signed-url", { cause: error }));
   return ok(data.signedUrl);
 }
+
+// ─── Contexte de dépôt ───────────────────────────────────────────────────────
+
+export interface DepositContext {
+  readonly entityCode: string;
+  readonly domainCode: string;
+  readonly obligationCode: string;
+  readonly periodKey: string;
+  readonly isLocked: boolean;
+  readonly bytesAlreadyStored: number;
+}
+
+/**
+ * Éléments nécessaires à la construction du chemin de stockage.
+ *
+ * ⚠️ Tous viennent de la BASE, aucun du client : le chemin d'un objet ne doit
+ * jamais dépendre d'une valeur que le navigateur a pu choisir.
+ */
+export async function getDepositContext(occurrenceId: string): Promise<Result<DepositContext>> {
+  const supabase = await createSupabaseServerClient();
+
+  const { data, error } = await supabase
+    .from("obligation_occurrences")
+    .select(
+      "id, period_key, is_locked, entities(code), obligation_types!inner(code, domains(code))",
+    )
+    .eq("id", occurrenceId)
+    .is("deleted_at", null)
+    .maybeSingle();
+
+  if (error !== null) return err(mapPostgrestError(error));
+  if (data === null) return err(AppError.notFound("occurrence", occurrenceId));
+
+  const stored = await sumStoredBytes(occurrenceId);
+  if (!stored.ok) return stored;
+
+  return ok({
+    entityCode: data.entities.code,
+    domainCode: data.obligation_types.domains?.code ?? "domaine",
+    obligationCode: data.obligation_types.code,
+    periodKey: data.period_key,
+    isLocked: data.is_locked,
+    bytesAlreadyStored: stored.value,
+  });
+}
+
+/** Volume déjà stocké sur le dossier — borne MAX_OCCURRENCE_TOTAL_MB. */
+async function sumStoredBytes(occurrenceId: string): Promise<Result<number>> {
+  const supabase = await createSupabaseServerClient();
+
+  const { data, error } = await supabase
+    .from("documents")
+    .select("size_bytes")
+    .eq("occurrence_id", occurrenceId)
+    .is("deleted_at", null);
+
+  if (error !== null) return err(mapPostgrestError(error));
+  return ok(data.reduce((total, row) => total + row.size_bytes, 0));
+}
+
+/**
+ * Version suivante pour une pièce attendue.
+ *
+ * On ne remplace jamais un fichier en place : la « nouvelle version » est un
+ * nouvel objet qui pointe vers l'ancien. Le numéro se déduit donc de ce qui
+ * existe déjà, pièces retirées comprises — repartir à v1 après une suppression
+ * ferait réapparaître un nom déjà utilisé.
+ */
+export async function getSupersedeTarget(
+  occurrenceId: string,
+  checklistItemId: string | null,
+): Promise<Result<{ readonly version: number; readonly supersedesId: string | null }>> {
+  const supabase = await createSupabaseServerClient();
+
+  const query = supabase
+    .from("documents")
+    .select("id, version, deleted_at")
+    .eq("occurrence_id", occurrenceId)
+    .order("version", { ascending: false })
+    .limit(1);
+
+  const { data, error } =
+    checklistItemId === null
+      ? await query.is("checklist_item_id", null)
+      : await query.eq("checklist_item_id", checklistItemId);
+
+  if (error !== null) return err(mapPostgrestError(error));
+
+  const previous = data.at(0);
+  if (previous === undefined) return ok({ version: 1, supersedesId: null });
+
+  return ok({
+    version: previous.version + 1,
+    // Une pièce retirée ne se « remplace » pas : la chaîne de version repart sans
+    // pointer vers elle, mais sans réutiliser son numéro.
+    supersedesId: previous.deleted_at === null ? previous.id : null,
+  });
+}

@@ -180,8 +180,18 @@ export const RTL_LOCALES: readonly Locale[] = ["ar"];
 
 export type TextDirection = "ltr" | "rtl";
 
-/** Aucun bucket public : tout passe par des URL signées de courte durée. */
-export const STORAGE_BUCKET_DOCUMENTS = "documents";
+/**
+ * Bucket des pièces justificatives.
+ *
+ * ⚠️ La valeur DOIT correspondre au bucket créé en 0003 et visé par les politiques
+ * de `storage.objects`. Elle valait « documents » alors que le bucket s'appelle
+ * « compliance-documents » : aucun dépôt n'aurait abouti. L'écart n'a été révélé
+ * qu'au premier vrai dépôt — rien n'y touchait avant. Un test d'intégration
+ * compare désormais cette constante au catalogue.
+ *
+ * Aucun bucket public : tout passe par des URL signées de courte durée.
+ */
+export const STORAGE_BUCKET_DOCUMENTS = "compliance-documents";
 
 // ─── Délais et seuils (décisions arrêtées) ───────────────────────────────────
 

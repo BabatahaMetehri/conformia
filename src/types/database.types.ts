@@ -105,60 +105,6 @@ export type Database = {
         }
         Relationships: []
       }
-      audit_log_2026m07: {
-        Row: {
-          action: string
-          actor_email: string | null
-          actor_id: string | null
-          after: Json | null
-          before: Json | null
-          changed_fields: string[] | null
-          entity_id: string | null
-          entity_id_ref: string | null
-          entity_table: string
-          id: number
-          ip_address: unknown
-          occurred_at: string
-          on_behalf_of_id: string | null
-          request_id: string | null
-          user_agent: string | null
-        }
-        Insert: {
-          action: string
-          actor_email?: string | null
-          actor_id?: string | null
-          after?: Json | null
-          before?: Json | null
-          changed_fields?: string[] | null
-          entity_id?: string | null
-          entity_id_ref?: string | null
-          entity_table: string
-          id?: number
-          ip_address?: unknown
-          occurred_at?: string
-          on_behalf_of_id?: string | null
-          request_id?: string | null
-          user_agent?: string | null
-        }
-        Update: {
-          action?: string
-          actor_email?: string | null
-          actor_id?: string | null
-          after?: Json | null
-          before?: Json | null
-          changed_fields?: string[] | null
-          entity_id?: string | null
-          entity_id_ref?: string | null
-          entity_table?: string
-          id?: number
-          ip_address?: unknown
-          occurred_at?: string
-          on_behalf_of_id?: string | null
-          request_id?: string | null
-          user_agent?: string | null
-        }
-        Relationships: []
-      }
       audit_log_2026m08: {
         Row: {
           action: string
@@ -1563,6 +1509,60 @@ export type Database = {
         }
         Relationships: []
       }
+      audit_log_2028m10: {
+        Row: {
+          action: string
+          actor_email: string | null
+          actor_id: string | null
+          after: Json | null
+          before: Json | null
+          changed_fields: string[] | null
+          entity_id: string | null
+          entity_id_ref: string | null
+          entity_table: string
+          id: number
+          ip_address: unknown
+          occurred_at: string
+          on_behalf_of_id: string | null
+          request_id: string | null
+          user_agent: string | null
+        }
+        Insert: {
+          action: string
+          actor_email?: string | null
+          actor_id?: string | null
+          after?: Json | null
+          before?: Json | null
+          changed_fields?: string[] | null
+          entity_id?: string | null
+          entity_id_ref?: string | null
+          entity_table: string
+          id?: number
+          ip_address?: unknown
+          occurred_at?: string
+          on_behalf_of_id?: string | null
+          request_id?: string | null
+          user_agent?: string | null
+        }
+        Update: {
+          action?: string
+          actor_email?: string | null
+          actor_id?: string | null
+          after?: Json | null
+          before?: Json | null
+          changed_fields?: string[] | null
+          entity_id?: string | null
+          entity_id_ref?: string | null
+          entity_table?: string
+          id?: number
+          ip_address?: unknown
+          occurred_at?: string
+          on_behalf_of_id?: string | null
+          request_id?: string | null
+          user_agent?: string | null
+        }
+        Relationships: []
+      }
       audit_redacted_columns: {
         Row: {
           column_name: string
@@ -1668,36 +1668,6 @@ export type Database = {
         ]
       }
       document_access_log: {
-        Row: {
-          action: string
-          actor_id: string | null
-          created_at: string
-          document_id: string
-          id: number
-          ip_address: unknown
-          user_agent: string | null
-        }
-        Insert: {
-          action: string
-          actor_id?: string | null
-          created_at?: string
-          document_id: string
-          id?: number
-          ip_address?: unknown
-          user_agent?: string | null
-        }
-        Update: {
-          action?: string
-          actor_id?: string | null
-          created_at?: string
-          document_id?: string
-          id?: number
-          ip_address?: unknown
-          user_agent?: string | null
-        }
-        Relationships: []
-      }
-      document_access_log_2026m07: {
         Row: {
           action: string
           actor_id: string | null
@@ -2507,6 +2477,36 @@ export type Database = {
         }
         Relationships: []
       }
+      document_access_log_2028m10: {
+        Row: {
+          action: string
+          actor_id: string | null
+          created_at: string
+          document_id: string
+          id: number
+          ip_address: unknown
+          user_agent: string | null
+        }
+        Insert: {
+          action: string
+          actor_id?: string | null
+          created_at?: string
+          document_id: string
+          id?: number
+          ip_address?: unknown
+          user_agent?: string | null
+        }
+        Update: {
+          action?: string
+          actor_id?: string | null
+          created_at?: string
+          document_id?: string
+          id?: number
+          ip_address?: unknown
+          user_agent?: string | null
+        }
+        Relationships: []
+      }
       documents: {
         Row: {
           bucket: string
@@ -2730,6 +2730,9 @@ export type Database = {
           internal_due_date: string
           is_locked: boolean
           late_reason: string | null
+          late_reason_code:
+            | Database["public"]["Enums"]["late_reason_code"]
+            | null
           legal_due_date: string
           locked_at: string | null
           locked_by: string | null
@@ -2766,6 +2769,9 @@ export type Database = {
           internal_due_date: string
           is_locked?: boolean
           late_reason?: string | null
+          late_reason_code?:
+            | Database["public"]["Enums"]["late_reason_code"]
+            | null
           legal_due_date: string
           locked_at?: string | null
           locked_by?: string | null
@@ -2802,6 +2808,9 @@ export type Database = {
           internal_due_date?: string
           is_locked?: boolean
           late_reason?: string | null
+          late_reason_code?:
+            | Database["public"]["Enums"]["late_reason_code"]
+            | null
           legal_due_date?: string
           locked_at?: string | null
           locked_by?: string | null
@@ -4034,9 +4043,29 @@ export type Database = {
       }
       app_actor_id: { Args: never; Returns: string }
       app_transition_reason: { Args: never; Returns: string }
+      apply_occurrence_transition: {
+        Args: {
+          p_expected_version: number
+          p_late_reason?: string
+          p_late_reason_code?: Database["public"]["Enums"]["late_reason_code"]
+          p_occurrence_id: string
+          p_reason?: string
+          p_reference_number?: string
+          p_to_status: Database["public"]["Enums"]["occurrence_status"]
+        }
+        Returns: Json
+      }
+      can_see_occurrence: {
+        Args: { p_occurrence_id: string }
+        Returns: boolean
+      }
       can_validate_occurrence: {
         Args: { occurrence_id: string }
         Returns: boolean
+      }
+      create_occurrence_rectification: {
+        Args: { p_occurrence_id: string; p_reason: string }
+        Returns: string
       }
       create_upcoming_partitions: {
         Args: { months_ahead?: number }
@@ -4121,6 +4150,21 @@ export type Database = {
         }
         Returns: unknown
       }
+      occurrence_dependency_state: {
+        Args: { p_occurrence_id: string }
+        Returns: {
+          dependency_occurrence_id: string
+          obligation_code: string
+          obligation_name: string
+          obligation_type_id: string
+          period_key: string
+          status: Database["public"]["Enums"]["occurrence_status"]
+        }[]
+      }
+      occurrence_missing_items: {
+        Args: { p_occurrence_id: string }
+        Returns: string[]
+      }
       occurrence_search_vector: {
         Args: {
           p_period_key: string
@@ -4168,6 +4212,18 @@ export type Database = {
       refresh_occurrence_stats: { Args: never; Returns: undefined }
       search_tsquery: { Args: { p_text: string }; Returns: unknown }
       searchable_text: { Args: { p_text: string }; Returns: string }
+      self_validation_blocked: {
+        Args: {
+          p_actor_id: string
+          p_occurrence_type_id: string
+          p_owner_id: string
+        }
+        Returns: boolean
+      }
+      self_validation_blocked_for: {
+        Args: { p_occurrence_id: string }
+        Returns: boolean
+      }
       session_gates: { Args: { p_ip?: unknown }; Returns: Json }
       setting_bool: {
         Args: { fallback: boolean; setting_key: string }
@@ -4177,9 +4233,20 @@ export type Database = {
         Args: { fallback: number; setting_key: string }
         Returns: number
       }
+      soft_delete_comment: { Args: { p_comment_id: string }; Returns: boolean }
+      soft_delete_document: {
+        Args: { p_document_id: string; p_reason: string }
+        Returns: boolean
+      }
     }
     Enums: {
       criticality: "LOW" | "MEDIUM" | "HIGH" | "CRITICAL"
+      late_reason_code:
+        | "MISSING_DOCUMENT"
+        | "VALIDATOR_UNAVAILABLE"
+        | "LATE_EXTERNAL_INFORMATION"
+        | "OVERSIGHT"
+        | "OTHER"
       occurrence_status:
         | "TODO"
         | "IN_PROGRESS"
@@ -4325,6 +4392,13 @@ export const Constants = {
   public: {
     Enums: {
       criticality: ["LOW", "MEDIUM", "HIGH", "CRITICAL"],
+      late_reason_code: [
+        "MISSING_DOCUMENT",
+        "VALIDATOR_UNAVAILABLE",
+        "LATE_EXTERNAL_INFORMATION",
+        "OVERSIGHT",
+        "OTHER",
+      ],
       occurrence_status: [
         "TODO",
         "IN_PROGRESS",
