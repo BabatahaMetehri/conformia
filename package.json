@@ -17,7 +17,7 @@
     "db:migrate": "supabase migration up",
     "db:types": "supabase gen types typescript --local --schema public > src/types/database.types.ts.tmp && node -e \"const fs=require('fs');const f='src/types/database.types.ts.tmp';if(fs.statSync(f).size<1000){fs.unlinkSync(f);console.error('Generation des types vide ou tronquee : fichier conserve.');process.exit(1)}fs.renameSync(f,'src/types/database.types.ts')\"",
     "db:reset": "supabase db reset",
-    "db:seed": "supabase db execute --file supabase/seed/seed.sql",
+    "db:seed": "node scripts/seed.mjs",
     "prepare": "husky"
   },
   "lint-staged": {

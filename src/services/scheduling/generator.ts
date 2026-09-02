@@ -36,6 +36,7 @@ import { err, ok, type Result } from "@/lib/result";
 import {
   computeDueDate,
   computePeriods,
+  isEventDrivenAnchor,
   resolveLeadDays,
   validateDueRule,
   type DueRule,
@@ -185,6 +186,26 @@ async function generateForObligation(
       failures: [{ periodKey: "*", reason: "INVALID_DUE_RULE" }],
     });
   }
+
+  /*
+   * ⚠️ ANCRE PORTÉE PAR L'OCCURRENCE : rien à générer, et ce n'est PAS un échec.
+   *
+   * `EXPIRY_DATE` et `EVENT_DATE` se calculent depuis une date que porte
+   * l'occurrence — l'expiration du titre, la date du fait. Au moment de la
+   * génération, cette date n'existe pas encore : l'occurrence est créée à la
+   * main, avec elle.
+   *
+   * Constaté sur le référentiel réel : ASSUR et ATT-FISC sont déclarées ANNUAL
+   * tout en s'ancrant sur une expiration. Le moteur produisait alors une erreur
+   * par période, soit six échecs à chaque passe, et la tâche de nuit rapportait
+   * PARTIAL indéfiniment. Un statut d'alerte permanent apprend à ignorer les
+   * alertes : c'est le pire résultat possible.
+   *
+   * L'impossibilité de générer est ici STRUCTURELLE, pas accidentelle. On la
+   * traite comme telle — zéro occurrence, zéro échec — quelle que soit la
+   * périodicité déclarée.
+   */
+  if (isEventDrivenAnchor(rule.value.anchor)) return ok(empty);
 
   const window = generationWindow(
     obligation,

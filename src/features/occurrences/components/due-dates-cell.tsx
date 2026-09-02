@@ -91,9 +91,18 @@ export function DocumentsCell({
         "inline-flex items-center gap-1.5 text-sm",
         complete ? "text-status-validated" : "text-text-secondary",
       )}
-      // Le ratio brut « 2/5 » est illisible à voix haute : on l'explicite.
-      aria-label={t("documentsProgress", { provided, required })}
     >
+      {/*
+       * ⚠️ Texte MASQUÉ plutôt qu'`aria-label`. Le ratio brut « 2/5 » est
+       * illisible à voix haute et doit être explicité — mais `aria-label` est
+       * INTERDIT sur un élément générique comme `<span>` : axe le signale en
+       * `aria-prohibited-attr`, et les lecteurs d'écran l'ignorent purement et
+       * simplement. L'intention était bonne, le support ne l'était pas.
+       *
+       * Le défaut n'est apparu qu'une fois la liste peuplée par le référentiel
+       * réel : sur un écran vide, la cellule n'existait pas.
+       */}
+      <span className="sr-only">{t("documentsProgress", { provided, required })}</span>
       <span aria-hidden="true" data-numeric>
         {provided}/{required}
       </span>

@@ -62,7 +62,26 @@ schema_paths = []
 enabled = true
 # Specifies an ordered list of seed files to load during db reset.
 # Supports glob patterns relative to supabase directory: "./seeds/*.sql"
-sql_paths = ["./seed.sql"]
+# ⚠️ VOLONTAIREMENT VIDE. Deux constats, une décision.
+#
+# Constat 1 : le fichier "./seed.sql" référencé jusqu'ici n'a JAMAIS existé.
+# `db reset` ne semait donc rien, en silence, depuis le début du projet.
+#
+# Constat 2 : brancher ici le référentiel métier (./seed/*.sql) le charge à
+# CHAQUE `db reset`, y compris avant la suite d'intégration. Six tests de
+# cloisonnement RLS ont aussitôt échoué : ils affirment des comptes exacts
+# (« RH voit 1 occurrence ») et des résultats de recherche exacts, ce qui n'est
+# vrai que sur une base vide.
+#
+# Décision : la base de test garde une ligne de base MAÎTRISÉE. Assouplir des
+# assertions de cloisonnement pour accommoder des données de démonstration
+# reviendrait à affaiblir précisément les tests qui gardent la confidentialité —
+# le mauvais côté de l'arbitrage.
+#
+# Le référentiel s'applique donc DÉLIBÉRÉMENT : `npm run db:seed`. Il est
+# idempotent, et `tests/integration/referentiel.test.ts` l'applique lui-même
+# avant de le vérifier — ce qui éprouve sa ré-exécutabilité au passage.
+sql_paths = []
 
 [db.network_restrictions]
 # Enable management of network restrictions.
