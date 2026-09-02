@@ -25,6 +25,7 @@ import { getOccurrenceDetail, transitionOccurrence } from "@/services/occurrence
 import { createDelegation, revoke } from "@/services/workflow/delegations";
 import { isBulkValidatable } from "@/services/workflow/queue";
 import { getValidationQueue } from "@/services/workflow/queue";
+import { uuidSchema } from "@/lib/schemas";
 
 const QUEUE_PATH = "/[locale]/(app)/validation";
 const DETAIL_PATH = "/[locale]/(app)/echeancier/[occurrenceId]";
@@ -38,7 +39,7 @@ function invalid(): { readonly status: "error"; readonly error: ReturnType<typeo
 }
 
 const DecideSchema = z.object({
-  occurrenceId: z.uuid(),
+  occurrenceId: uuidSchema,
   toStatus: z.enum(OCCURRENCE_STATUSES),
   expectedVersion: z.number().int().nonnegative(),
   reason: z.string().trim().max(2000).nullable(),
@@ -67,7 +68,7 @@ export async function decideAction(input: unknown): Promise<ValidationOutcome> {
 }
 
 const BulkSchema = z.object({
-  occurrenceIds: z.array(z.uuid()).min(1).max(50),
+  occurrenceIds: z.array(uuidSchema).min(1).max(50),
 });
 
 /**
@@ -130,9 +131,9 @@ export async function bulkValidateAction(input: unknown): Promise<BulkOutcome> {
 }
 
 const CreateDelegationSchema = z.object({
-  delegatorId: z.uuid(),
-  delegateId: z.uuid(),
-  domainId: z.uuid().nullable(),
+  delegatorId: uuidSchema,
+  delegateId: uuidSchema,
+  domainId: uuidSchema.nullable(),
   startsAt: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
   endsAt: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
   reason: z.string().trim().min(10).max(2000),
@@ -150,7 +151,7 @@ export async function createDelegationAction(input: unknown): Promise<Delegation
 }
 
 const RevokeSchema = z.object({
-  delegationId: z.uuid(),
+  delegationId: uuidSchema,
   reason: z.string().trim().min(10).max(2000),
 });
 
@@ -165,7 +166,7 @@ export async function revokeDelegationAction(input: unknown): Promise<PlainWorkf
   return { status: "success", data: result.value };
 }
 
-const ReviewSchema = z.object({ occurrenceId: z.uuid() });
+const ReviewSchema = z.object({ occurrenceId: uuidSchema });
 
 /**
  * Charge de quoi contrôler un dossier SANS quitter la file.

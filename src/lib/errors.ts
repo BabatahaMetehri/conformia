@@ -200,7 +200,100 @@ export function toClientError(error: AppError): ClientError {
   if (error.details === undefined || OPAQUE_DETAIL_CODES.has(error.code)) {
     return base;
   }
-  return { ...base, details: error.details };
+  return { ...base, details: scrubDetails(error.details) };
+}
+
+/**
+ * Motifs qui n'ont RIEN à faire dans une réponse.
+ *
+ * ⚠️ Le commentaire ci-dessus disait « ne placez jamais d'information
+ * d'infrastructure dans `details` ». C'était une consigne, donc quelque chose
+ * qu'on finit par oublier un vendredi. Ceci en fait une garantie.
+ *
+ * Les trois familles visées se reconnaissent sans ambiguïté :
+ *  • une trace de pile — `at fn (/chemin/fichier.ts:12:3)` ;
+ *  • un fragment SQL — un verbe suivi d'une clause ;
+ *  • un chemin serveur — absolu POSIX, lettre de lecteur Windows, node_modules.
+ */
+const LEAKY_PATTERNS: readonly RegExp[] = [
+  // Trace de pile : « at fn (/chemin/fichier.ts:12:3) ».
+  /\bat\s+\S*\s*\(?[^\s)]+:\d+:\d+\)?/i,
+  // Fragment SQL : un verbe suivi de sa clause.
+  /\b(select|insert\s+into|update|delete\s+from|alter\s+table|create\s+table)\b[\s\S]*\b(from|into|set|where|values)\b/i,
+  // Chemin serveur POSIX : racine système courante.
+  /(^|[\s\"'`(])\/(?:home|var|usr|srv|etc|root|tmp)\//,
+  // Nom d'objet Postgres : schéma qualifié, ou catalogue système.
+  /\bpg_[a-z_]{2,}\b|\bpublic\.[a-z_]{2,}\b/i,
+];
+
+/**
+ * Marqueurs testés par simple inclusion.
+ *
+ * ⚠️ La barre oblique INVERSE est construite par `String.fromCharCode(92)` et
+ * non écrite littéralement. Ce fichier a traversé plusieurs réécritures
+ * automatiques pendant lesquelles une classe de caractères `[<barre>/]` a perdu
+ * sa barre à chaque passage — le motif compilait toujours, et ne détectait plus
+ * les chemins Windows. Un test l'a rattrapé ; la construction ci-dessous
+ * l'empêche de recommencer.
+ */
+const BACKSLASH = String.fromCharCode(92);
+const LEAKY_SUBSTRINGS: readonly string[] = [`node_modules${BACKSLASH}`, "node_modules/"];
+
+/** Chemin Windows : une lettre de lecteur suivie d'un séparateur. */
+const WINDOWS_PATH = new RegExp(`[A-Za-z]:[${BACKSLASH}${BACKSLASH}/]`);
+
+/** Ce qui remplace une valeur suspecte. Explicite : on veut le voir en test. */
+export const SCRUBBED = "[omis]";
+
+function looksLeaky(value: string): boolean {
+  if (WINDOWS_PATH.test(value)) return true;
+  if (LEAKY_SUBSTRINGS.some((marker) => value.includes(marker))) return true;
+  return LEAKY_PATTERNS.some((pattern) => pattern.test(value));
+}
+
+/**
+ * Retire d'un objet de détail tout ce qui ressemble à de l'infrastructure.
+ *
+ * ⚠️ Récursif et borné en profondeur : un détail imbriqué à cinq niveaux est
+ * déjà anormal, et une structure cyclique ferait boucler la sérialisation avant
+ * même d'atteindre le client.
+ */
+function scrubValue(value: unknown, depth: number): unknown {
+  if (typeof value === "string") return looksLeaky(value) ? SCRUBBED : value;
+  if (typeof value === "object" && value !== null) {
+    return scrubDetails(value as ErrorDetails, depth + 1);
+  }
+  return value;
+}
+
+export function scrubDetails(details: ErrorDetails, depth = 0): ErrorDetails {
+  if (depth > 4) return {};
+
+  const clean: Record<string, unknown> = {};
+
+  for (const [key, value] of Object.entries(details)) {
+    if (typeof value === "string") {
+      clean[key] = looksLeaky(value) ? SCRUBBED : value;
+      continue;
+    }
+
+    if (Array.isArray(value)) {
+      // `unknown[]` explicite : `Array.isArray` ne rétrécit qu'en `any[]`, et
+      // la valeur ressortirait alors non typée du `map`.
+      const items: unknown[] = value;
+      clean[key] = items.map((item) => scrubValue(item, depth));
+      continue;
+    }
+
+    if (typeof value === "object" && value !== null) {
+      clean[key] = scrubDetails(value as ErrorDetails, depth + 1);
+      continue;
+    }
+
+    clean[key] = value;
+  }
+
+  return clean;
 }
 
 // ─── Traduction des erreurs Postgres / PostgREST ─────────────────────────────

@@ -14,6 +14,7 @@ import { z } from "zod";
 
 import { Criticality, DocumentKind, Periodicity } from "@/config/constants";
 import { DueRuleSchema } from "@/services/scheduling/due-rule";
+import { uuidSchema } from "@/lib/schemas";
 
 /** Longueurs alignées sur ce qu'un écran dense peut afficher sans tronquer. */
 const CODE_MAX = 40;
@@ -28,7 +29,7 @@ const CODE_PATTERN = /^[A-Z0-9][A-Z0-9_-]*$/;
 
 export const RequiredDocumentSchema = z.object({
   /** Absent à la création, présent à la mise à jour d'une pièce existante. */
-  id: z.uuid().optional(),
+  id: uuidSchema.optional(),
   label: z.string().trim().min(1).max(LABEL_MAX),
   description: z.string().trim().max(1000).nullable().default(null),
   is_mandatory: z.boolean().default(true),
@@ -55,8 +56,8 @@ export const ObligationTypeBaseSchema = z.object({
     .max(CODE_MAX)
     .regex(CODE_PATTERN, { message: "validation.codeFormat" }),
   name: z.string().trim().min(3).max(NAME_MAX),
-  domain_id: z.uuid().nullable().default(null),
-  authority_id: z.uuid().nullable().default(null),
+  domain_id: uuidSchema.nullable().default(null),
+  authority_id: uuidSchema.nullable().default(null),
 
   periodicity: z.enum(Periodicity),
   due_rule: DueRuleSchema,
@@ -66,8 +67,8 @@ export const ObligationTypeBaseSchema = z.object({
   legal_basis: z.string().trim().max(500).nullable().default(null),
   portal_url: z.url().max(500).nullable().default(null),
 
-  default_owner_id: z.uuid().nullable().default(null),
-  default_validator_id: z.uuid().nullable().default(null),
+  default_owner_id: uuidSchema.nullable().default(null),
+  default_validator_id: uuidSchema.nullable().default(null),
 
   criticality: z.enum(Criticality),
   requires_validation: z.boolean().default(true),
@@ -75,7 +76,7 @@ export const ObligationTypeBaseSchema = z.object({
   requires_proof: z.boolean().default(true),
   allow_self_validation: z.boolean().default(false),
 
-  depends_on_obligation_type_id: z.uuid().nullable().default(null),
+  depends_on_obligation_type_id: uuidSchema.nullable().default(null),
 
   generation_horizon_months: z.int().min(1).max(60).default(18),
   retention_years: z.int().min(1).max(50).default(10),
@@ -129,7 +130,7 @@ function refineObligation(
 export const CreateObligationTypeSchema = ObligationTypeBaseSchema.superRefine(refineObligation);
 
 export const UpdateObligationTypeSchema = ObligationTypeBaseSchema.extend({
-  id: z.uuid(),
+  id: uuidSchema,
   /**
    * Version lue à l'ouverture du formulaire. Le service refuse l'écriture si la
    * ligne a bougé depuis : deux personnes qui éditent la même obligation ne
@@ -147,8 +148,8 @@ export type UpdateObligationTypeValues = z.infer<typeof UpdateObligationTypeSche
 
 export const ObligationListFiltersSchema = z.object({
   search: z.string().trim().max(120).optional(),
-  domain_id: z.uuid().optional(),
-  authority_id: z.uuid().optional(),
+  domain_id: uuidSchema.optional(),
+  authority_id: uuidSchema.optional(),
   periodicity: z.enum(Periodicity).optional(),
   criticality: z.enum(Criticality).optional(),
   /** Absent = les deux. La liste n'est jamais filtrée à l'insu de l'utilisateur. */
@@ -160,12 +161,12 @@ export type ObligationListFilters = z.infer<typeof ObligationListFiltersSchema>;
 // ─── Actions de cycle de vie ─────────────────────────────────────────────────
 
 export const ToggleActiveSchema = z.object({
-  id: z.uuid(),
+  id: uuidSchema,
   is_active: z.boolean(),
 });
 
 export const DuplicateObligationSchema = z.object({
-  id: z.uuid(),
+  id: uuidSchema,
   code: z
     .string()
     .trim()
@@ -176,7 +177,7 @@ export const DuplicateObligationSchema = z.object({
 });
 
 export const RecalculationSchema = z.object({
-  id: z.uuid(),
+  id: uuidSchema,
   /** Confirmée explicitement par l'utilisateur, jamais déduite d'un défaut. */
   confirmed: z.literal(true),
 });

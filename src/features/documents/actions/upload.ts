@@ -27,6 +27,7 @@ import { toClientError } from "@/lib/errors";
 import { requirePermission } from "@/services/auth/context";
 import { confirmUpload, removeDocument, requestUpload } from "@/services/documents/upload";
 import { acknowledgeIntegrityAlert } from "@/services/documents/integrity";
+import { uuidSchema } from "@/lib/schemas";
 
 const OCCURRENCE_DETAIL_PATH = "/[locale]/(app)/echeancier/[occurrenceId]";
 const DOCUMENTS_PATH = "/[locale]/(app)/documents";
@@ -39,8 +40,8 @@ function invalid(): { readonly status: "error"; readonly error: ReturnType<typeo
 }
 
 const RequestSchema = z.object({
-  occurrenceId: z.uuid(),
-  checklistItemId: z.uuid().nullable(),
+  occurrenceId: uuidSchema,
+  checklistItemId: uuidSchema.nullable(),
   filename: z.string().trim().min(1).max(400),
   declaredMimeType: z.string().trim().min(1).max(200),
   sizeBytes: z.number().int().positive(),
@@ -59,7 +60,7 @@ export async function requestUploadAction(input: unknown): Promise<TicketActionO
 }
 
 const ConfirmSchema = z.object({
-  ticketId: z.uuid(),
+  ticketId: uuidSchema,
   // 64 hexadécimaux, sans exception : la base applique la même contrainte, et un
   // format libre y produirait une violation de contrainte plutôt qu'un refus lisible.
   sha256: z.string().regex(/^[0-9a-fA-F]{64}$/),
@@ -81,7 +82,7 @@ export async function confirmUploadAction(input: unknown): Promise<ConfirmAction
 }
 
 const RemoveSchema = z.object({
-  documentId: z.uuid(),
+  documentId: uuidSchema,
   reason: z.string().trim().min(10).max(2000),
 });
 

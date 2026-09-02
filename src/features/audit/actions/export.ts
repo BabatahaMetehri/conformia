@@ -15,11 +15,12 @@ import { z } from "zod";
 import type { CsvOutcome } from "@/features/audit/actions/types";
 import { toClientError } from "@/lib/errors";
 import { AUDIT_EXPORT_MAX_ROWS, exportAuditCsv } from "@/services/admin";
+import { uuidSchema } from "@/lib/schemas";
 
 const ExportSchema = z.object({
   from: z.string().optional(),
   to: z.string().optional(),
-  actorId: z.uuid().optional(),
+  actorId: uuidSchema.optional(),
   action: z.string().max(40).optional(),
   entityTable: z.string().max(80).optional(),
   ipAddress: z.string().max(60).optional(),

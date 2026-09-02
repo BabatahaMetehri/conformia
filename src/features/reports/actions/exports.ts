@@ -24,14 +24,15 @@ import {
   type TabularLabels,
 } from "@/services/export";
 import type { DownloadOutcome, HistoryOutcome, PeriodOutcome } from "./types";
+import { uuidSchema } from "@/lib/schemas";
 
 const ISO_DATE = /^\d{4}-\d{2}-\d{2}$/;
 
 const filterSchema = z.object({
   from: z.string().regex(ISO_DATE).optional(),
   to: z.string().regex(ISO_DATE).optional(),
-  domainId: z.uuid().optional(),
-  authorityId: z.uuid().optional(),
+  domainId: uuidSchema.optional(),
+  authorityId: uuidSchema.optional(),
 });
 
 const tabularSchema = filterSchema.extend({

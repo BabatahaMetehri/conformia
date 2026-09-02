@@ -25,6 +25,7 @@ import type {
   ReassignOutcome,
   RememberOutcome,
 } from "@/features/occurrences/actions/types";
+import { uuidSchema } from "@/lib/schemas";
 
 const LIST_PATH = "/[locale]/(app)/echeancier";
 
@@ -35,8 +36,8 @@ function toOutcome<T>(result: Result<T>): ActionOutcome<T> {
 }
 
 const ReassignSchema = z.object({
-  occurrenceIds: z.array(z.uuid()).min(1).max(500),
-  ownerId: z.uuid(),
+  occurrenceIds: z.array(uuidSchema).min(1).max(500),
+  ownerId: uuidSchema,
 });
 
 export async function reassignOccurrencesAction(input: unknown): Promise<ReassignOutcome> {

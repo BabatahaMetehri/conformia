@@ -18,6 +18,7 @@ import {
 } from "@/components/ui/select";
 import { CRITICALITIES, OCCURRENCE_STATUSES } from "@/config/constants";
 import { Link, usePathname, useRouter } from "@/i18n/navigation";
+import { useHydrated } from "@/hooks/use-hydrated";
 import { cn } from "@/lib/utils";
 
 /**
@@ -53,6 +54,12 @@ export function OccurrenceFilterBar({
   const pathname = usePathname();
   const params = useSearchParams();
   const [pending, startTransition] = useTransition();
+  /*
+   * ⚠️ Avant l'hydratation, ces contrôles ne répondent pas : leur gestionnaire
+   * n'est pas encore attaché. On les rend inertes plutôt que trompeurs.
+   */
+  const hydrated = useHydrated();
+  const busy = pending || !hydrated;
 
   function apply(changes: Record<string, string | null>): void {
     const next = new URLSearchParams(params.toString());
@@ -118,6 +125,7 @@ export function OccurrenceFilterBar({
         </div>
 
         <FilterSelect
+          disabled={busy}
           id="filter-domain"
           label={tOcc("domain")}
           allLabel={t("all")}
@@ -129,6 +137,7 @@ export function OccurrenceFilterBar({
         />
 
         <FilterSelect
+          disabled={busy}
           id="filter-authority"
           label={tOcc("authority")}
           allLabel={t("all")}
@@ -140,6 +149,7 @@ export function OccurrenceFilterBar({
         />
 
         <FilterSelect
+          disabled={busy}
           id="filter-owner"
           label={tOcc("owner")}
           allLabel={t("all")}
@@ -151,6 +161,7 @@ export function OccurrenceFilterBar({
         />
 
         <FilterSelect
+          disabled={busy}
           id="filter-criticality"
           label={tOcc("criticalityColumn")}
           allLabel={t("all")}
@@ -285,6 +296,7 @@ function FilterSelect({
   value,
   items,
   onChange,
+  disabled = false,
 }: {
   readonly id: string;
   readonly label: string;
@@ -292,12 +304,14 @@ function FilterSelect({
   readonly value: string | null;
   readonly items: readonly { readonly value: string; readonly label: string }[];
   readonly onChange: (value: string | null) => void;
+  readonly disabled?: boolean;
 }) {
   return (
     <div className="w-44 space-y-1.5">
       <Label htmlFor={id}>{label}</Label>
       <Select
         value={value ?? ALL}
+        disabled={disabled}
         onValueChange={(next) => {
           onChange(next === ALL ? null : next);
         }}

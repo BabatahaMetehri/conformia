@@ -13,6 +13,7 @@
 import { z } from "zod";
 
 import { Criticality, OCCURRENCE_STATUSES, OccurrenceStatus } from "@/config/constants";
+import { uuidSchema } from "@/lib/schemas";
 
 /** 50 lignes par page. Au-delà, le rendu du tableau devient perceptible. */
 export const OCCURRENCE_PAGE_SIZE = 50;
@@ -44,9 +45,9 @@ export const OccurrenceFiltersSchema = z.object({
   period: z.string().trim().max(20).optional(),
   /** Multiple : la file de travail se regarde rarement statut par statut. */
   status: csv(OCCURRENCE_STATUSES as readonly OccurrenceStatus[]),
-  domain: z.uuid().optional(),
-  authority: z.uuid().optional(),
-  owner: z.uuid().optional(),
+  domain: uuidSchema.optional(),
+  authority: uuidSchema.optional(),
+  owner: uuidSchema.optional(),
   criticality: z.enum(Criticality).optional(),
   /** Retard LÉGAL. L'alerte précoce a son propre filtre. */
   overdue: z.coerce.boolean().optional(),

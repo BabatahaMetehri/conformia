@@ -18,6 +18,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import { useHydrated } from "@/hooks/use-hydrated";
 import { cn } from "@/lib/utils";
 
 /**
@@ -50,6 +51,7 @@ export function DataTable<TData>({
   className,
 }: DataTableProps<TData>) {
   const t = useTranslations("common.table");
+  const hydrated = useHydrated();
 
   const table = useReactTable({
     data: data as TData[],
@@ -96,7 +98,17 @@ export function DataTable<TData>({
                       <button
                         type="button"
                         onClick={header.column.getToggleSortingHandler()}
-                        className="inline-flex items-center gap-1.5 rounded-sm hover:text-text-primary"
+                        /*
+                         * ⚠️ DÉSACTIVÉ TANT QUE REACT N'A PAS REPRIS LA MAIN.
+                         * Avant l'hydratation, ce bouton a son apparence finale
+                         * et son gestionnaire n'existe pas : le clic disparaît
+                         * en silence. Mieux vaut un contrôle visiblement inerte
+                         * pendant quelques centaines de millisecondes qu'un
+                         * contrôle qui ment sur sa disponibilité.
+                         */
+                        disabled={!hydrated}
+                        aria-disabled={!hydrated}
+                        className="inline-flex items-center gap-1.5 rounded-sm hover:text-text-primary disabled:cursor-wait"
                       >
                         {flexRender(header.column.columnDef.header, header.getContext())}
                         {direction === "asc" ? (

@@ -1219,7 +1219,37 @@
     "codeFormat": "Majuscules, chiffres, tiret et sous-tiret uniquement.",
     "effectiveRangeReversed": "La date de fin précède la date de début.",
     "validationLevelsWithoutValidation": "Plusieurs niveaux de validation exigent que la validation soit demandée.",
-    "duplicateRequiredDocument": "Deux pièces portent le même libellé."
+    "duplicateRequiredDocument": "Deux pièces portent le même libellé.",
+    "invalidValue": "Cette valeur n'est pas acceptée. Vérifiez la saisie.",
+    "invalidFormat": "Le format attendu n'est pas respecté.",
+    "invalidChoice": "Choisissez une valeur dans la liste proposée.",
+    "unexpectedField": "Ce champ n'est pas attendu ici.",
+    "tooShort": "{min} caractères minimum.",
+    "tooLong": "{max} caractères maximum.",
+    "numberExpected": "Saisissez un nombre.",
+    "integerExpected": "Saisissez un nombre entier, sans décimale.",
+    "numberTooSmall": "La valeur doit être supérieure ou égale à {min}.",
+    "numberTooLarge": "La valeur doit être inférieure ou égale à {max}.",
+    "uuid": "Cet identifiant n'a pas le format attendu. Revenez à la liste et rouvrez l'élément.",
+    "controlCharacters": "La saisie contient des caractères invisibles, souvent introduits par un copier-coller. Retapez le texte ou collez-le sans mise en forme.",
+    "reasonTooShort": "Le motif doit compter au moins 10 caractères. Indiquez ce qui s'est passé, en une phrase.",
+    "reasonTooLong": "Le motif ne peut pas dépasser 1000 caractères.",
+    "reasonNotMeaningful": "Ce motif ne sera compréhensible par personne. Écrivez une phrase qui explique la situation — elle sera relue lors d'un contrôle.",
+    "dateFormat": "Saisissez une date au format JJ/MM/AAAA.",
+    "dateInvalid": "Cette date n'existe pas. Vérifiez le jour et le mois.",
+    "dateOutOfRange": "Cette date sort de la plage attendue. Une échéance se situe entre {min} et {max}.",
+    "periodEndBeforeStart": "La fin de la période précède son début. Inversez les deux dates ou corrigez celle qui est fausse.",
+    "dueBeforePeriodEnd": "L'échéance légale ne peut pas précéder la fin de la période déclarée : on ne dépose pas une déclaration avant que la période soit close.",
+    "internalAfterLegal": "L'échéance interne doit précéder l'échéance légale — c'est la marge que le service se donne pour préparer le dossier.",
+    "internalBeforePeriodStart": "L'échéance interne précède le début de la période. Le dossier ne peut pas être prêt avant que la période commence.",
+    "filenameRequired": "Le fichier doit porter un nom.",
+    "filenameTooLong": "Le nom du fichier ne peut pas dépasser 255 caractères.",
+    "filenamePath": "Le nom du fichier ne peut pas contenir de chemin. Renommez-le sans barre oblique ni « .. ».",
+    "fileEmpty": "Ce fichier est vide. Vérifiez qu'il s'est bien enregistré avant de le déposer.",
+    "hashFormat": "L'empreinte du fichier est illisible. Recommencez le dépôt.",
+    "fileSignatureMismatch": "Le contenu du fichier ne correspond pas à son extension. Un fichier renommé n'est pas accepté : déposez le document d'origine.",
+    "passwordTooShort": "12 caractères minimum. Une phrase dont vous vous souvenez vaut mieux qu'un mot compliqué.",
+    "passwordMismatch": "Les deux mots de passe ne correspondent pas."
   },
   "workflow": {
     "transition": "Changement de statut",
@@ -1599,6 +1629,31 @@
         "FAILED": "Échec",
         "PARTIAL": "Partiel"
       }
+    }
+  },
+  "states": {
+    "offline": {
+      "title": "Connexion perdue",
+      "description": "Votre navigateur n'est plus connecté au réseau. Les modifications en cours ne sont pas enregistrées : elles repartiront dès le retour de la connexion.",
+      "restored": "Connexion rétablie."
+    },
+    "sessionExpired": {
+      "title": "Session expirée",
+      "description": "Votre session a pris fin. Reconnectez-vous pour reprendre où vous en étiez.",
+      "action": "Se reconnecter"
+    },
+    "conflict": {
+      "title": "Ce dossier a changé pendant votre saisie",
+      "description": "Une autre personne l'a modifié depuis l'ouverture de cet écran. Votre action n'a pas été appliquée, et rien n'a été écrasé. Rechargez pour voir l'état actuel, puis recommencez.",
+      "action": "Recharger le dossier"
+    },
+    "forbidden": {
+      "title": "Accès non autorisé",
+      "description": "Votre rôle ne donne pas accès à cet élément. Si vous pensez qu'il s'agit d'une erreur, contactez votre responsable de service."
+    },
+    "unexpected": {
+      "title": "Une erreur inattendue s'est produite",
+      "description": "L'incident a été enregistré. Réessayez ; si le problème persiste, communiquez l'identifiant ci-dessous au support."
     }
   }
 }

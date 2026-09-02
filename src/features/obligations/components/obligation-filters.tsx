@@ -5,6 +5,8 @@ import { useTranslations } from "next-intl";
 import { useSearchParams } from "next/navigation";
 import { useEffect, useState, useTransition } from "react";
 
+import { useHydrated } from "@/hooks/use-hydrated";
+
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -45,6 +47,14 @@ export function ObligationFilters({
   const params = useSearchParams();
 
   const [pending, startTransition] = useTransition();
+  /*
+   * ⚠️ Avant l'hydratation, la saisie de recherche est rendue mais son
+   * gestionnaire `onChange` n'existe pas : ce qu'on tape n'atteint personne. Le
+   * champ est donc inerte tant que React n'a pas repris la main — quelques
+   * centaines de millisecondes, visibles, plutôt qu'une frappe avalée.
+   */
+  const hydrated = useHydrated();
+  const busy = pending || !hydrated;
   const [term, setTerm] = useState(params.get("q") ?? "");
   const debounced = useDebouncedValue(term, SEARCH_DEBOUNCE_MS);
 
@@ -107,13 +117,15 @@ export function ObligationFilters({
               onChange={(event) => {
                 setTerm(event.target.value);
               }}
-              aria-busy={pending}
+              aria-busy={busy}
+              disabled={!hydrated}
             />
           </div>
           <p className="text-xs text-text-muted">{t("searchHint")}</p>
         </div>
 
         <FilterSelect
+          disabled={!hydrated}
           id="filter-domain"
           label={tObligations("domain")}
           allLabel={t("all")}
@@ -125,6 +137,7 @@ export function ObligationFilters({
         />
 
         <FilterSelect
+          disabled={!hydrated}
           id="filter-authority"
           label={tObligations("authority")}
           allLabel={t("all")}
@@ -139,6 +152,7 @@ export function ObligationFilters({
         />
 
         <FilterSelect
+          disabled={!hydrated}
           id="filter-periodicity"
           label={tObligations("periodicityColumn")}
           allLabel={t("all")}
@@ -153,6 +167,7 @@ export function ObligationFilters({
         />
 
         <FilterSelect
+          disabled={!hydrated}
           id="filter-criticality"
           label={tObligations("criticalityColumn")}
           allLabel={t("all")}
@@ -167,6 +182,7 @@ export function ObligationFilters({
         />
 
         <FilterSelect
+          disabled={!hydrated}
           id="filter-active"
           label={tObligations("status")}
           allLabel={t("all")}
@@ -206,6 +222,7 @@ function FilterSelect({
   value,
   items,
   onChange,
+  disabled = false,
 }: {
   readonly id: string;
   readonly label: string;
@@ -213,11 +230,13 @@ function FilterSelect({
   readonly value: string | null;
   readonly items: readonly { readonly value: string; readonly label: string }[];
   readonly onChange: (value: string | null) => void;
+  readonly disabled?: boolean;
 }) {
   return (
     <div className="space-y-1.5">
       <Label htmlFor={id}>{label}</Label>
       <Select
+        disabled={disabled}
         value={value ?? ALL}
         onValueChange={(next) => {
           onChange(next === ALL ? null : next);

@@ -4,6 +4,7 @@ import type { ReactNode } from "react";
 
 import { Header } from "@/components/layout/header";
 import { Sidebar } from "@/components/layout/sidebar";
+import { OfflineBanner } from "@/components/shared/connection-states";
 import type { NavCounters, NavItem } from "@/config/navigation";
 import { SIDEBAR_COOKIE } from "@/config/ui";
 
@@ -49,6 +50,12 @@ export async function AppShell({
 
       <div className="flex min-w-0 flex-1 flex-col">
         <Header items={items} counters={counters} locale={locale} />
+        {/*
+          ⚠️ Au-dessus du contenu, sous l'en-tête : une perte de réseau doit se
+          voir sans défiler, et sans recouvrir la navigation dont on a
+          justement besoin pour comprendre où l'on en est.
+        */}
+        <OfflineBanner />
         <main id="main-content" tabIndex={-1} className="flex-1 px-4 py-6 sm:px-6 lg:px-8">
           {children}
         </main>

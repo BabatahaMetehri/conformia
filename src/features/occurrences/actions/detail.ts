@@ -17,6 +17,7 @@ import { z } from "zod";
 
 import { OCCURRENCE_STATUSES } from "@/config/constants";
 import { toClientError } from "@/lib/errors";
+import { parseInput, reasonSchema, uuidSchema } from "@/lib/schemas";
 import type { Result } from "@/lib/result";
 import { removeDocument, requestUpload, confirmUpload } from "@/services/documents/upload";
 import { requireAuthContext, requirePermission } from "@/services/auth/context";
@@ -51,11 +52,19 @@ function toOutcome<T>(result: Result<T>): ActionOutcome<T> {
     : { status: "error", error: toClientError(result.error) };
 }
 
-function invalid(): { readonly status: "error"; readonly error: ReturnType<typeof toClientError> } {
-  return {
-    status: "error",
-    error: { code: "VALIDATION_FAILED", message: "errors.validationFailed", httpStatus: 422 },
-  };
+/**
+ * Refus de validation, AVEC le détail par champ.
+ *
+ * ⚠️ La version précédente rendait une erreur nue : l'utilisateur voyait
+ * « données invalides » sans savoir lequel de ses huit champs posait problème.
+ * `parseInput` transporte désormais le chemin du champ et sa clé de message, et
+ * le composant les affiche sous le bon libellé.
+ */
+function rejected(error: ReturnType<typeof toClientError>): {
+  readonly status: "error";
+  readonly error: ReturnType<typeof toClientError>;
+} {
+  return { status: "error", error };
 }
 
 // ─── Transitions ─────────────────────────────────────────────────────────────
@@ -69,13 +78,19 @@ const LATE_REASON_CODES = [
 ] as const;
 
 const TransitionSchema = z.object({
-  occurrenceId: z.uuid(),
+  occurrenceId: uuidSchema,
   toStatus: z.enum(OCCURRENCE_STATUSES),
   expectedVersion: z.int().positive(),
-  reason: z.string().trim().max(2000).optional(),
+  /*
+   * ⚠️ `reasonSchema`, et non un simple `max(2000)`. Le motif d'un rejet ou
+   * d'une réouverture est relu lors d'un contrôle : il exige dix caractères
+   * SIGNIFICATIFS, refuse les espaces seuls et les saisies de remplissage. La
+   * règle vit dans `lib/schemas`, partagée avec le formulaire qui la saisit.
+   */
+  reason: reasonSchema.optional(),
   referenceNumber: z.string().trim().max(120).optional(),
   lateReasonCode: z.enum(LATE_REASON_CODES).optional(),
-  lateReason: z.string().trim().max(2000).optional(),
+  lateReason: reasonSchema.optional(),
 });
 
 /**
@@ -86,13 +101,18 @@ const TransitionSchema = z.object({
  * écrite en dur à cet endroit deviendrait une seconde définition du cycle de vie.
  */
 export async function transitionOccurrenceAction(input: unknown): Promise<TransitionActionOutcome> {
+  /*
+   * ⚠️ LA VALIDATION D'ABORD, la session ensuite. Deux raisons : une entrée
+   * malformée ne mérite pas d'aller-retour vers la base, et l'ordre inverse
+   * distinguerait par le temps de réponse un appelant authentifié d'un autre.
+   */
+  const parsed = parseInput(TransitionSchema, input);
+  if (!parsed.ok) return rejected(toClientError(parsed.error));
+
   const context = await requireAuthContext();
   if (!context.ok) return { status: "error", error: toClientError(context.error) };
 
-  const parsed = TransitionSchema.safeParse(input);
-  if (!parsed.success) return invalid();
-
-  const result = await transitionOccurrence(parsed.data);
+  const result = await transitionOccurrence(parsed.value);
   if (result.ok && result.value.outcome === "APPLIED") {
     revalidatePath(DETAIL_PATH, "page");
     revalidatePath(LIST_PATH, "page");
@@ -104,7 +124,7 @@ export async function transitionOccurrenceAction(input: unknown): Promise<Transi
 // ─── Rectificative ───────────────────────────────────────────────────────────
 
 const RectificationSchema = z.object({
-  occurrenceId: z.uuid(),
+  occurrenceId: uuidSchema,
   reason: z.string().trim().min(10).max(2000),
 });
 
@@ -112,10 +132,10 @@ export async function createRectificationAction(input: unknown): Promise<Rectifi
   const context = await requirePermission("occurrence.write");
   if (!context.ok) return { status: "error", error: toClientError(context.error) };
 
-  const parsed = RectificationSchema.safeParse(input);
-  if (!parsed.success) return invalid();
+  const parsed = parseInput(RectificationSchema, input);
+  if (!parsed.ok) return rejected(toClientError(parsed.error));
 
-  const result = await createRectification(parsed.data.occurrenceId, parsed.data.reason);
+  const result = await createRectification(parsed.value.occurrenceId, parsed.value.reason);
   if (result.ok) {
     revalidatePath(DETAIL_PATH, "page");
     revalidatePath(LIST_PATH, "page");
@@ -126,7 +146,7 @@ export async function createRectificationAction(input: unknown): Promise<Rectifi
 
 // ─── Réaffectation ───────────────────────────────────────────────────────────
 
-const ReassignSchema = z.object({ occurrenceId: z.uuid(), ownerId: z.uuid() });
+const ReassignSchema = z.object({ occurrenceId: uuidSchema, ownerId: uuidSchema });
 
 export async function reassignSingleAction(
   input: unknown,
@@ -134,10 +154,10 @@ export async function reassignSingleAction(
   const context = await requirePermission("occurrence.assign");
   if (!context.ok) return { status: "error", error: toClientError(context.error) };
 
-  const parsed = ReassignSchema.safeParse(input);
-  if (!parsed.success) return invalid();
+  const parsed = parseInput(ReassignSchema, input);
+  if (!parsed.ok) return rejected(toClientError(parsed.error));
 
-  const result = await reassignOccurrence(parsed.data.occurrenceId, parsed.data.ownerId);
+  const result = await reassignOccurrence(parsed.value.occurrenceId, parsed.value.ownerId);
   if (result.ok) revalidatePath(DETAIL_PATH, "page");
 
   return toOutcome(result);
@@ -146,22 +166,22 @@ export async function reassignSingleAction(
 // ─── Discussion ──────────────────────────────────────────────────────────────
 
 const CommentSchema = z.object({
-  occurrenceId: z.uuid(),
+  occurrenceId: uuidSchema,
   body: z.string().trim().min(1).max(5000),
-  mentionedUserIds: z.array(z.uuid()).max(20).default([]),
+  mentionedUserIds: z.array(uuidSchema).max(20).default([]),
 });
 
 export async function postCommentAction(input: unknown): Promise<CommentOutcome> {
   const context = await requireAuthContext();
   if (!context.ok) return { status: "error", error: toClientError(context.error) };
 
-  const parsed = CommentSchema.safeParse(input);
-  if (!parsed.success) return invalid();
+  const parsed = parseInput(CommentSchema, input);
+  if (!parsed.ok) return rejected(toClientError(parsed.error));
 
   const result = await postComment(
-    parsed.data.occurrenceId,
-    parsed.data.body,
-    parsed.data.mentionedUserIds,
+    parsed.value.occurrenceId,
+    parsed.value.body,
+    parsed.value.mentionedUserIds,
   );
   if (result.ok) revalidatePath(DETAIL_PATH, "page");
 
@@ -172,10 +192,10 @@ export async function removeCommentAction(commentId: unknown): Promise<PlainOutc
   const context = await requireAuthContext();
   if (!context.ok) return { status: "error", error: toClientError(context.error) };
 
-  const parsed = z.uuid().safeParse(commentId);
-  if (!parsed.success) return invalid();
+  const parsed = parseInput(uuidSchema, commentId);
+  if (!parsed.ok) return rejected(toClientError(parsed.error));
 
-  const result = await removeComment(parsed.data);
+  const result = await removeComment(parsed.value);
   if (result.ok) revalidatePath(DETAIL_PATH, "page");
 
   return result.ok
@@ -198,8 +218,8 @@ export async function removeCommentAction(commentId: unknown): Promise<PlainOutc
  * MÉTIER, lui, n'est pas dupliqué : les deux appellent le même service.
  */
 const RequestUploadSchema = z.object({
-  occurrenceId: z.uuid(),
-  checklistItemId: z.uuid().nullable(),
+  occurrenceId: uuidSchema,
+  checklistItemId: uuidSchema.nullable(),
   filename: z.string().trim().min(1).max(400),
   declaredMimeType: z.string().trim().min(1).max(200),
   sizeBytes: z.number().int().positive(),
@@ -209,14 +229,14 @@ export async function requestUploadAction(input: unknown): Promise<UploadTicketO
   const context = await requirePermission("document.upload");
   if (!context.ok) return { status: "error", error: toClientError(context.error) };
 
-  const parsed = RequestUploadSchema.safeParse(input);
-  if (!parsed.success) return invalid();
+  const parsed = parseInput(RequestUploadSchema, input);
+  if (!parsed.ok) return rejected(toClientError(parsed.error));
 
-  return toOutcome(await requestUpload(parsed.data));
+  return toOutcome(await requestUpload(parsed.value));
 }
 
 const ConfirmUploadSchema = z.object({
-  ticketId: z.uuid(),
+  ticketId: uuidSchema,
   sha256: z.string().regex(/^[0-9a-fA-F]{64}$/),
 });
 
@@ -224,16 +244,16 @@ export async function confirmUploadAction(input: unknown): Promise<DepositOutcom
   const context = await requirePermission("document.upload");
   if (!context.ok) return { status: "error", error: toClientError(context.error) };
 
-  const parsed = ConfirmUploadSchema.safeParse(input);
-  if (!parsed.success) return invalid();
+  const parsed = parseInput(ConfirmUploadSchema, input);
+  if (!parsed.ok) return rejected(toClientError(parsed.error));
 
-  const result = await confirmUpload(parsed.data);
+  const result = await confirmUpload(parsed.value);
   if (result.ok) revalidatePath(DETAIL_PATH, "page");
   return toOutcome(result);
 }
 
 const RemoveDocumentSchema = z.object({
-  documentId: z.uuid(),
+  documentId: uuidSchema,
   reason: z.string().trim().min(10).max(2000),
 });
 
@@ -241,10 +261,10 @@ export async function removeDocumentAction(input: unknown): Promise<PlainOutcome
   const context = await requirePermission("document.delete");
   if (!context.ok) return { status: "error", error: toClientError(context.error) };
 
-  const parsed = RemoveDocumentSchema.safeParse(input);
-  if (!parsed.success) return invalid();
+  const parsed = parseInput(RemoveDocumentSchema, input);
+  if (!parsed.ok) return rejected(toClientError(parsed.error));
 
-  const result = await removeDocument(parsed.data.documentId, parsed.data.reason);
+  const result = await removeDocument(parsed.value.documentId, parsed.value.reason);
   if (result.ok) revalidatePath(DETAIL_PATH, "page");
 
   return result.ok

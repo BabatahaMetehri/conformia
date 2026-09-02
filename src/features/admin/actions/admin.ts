@@ -33,6 +33,7 @@ import {
   withdrawRole,
 } from "@/services/admin";
 import { parseHolidayCsv, recalculateForHolidayChange } from "@/services/admin/holidays";
+import { uuidSchema } from "@/lib/schemas";
 
 const USERS_PATH = "/[locale]/(app)/admin/users";
 const ROLES_PATH = "/[locale]/(app)/admin/roles";
@@ -53,9 +54,9 @@ const invalid = () => ({
 const InviteSchema = z.object({
   email: z.email(),
   fullName: z.string().trim().min(2).max(200),
-  departmentId: z.uuid().nullable(),
-  roleId: z.uuid(),
-  domainId: z.uuid().nullable(),
+  departmentId: uuidSchema.nullable(),
+  roleId: uuidSchema,
+  domainId: uuidSchema.nullable(),
   roleExpiresAt: z
     .string()
     .regex(/^\d{4}-\d{2}-\d{2}$/)
@@ -78,7 +79,7 @@ export async function inviteUserAction(input: unknown): Promise<IdOutcome> {
 }
 
 export async function cancelInvitationAction(input: unknown): Promise<PlainAdminOutcome> {
-  const parsed = z.object({ invitationId: z.uuid() }).safeParse(input);
+  const parsed = z.object({ invitationId: uuidSchema }).safeParse(input);
   if (!parsed.success) return invalid();
 
   const result = await withdrawInvitation(parsed.data.invitationId);
@@ -89,9 +90,9 @@ export async function cancelInvitationAction(input: unknown): Promise<PlainAdmin
 }
 
 const GrantSchema = z.object({
-  userId: z.uuid(),
-  roleId: z.uuid(),
-  domainId: z.uuid().nullable(),
+  userId: uuidSchema,
+  roleId: uuidSchema,
+  domainId: uuidSchema.nullable(),
   expiresAt: z
     .string()
     .regex(/^\d{4}-\d{2}-\d{2}$/)
@@ -114,7 +115,7 @@ export async function grantRoleAction(input: unknown): Promise<IdOutcome> {
 }
 
 export async function revokeRoleAction(input: unknown): Promise<PlainAdminOutcome> {
-  const parsed = z.object({ assignmentId: z.uuid() }).safeParse(input);
+  const parsed = z.object({ assignmentId: uuidSchema }).safeParse(input);
   if (!parsed.success) return invalid();
 
   const result = await withdrawRole(parsed.data.assignmentId);
@@ -125,9 +126,9 @@ export async function revokeRoleAction(input: unknown): Promise<PlainAdminOutcom
 }
 
 const DeactivateSchema = z.object({
-  userId: z.uuid(),
+  userId: uuidSchema,
   reason: z.string().trim().min(10).max(2000),
-  handoverTo: z.uuid().nullable(),
+  handoverTo: uuidSchema.nullable(),
 });
 
 export async function deactivateUserAction(input: unknown): Promise<CountOutcome> {
@@ -142,7 +143,7 @@ export async function deactivateUserAction(input: unknown): Promise<CountOutcome
 }
 
 const MfaSchema = z.object({
-  userId: z.uuid(),
+  userId: uuidSchema,
   reason: z.string().trim().min(10).max(2000),
 });
 
@@ -160,8 +161,8 @@ export async function resetMfaAction(input: unknown): Promise<PlainAdminOutcome>
 // ─── Matrice des rôles ───────────────────────────────────────────────────────
 
 const ToggleSchema = z.object({
-  roleId: z.uuid(),
-  permissionId: z.uuid(),
+  roleId: uuidSchema,
+  permissionId: uuidSchema,
   granted: z.boolean(),
 });
 
@@ -250,7 +251,7 @@ export async function importHolidaysAction(input: unknown): Promise<HolidayImpor
 }
 
 export async function deleteHolidayAction(input: unknown): Promise<HolidayImportOutcome> {
-  const parsed = z.object({ holidayId: z.uuid(), label: z.string() }).safeParse(input);
+  const parsed = z.object({ holidayId: uuidSchema, label: z.string() }).safeParse(input);
   if (!parsed.success) return invalid();
 
   const removed = await removeHoliday(parsed.data.holidayId);
