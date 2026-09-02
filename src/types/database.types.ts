@@ -1649,28 +1649,52 @@ export type Database = {
       }
       backup_runs: {
         Row: {
+          artifact_count: number | null
+          database_bytes: number | null
+          destination: string | null
           detail: string | null
+          encrypted: boolean
           finished_at: string | null
           id: number
+          kind: Database["public"]["Enums"]["backup_kind"]
+          sha256: string | null
           size_bytes: number | null
           started_at: string
           status: string
+          storage_bytes: number | null
+          verified_at: string | null
         }
         Insert: {
+          artifact_count?: number | null
+          database_bytes?: number | null
+          destination?: string | null
           detail?: string | null
+          encrypted?: boolean
           finished_at?: string | null
           id?: number
+          kind?: Database["public"]["Enums"]["backup_kind"]
+          sha256?: string | null
           size_bytes?: number | null
           started_at?: string
           status: string
+          storage_bytes?: number | null
+          verified_at?: string | null
         }
         Update: {
+          artifact_count?: number | null
+          database_bytes?: number | null
+          destination?: string | null
           detail?: string | null
+          encrypted?: boolean
           finished_at?: string | null
           id?: number
+          kind?: Database["public"]["Enums"]["backup_kind"]
+          sha256?: string | null
           size_bytes?: number | null
           started_at?: string
           status?: string
+          storage_bytes?: number | null
+          verified_at?: string | null
         }
         Relationships: []
       }
@@ -3155,6 +3179,72 @@ export type Database = {
           },
         ]
       }
+      export_runs: {
+        Row: {
+          document_count: number
+          error_message: string | null
+          file_name: string | null
+          finished_at: string | null
+          format: Database["public"]["Enums"]["export_format"]
+          id: string
+          is_async: boolean
+          kind: Database["public"]["Enums"]["export_kind"]
+          occurrence_count: number
+          requested_by: string
+          scope: Json
+          size_bytes: number | null
+          started_at: string
+          status: Database["public"]["Enums"]["export_status"]
+        }
+        Insert: {
+          document_count?: number
+          error_message?: string | null
+          file_name?: string | null
+          finished_at?: string | null
+          format: Database["public"]["Enums"]["export_format"]
+          id?: string
+          is_async?: boolean
+          kind: Database["public"]["Enums"]["export_kind"]
+          occurrence_count?: number
+          requested_by: string
+          scope?: Json
+          size_bytes?: number | null
+          started_at?: string
+          status?: Database["public"]["Enums"]["export_status"]
+        }
+        Update: {
+          document_count?: number
+          error_message?: string | null
+          file_name?: string | null
+          finished_at?: string | null
+          format?: Database["public"]["Enums"]["export_format"]
+          id?: string
+          is_async?: boolean
+          kind?: Database["public"]["Enums"]["export_kind"]
+          occurrence_count?: number
+          requested_by?: string
+          scope?: Json
+          size_bytes?: number | null
+          started_at?: string
+          status?: Database["public"]["Enums"]["export_status"]
+        }
+        Relationships: [
+          {
+            foreignKeyName: "export_runs_requested_by_fkey"
+            columns: ["requested_by"]
+            isOneToOne: false
+            referencedRelation: "profile_directory"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "export_runs_requested_by_fkey"
+            columns: ["requested_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       holidays: {
         Row: {
           created_at: string
@@ -4286,6 +4376,56 @@ export type Database = {
             columns: ["entity_id"]
             isOneToOne: false
             referencedRelation: "entities"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      restore_tests: {
+        Row: {
+          backup_run_id: number | null
+          documents_sampled: number
+          documents_verified: number
+          duration_seconds: number | null
+          failures: Json
+          finished_at: string | null
+          id: number
+          report: string | null
+          started_at: string
+          status: string
+          table_counts: Json
+        }
+        Insert: {
+          backup_run_id?: number | null
+          documents_sampled?: number
+          documents_verified?: number
+          duration_seconds?: number | null
+          failures?: Json
+          finished_at?: string | null
+          id?: number
+          report?: string | null
+          started_at?: string
+          status: string
+          table_counts?: Json
+        }
+        Update: {
+          backup_run_id?: number | null
+          documents_sampled?: number
+          documents_verified?: number
+          duration_seconds?: number | null
+          failures?: Json
+          finished_at?: string | null
+          id?: number
+          report?: string | null
+          started_at?: string
+          status?: string
+          table_counts?: Json
+        }
+        Relationships: [
+          {
+            foreignKeyName: "restore_tests_backup_run_id_fkey"
+            columns: ["backup_run_id"]
+            isOneToOne: false
+            referencedRelation: "backup_runs"
             referencedColumns: ["id"]
           },
         ]
@@ -5658,6 +5798,74 @@ export type Database = {
         }
         Returns: Json
       }
+      exportable_occurrences: {
+        Args: {
+          p_authority?: string
+          p_domain?: string
+          p_from?: string
+          p_to?: string
+          p_user: string
+        }
+        Returns: {
+          authority_name: string
+          criticality: Database["public"]["Enums"]["criticality"]
+          document_count: number
+          domain_code: string
+          internal_due_date: string
+          late_days: number
+          late_reason: string
+          late_reason_code: Database["public"]["Enums"]["late_reason_code"]
+          legal_due_date: string
+          obligation_code: string
+          obligation_name: string
+          occurrence_id: string
+          owner_name: string
+          period_end: string
+          period_key: string
+          period_start: string
+          status: Database["public"]["Enums"]["occurrence_status"]
+          submitted_at: string
+          validator_name: string
+        }[]
+      }
+      finish_async_export: {
+        Args: {
+          p_documents: number
+          p_error?: string
+          p_file_name: string
+          p_occurrences: number
+          p_run: string
+          p_size_bytes: number
+          p_status: Database["public"]["Enums"]["export_status"]
+        }
+        Returns: undefined
+      }
+      finish_backup_run: {
+        Args: {
+          p_artifact_count: number
+          p_database_bytes: number
+          p_destination: string
+          p_detail?: string
+          p_id: number
+          p_sha256: string
+          p_size_bytes: number
+          p_status: string
+          p_storage_bytes: number
+        }
+        Returns: undefined
+      }
+      finish_export_run: {
+        Args: {
+          p_documents: number
+          p_error?: string
+          p_file_name: string
+          p_occurrences: number
+          p_run: string
+          p_size_bytes: number
+          p_status: Database["public"]["Enums"]["export_status"]
+        }
+        Returns: undefined
+      }
       finish_job_run: {
         Args: {
           p_details?: Json
@@ -5665,6 +5873,19 @@ export type Database = {
           p_processed: number
           p_run_id: number
           p_status: string
+        }
+        Returns: undefined
+      }
+      finish_restore_test: {
+        Args: {
+          p_duration: number
+          p_failures: Json
+          p_id: number
+          p_report: string
+          p_sampled: number
+          p_status: string
+          p_table_counts: Json
+          p_verified: number
         }
         Returns: undefined
       }
@@ -5724,12 +5945,51 @@ export type Database = {
         }
         Returns: undefined
       }
+      log_export: {
+        Args: {
+          p_detail: Json
+          p_entity_id?: string
+          p_entity_table: string
+          p_kind: Database["public"]["Enums"]["export_kind"]
+        }
+        Returns: undefined
+      }
+      mark_backup_verified: { Args: { p_id: number }; Returns: undefined }
       mark_notifications_failed: {
         Args: { p_error: string; p_ids: number[] }
         Returns: number
       }
       mark_notifications_sent: { Args: { p_ids: number[] }; Returns: number }
       mfa_required_for: { Args: { p_user_id: string }; Returns: boolean }
+      my_exportable_occurrences: {
+        Args: {
+          p_authority?: string
+          p_domain?: string
+          p_from?: string
+          p_to?: string
+        }
+        Returns: {
+          authority_name: string
+          criticality: Database["public"]["Enums"]["criticality"]
+          document_count: number
+          domain_code: string
+          internal_due_date: string
+          late_days: number
+          late_reason: string
+          late_reason_code: Database["public"]["Enums"]["late_reason_code"]
+          legal_due_date: string
+          obligation_code: string
+          obligation_name: string
+          occurrence_id: string
+          owner_name: string
+          period_end: string
+          period_key: string
+          period_start: string
+          status: Database["public"]["Enums"]["occurrence_status"]
+          submitted_at: string
+          validator_name: string
+        }[]
+      }
       navigation_counters: {
         Args: never
         Returns: {
@@ -5748,6 +6008,17 @@ export type Database = {
       notify_admins_of_delivery_failures: {
         Args: { p_max_attempts: number }
         Returns: number
+      }
+      notify_admins_of_stale_backup: {
+        Args: { p_hours?: number }
+        Returns: number
+      }
+      notify_export_ready: {
+        Args: {
+          p_run: string
+          p_status: Database["public"]["Enums"]["export_status"]
+        }
+        Returns: undefined
       }
       obligation_domain_of_occurrence: {
         Args: { occurrence_id: string }
@@ -5806,6 +6077,16 @@ export type Database = {
         Returns: Database["public"]["Enums"]["occurrence_status"][]
       }
       own_ics_token: { Args: never; Returns: string }
+      pending_async_exports: {
+        Args: { p_limit?: number }
+        Returns: {
+          format: Database["public"]["Enums"]["export_format"]
+          id: string
+          kind: Database["public"]["Enums"]["export_kind"]
+          requested_by: string
+          scope: Json
+        }[]
+      }
       pending_email_notifications: {
         Args: { p_limit: number; p_max_attempts: number; p_now: string }
         Returns: {
@@ -5933,7 +6214,21 @@ export type Database = {
         Args: { p_document_id: string; p_reason: string }
         Returns: boolean
       }
+      start_backup_run: {
+        Args: { p_kind: Database["public"]["Enums"]["backup_kind"] }
+        Returns: number
+      }
+      start_export_run: {
+        Args: {
+          p_format: Database["public"]["Enums"]["export_format"]
+          p_is_async?: boolean
+          p_kind: Database["public"]["Enums"]["export_kind"]
+          p_scope: Json
+        }
+        Returns: string
+      }
       start_job_run: { Args: { p_job_name: string }; Returns: number }
+      start_restore_test: { Args: { p_backup_run: number }; Returns: number }
       storage_path_segment: { Args: { p_value: string }; Returns: string }
       try_lock_job: { Args: { p_job_name: string }; Returns: boolean }
       unlock_job: { Args: { p_job_name: string }; Returns: boolean }
@@ -5964,9 +6259,20 @@ export type Database = {
       }
     }
     Enums: {
+      backup_kind: "DAILY" | "WEEKLY" | "MONTHLY" | "MANUAL"
       criticality: "LOW" | "MEDIUM" | "HIGH" | "CRITICAL"
       digest_frequency: "NONE" | "DAILY" | "WEEKLY"
       document_integrity_status: "PENDING" | "VERIFIED" | "MISMATCH" | "MISSING"
+      export_format: "ZIP" | "XLSX" | "CSV" | "PDF"
+      export_kind:
+        | "DOSSIER"
+        | "PERIOD"
+        | "OCCURRENCES"
+        | "COMPLIANCE"
+        | "WORKLOAD"
+        | "LATE_REASONS"
+        | "REPORT"
+      export_status: "RUNNING" | "SUCCEEDED" | "FAILED" | "PARTIAL"
       late_reason_code:
         | "MISSING_DOCUMENT"
         | "VALIDATOR_UNAVAILABLE"
@@ -6123,9 +6429,21 @@ export type CompositeTypes<
 export const Constants = {
   public: {
     Enums: {
+      backup_kind: ["DAILY", "WEEKLY", "MONTHLY", "MANUAL"],
       criticality: ["LOW", "MEDIUM", "HIGH", "CRITICAL"],
       digest_frequency: ["NONE", "DAILY", "WEEKLY"],
       document_integrity_status: ["PENDING", "VERIFIED", "MISMATCH", "MISSING"],
+      export_format: ["ZIP", "XLSX", "CSV", "PDF"],
+      export_kind: [
+        "DOSSIER",
+        "PERIOD",
+        "OCCURRENCES",
+        "COMPLIANCE",
+        "WORKLOAD",
+        "LATE_REASONS",
+        "REPORT",
+      ],
+      export_status: ["RUNNING", "SUCCEEDED", "FAILED", "PARTIAL"],
       late_reason_code: [
         "MISSING_DOCUMENT",
         "VALIDATOR_UNAVAILABLE",

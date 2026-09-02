@@ -11,7 +11,7 @@ import "server-only";
 
 import { formatDateFr } from "@/lib/dates";
 import { err, ok, type Result } from "@/lib/result";
-import { buildXlsx, type CellValue, type Sheet } from "@/lib/xlsx";
+import { buildSheetWorkbook, type CellValue, type Sheet } from "@/lib/workbook";
 import { AppError } from "@/lib/errors";
 import { exportRows, type OccurrenceFilters, type OccurrenceListRow } from "@/services/occurrences";
 import { EXPORT_ROW_LIMIT } from "@/data/queries/occurrence-list";
@@ -67,8 +67,10 @@ function toSheet(rows: readonly OccurrenceListRow[], labels: ExportLabels): Shee
     { header: labels.period, width: 12 },
     // L'échéance INTERNE d'abord : c'est l'objectif, la légale n'est que la
     // limite. L'ordre des colonnes porte le même message que l'écran.
-    { header: labels.internalDue, width: 14 },
-    { header: labels.legalDue, width: 14 },
+    // Les deux échéances portent un format de date : sans lui, le tableur
+    // affiche le numéro de série d'Excel, un entier à cinq chiffres.
+    { header: labels.internalDue, width: 14, format: "date" as const },
+    { header: labels.legalDue, width: 14, format: "date" as const },
     { header: labels.status, width: 18 },
     { header: labels.owner, width: 24 },
     { header: labels.validator, width: 24 },
@@ -110,7 +112,7 @@ export async function exportOccurrencesXlsx(
     return err(AppError.validationFailed({ reason: "EXPORT_EMPTY" }));
   }
 
-  const bytes = buildXlsx(toSheet(rows.value, labels));
+  const bytes = await buildSheetWorkbook(toSheet(rows.value, labels));
 
   // Horodatage dans le nom : deux exports successifs ne doivent pas s'écraser
   // dans le dossier de téléchargement.

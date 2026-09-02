@@ -70,3 +70,13 @@ export const CALENDAR_ALARM_DAYS_BEFORE = 7;
 
 /** Nombre d'occurrences détaillées dans un résumé avant de renvoyer à l'écran. */
 export const DIGEST_MAX_ROWS_PER_SECTION = 15;
+
+/**
+ * Âge maximal d'une sauvegarde réussie avant alerte, en heures.
+ *
+ * ⚠️ 36 et non 24 : la sauvegarde tourne à 03 h 00, et une exécution qui prend du
+ * retard ou échoue une seule fois ne doit pas réveiller la Direction. Trente-six
+ * heures laissent passer un incident isolé et rattrapé, et signalent deux
+ * échecs consécutifs — c'est-à-dire un vrai problème.
+ */
+export const BACKUP_STALE_AFTER_HOURS = 36;

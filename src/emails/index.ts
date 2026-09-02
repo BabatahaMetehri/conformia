@@ -12,7 +12,7 @@ import {
   UpcomingDeadline,
   ValidationRequested,
 } from "@/emails/occurrence-emails";
-import { emailTranslator, type EmailTranslator } from "@/emails/translator";
+import { emailTranslator, type EmailTranslator } from "@/lib/translator";
 import type { Locale } from "@/config/constants";
 
 /**

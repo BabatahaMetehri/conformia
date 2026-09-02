@@ -20,7 +20,7 @@ import { CALENDAR_ALARM_DAYS_BEFORE, CALENDAR_FEED_MONTHS } from "@/config/notif
 import { DEFAULT_LOCALE } from "@/config/constants";
 import { env } from "@/config/env";
 import { loadCalendarFeed } from "@/data/queries/notifications";
-import { emailTranslator } from "@/emails/translator";
+import { emailTranslator } from "@/lib/translator";
 import { serializeCalendar, type CalendarEvent } from "@/lib/icalendar";
 import { err, ok, type Result } from "@/lib/result";
 

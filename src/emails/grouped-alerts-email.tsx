@@ -1,5 +1,5 @@
 import { EmailLayout, EmailList, EmailText } from "@/emails/layout";
-import type { EmailTranslator } from "@/emails/translator";
+import type { EmailTranslator } from "@/lib/translator";
 
 /**
  * Plusieurs alertes, un seul message.

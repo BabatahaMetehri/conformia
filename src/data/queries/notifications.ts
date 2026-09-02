@@ -227,6 +227,23 @@ export async function notifyAdminsOfFailures(
   return ok(data);
 }
 
+/**
+ * Alerte « aucune sauvegarde réussie depuis N heures ».
+ *
+ * ⚠️ Appelée à CHAQUE cycle horaire, et non par une tâche dédiée. Une alerte de
+ * sauvegarde portée par son propre planificateur dépendrait d'un dispositif dont
+ * personne ne surveille la santé — et se tairait exactement quand elle devrait
+ * parler.
+ */
+export async function notifyStaleBackup(
+  client: NotificationClient,
+  hours: number,
+): Promise<Result<number>> {
+  const { data, error } = await client.rpc("notify_admins_of_stale_backup", { p_hours: hours });
+  if (error !== null) return err(mapPostgrestError(error));
+  return ok(data);
+}
+
 // ─── Réglages d'installation ─────────────────────────────────────────────────
 
 export interface NotificationSettings {

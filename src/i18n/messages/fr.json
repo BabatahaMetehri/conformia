@@ -579,7 +579,8 @@
       "PASSWORD_RESET": "Mot de passe",
       "INTEGRITY_ALERT": "Alerte d'intégrité",
       "BACKUP_FAILURE": "Sauvegarde en échec",
-      "DELIVERY_FAILURE": "Envoi de courriel en échec"
+      "DELIVERY_FAILURE": "Envoi de courriel en échec",
+      "EXPORT_READY": "Export disponible"
     },
     "preferences": {
       "title": "Préférences de notification",
@@ -603,6 +604,15 @@
       "smsNotConfigured": "Canal SMS non configuré.",
       "loadFailed": "Impossible de charger les notifications.",
       "updateFailed": "La notification n'a pas pu être mise à jour."
+    },
+    "backupStale": {
+      "subject": "Aucune sauvegarde réussie récemment",
+      "body": "Aucune sauvegarde n'a abouti depuis plus de 36 heures. Vérifiez la tâche de sauvegarde et son transfert : une sauvegarde qui échoue en silence ne se découvre qu'au moment d'une restauration."
+    },
+    "exportReady": {
+      "subject": "Votre export est disponible",
+      "failedSubject": "Votre export n'a pas pu être produit",
+      "body": "Retrouvez-le dans l'historique des exports, à la page Rapports."
     }
   },
   "obligations": {
@@ -1134,8 +1144,8 @@
       "description": "Les pièces déposées, leurs versions et leur intégrité."
     },
     "reports": {
-      "title": "Rapports & exports",
-      "description": "Extractions et états de synthèse."
+      "title": "Rapports et exports",
+      "description": "Dossiers opposables, tableaux de suivi et rapports de conformité."
     },
     "admin": {
       "title": "Administration",
@@ -1437,6 +1447,158 @@
       "outlook": "Outlook : Calendrier → Ajouter un calendrier → S'abonner à partir du web → collez l'adresse.",
       "google": "Google Agenda : Autres agendas → + → À partir de l'URL → collez l'adresse.",
       "refreshNote": "Les agendas rafraîchissent un flux à leur propre rythme, souvent toutes les quelques heures : une échéance déplacée peut mettre un moment à apparaître."
+    }
+  },
+  "exports": {
+    "common": {
+      "page": "Page {current} / {total}",
+      "unbounded": "Toutes périodes"
+    },
+    "columns": {
+      "code": "Code",
+      "obligation": "Obligation",
+      "domain": "Domaine",
+      "authority": "Organisme",
+      "period": "Période",
+      "internalDue": "Échéance interne",
+      "legalDue": "Échéance légale",
+      "status": "Statut",
+      "criticality": "Criticité",
+      "owner": "Responsable",
+      "validator": "Validateur",
+      "submittedAt": "Déposé le",
+      "lateDays": "Jours de retard",
+      "lateReason": "Motif de retard",
+      "documents": "Pièces",
+      "total": "Total",
+      "submitted": "Déposés",
+      "onTime": "Dans les délais",
+      "late": "En retard",
+      "pending": "En attente",
+      "rate": "Taux",
+      "person": "Personne",
+      "open": "En cours",
+      "overdue": "En retard",
+      "count": "Nombre",
+      "share": "Part",
+      "totalDays": "Jours cumulés",
+      "averageDays": "Retard moyen"
+    },
+    "sheets": {
+      "OCCURRENCES": "Suivi",
+      "COMPLIANCE": "Conformité",
+      "WORKLOAD": "Charge",
+      "LATE_REASONS": "Motifs de retard"
+    },
+    "actions": {
+      "TRANSITION": "Changement d'état",
+      "INSERT": "Création",
+      "UPDATE": "Modification",
+      "DELETE": "Suppression",
+      "VIEW": "Consultation",
+      "DOWNLOAD": "Téléchargement",
+      "EXPORT": "Export",
+      "UNLOCK": "Réouverture",
+      "LOGIN": "Connexion",
+      "LOGOUT": "Déconnexion",
+      "PERMISSION_CHANGE": "Changement d'habilitation"
+    },
+    "history": {
+      "when": "Date",
+      "source": "Source",
+      "actor": "Auteur",
+      "onBehalfOf": "Pour le compte de",
+      "action": "Action",
+      "fromStatus": "État précédent",
+      "toStatus": "Nouvel état",
+      "reason": "Motif"
+    },
+    "dossier": {
+      "title": "Fiche récapitulative de dossier",
+      "identification": "Identification",
+      "deadlines": "Échéances",
+      "people": "Intervenants",
+      "documents": "Pièces jointes",
+      "documentName": "Fichier",
+      "documentSize": "Taille",
+      "documentHash": "Empreinte SHA-256",
+      "noDocument": "Aucune pièce déposée.",
+      "timeline": "Chronologie",
+      "when": "Date",
+      "who": "Auteur",
+      "what": "Action",
+      "detail": "Détail",
+      "noTimeline": "Aucun événement enregistré.",
+      "rectifications": "Rectificatives incluses",
+      "legalBasis": "Base légale",
+      "notSubmitted": "Non déposé",
+      "system": "Système",
+      "onBehalfOf": "Pour le compte de {name}",
+      "generatedBy": "Généré par CONFORMIA — AGROESPACE",
+      "manifestNote": "Les empreintes de ce manifeste ont été recalculées à la copie, et non recopiées depuis la base. Le champ « matches » indique si l'empreinte du fichier archivé correspond à celle enregistrée au dépôt.",
+      "download": "Exporter le dossier (ZIP)"
+    },
+    "report": {
+      "title": "Rapport de conformité",
+      "subtitle": "Période du {from} au {to}",
+      "summary": "Synthèse",
+      "totalOccurrences": "Dossiers",
+      "submitted": "Déposés",
+      "onTimeRate": "Taux de conformité",
+      "lateCount": "Retards",
+      "pendingCount": "En attente",
+      "ofSubmitted": "des dossiers déposés",
+      "byObligation": "Conformité par obligation",
+      "lateList": "Détail des retards",
+      "noLate": "Aucun retard sur la période. ",
+      "causes": "Répartition des causes",
+      "noCause": "Aucun retard à analyser.",
+      "signature": "Signature de génération",
+      "generatedBy": "Auteur",
+      "generatedAt": "Date",
+      "scope": "Périmètre",
+      "fingerprint": "Empreinte des données",
+      "fingerprintNote": "Cette empreinte identifie la version des données agrégées. Deux tirages du même périmètre inchangé portent la même valeur.",
+      "andMore": "{count} autre(s) retard(s) non détaillé(s) — voir l'export tabulaire."
+    },
+    "page": {
+      "intro": "Produisez un dossier opposable, un tableau de suivi ou un rapport de synthèse. Chaque export ne contient que ce que vous êtes autorisé à voir.",
+      "type": "Type d'export",
+      "format": "Format",
+      "from": "Du",
+      "to": "Au",
+      "domain": "Domaine",
+      "authority": "Organisme",
+      "allDomains": "Tous les domaines",
+      "allAuthorities": "Tous les organismes",
+      "generate": "Produire l'export",
+      "generating": "Production en cours…",
+      "history": "Historique des exports",
+      "noHistory": "Aucun export produit pour l'instant.",
+      "author": "Auteur",
+      "when": "Date",
+      "scope": "Périmètre",
+      "rows": "Dossiers",
+      "size": "Taille",
+      "statusLabel": "Statut",
+      "asyncQueued": "Export volumineux : il est produit en arrière-plan. Vous serez prévenu dès qu'il sera prêt.",
+      "empty": "Aucun dossier ne correspond à ces filtres.",
+      "failed": "L'export n'a pas pu être produit.",
+      "kinds": {
+        "OCCURRENCES": "Suivi des occurrences",
+        "COMPLIANCE": "Tableau de conformité",
+        "WORKLOAD": "Charge par personne",
+        "LATE_REASONS": "Analyse des motifs de retard",
+        "REPORT": "Rapport de conformité (PDF)",
+        "PERIOD": "Dossier consolidé sur une période (ZIP)",
+        "DOSSIER": "Dossier unitaire (ZIP)"
+      },
+      "statuses": {
+        "RUNNING": "En cours",
+        "SUCCEEDED": "Terminé",
+        "FAILED": "Échec",
+        "PARTIAL": "Partiel"
+      }
     }
   }
 }

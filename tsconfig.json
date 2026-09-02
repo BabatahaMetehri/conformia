@@ -13,6 +13,14 @@
     "verbatimModuleSyntax": true,
 
     "noEmit": true,
+    /*
+     * ⚠️ Requis par les scripts d'exploitation (`scripts/*.ts`). Node 22+ exécute
+     * le TypeScript en retirant les types, mais sa résolution de modules est
+     * celle d'ESM : l'extension `.ts` doit figurer dans l'import, sans quoi le
+     * script ne démarre pas. TypeScript ne l'accepte qu'avec cette option, qui
+     * n'a aucun effet sur le build Next.js — il ne passe pas par `tsc`.
+     */
+    "allowImportingTsExtensions": true,
     "esModuleInterop": true,
     "module": "esnext",
     "moduleResolution": "bundler",

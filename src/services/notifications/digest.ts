@@ -22,7 +22,7 @@ import type { NotificationClient } from "@/data/queries/notifications";
 import { enqueueNotification, loadNotificationSettings } from "@/data/queries/notifications";
 import { renderEmail } from "@/emails";
 import type { DigestSection } from "@/emails/digest-email";
-import { emailTranslator, type EmailTranslator } from "@/emails/translator";
+import { emailTranslator, type EmailTranslator } from "@/lib/translator";
 import { APP_TIMEZONE, formatDateFr } from "@/lib/dates";
 import { mapPostgrestError } from "@/lib/errors";
 import { logger } from "@/lib/logger";

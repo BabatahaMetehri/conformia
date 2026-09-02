@@ -1,5 +1,5 @@
 import { EmailLayout, EmailText } from "@/emails/layout";
-import type { EmailTranslator } from "@/emails/translator";
+import type { EmailTranslator } from "@/lib/translator";
 
 /**
  * Courriels de compte.

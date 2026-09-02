@@ -579,7 +579,8 @@
       "PASSWORD_RESET": "كلمة السر",
       "INTEGRITY_ALERT": "تنبيه سلامة",
       "BACKUP_FAILURE": "فشل النسخ الاحتياطي",
-      "DELIVERY_FAILURE": "فشل إرسال البريد"
+      "DELIVERY_FAILURE": "فشل إرسال البريد",
+      "EXPORT_READY": "تصدير متاح"
     },
     "preferences": {
       "title": "تفضيلات الإشعار",
@@ -603,6 +604,15 @@
       "smsNotConfigured": "قناة الرسائل القصيرة غير مهيّأة.",
       "loadFailed": "تعذّر تحميل الإشعارات.",
       "updateFailed": "تعذّر تحديث الإشعار."
+    },
+    "backupStale": {
+      "subject": "لا نسخة احتياطية ناجحة مؤخرا",
+      "body": "لم تنجح أي نسخة احتياطية منذ أكثر من 36 ساعة. تحقّقوا من مهمة النسخ ومن نقلها: النسخة التي تفشل في صمت لا تُكتشف إلا عند الاستعادة."
+    },
+    "exportReady": {
+      "subject": "تصديركم متاح",
+      "failedSubject": "تعذّر إنتاج تصديركم",
+      "body": "تجدونه في سجلّ التصديرات، بصفحة التقارير."
     }
   },
   "obligations": {
@@ -1134,8 +1144,8 @@
       "description": "القطع المودَعة وإصداراتها وسلامتها."
     },
     "reports": {
-      "title": "التقارير والتصدير",
-      "description": "الاستخراجات وكشوف التلخيص."
+      "title": "التقارير والتصديرات",
+      "description": "ملفات قابلة للاحتجاج، جداول متابعة وتقارير مطابقة."
     },
     "admin": {
       "title": "الإدارة",
@@ -1437,6 +1447,158 @@
       "outlook": "Outlook: الرزنامة ← إضافة رزنامة ← الاشتراك من الويب ← ألصقوا العنوان.",
       "google": "Google Agenda: رزنامات أخرى ← + ← من رابط ← ألصقوا العنوان.",
       "refreshNote": "تحدّث الرزنامات التدفّق وفق إيقاعها الخاص، غالبا كل بضع ساعات: قد يتأخّر ظهور أجل مُعدَّل."
+    }
+  },
+  "exports": {
+    "common": {
+      "page": "صفحة {current} / {total}",
+      "unbounded": "كل الفترات"
+    },
+    "columns": {
+      "code": "الرمز",
+      "obligation": "الالتزام",
+      "domain": "المجال",
+      "authority": "الهيئة",
+      "period": "الفترة",
+      "internalDue": "الأجل الداخلي",
+      "legalDue": "الأجل القانوني",
+      "status": "الحالة",
+      "criticality": "الأهمية",
+      "owner": "المسؤول",
+      "validator": "المصادِق",
+      "submittedAt": "تاريخ الإيداع",
+      "lateDays": "أيام التأخر",
+      "lateReason": "سبب التأخر",
+      "documents": "الوثائق",
+      "total": "المجموع",
+      "submitted": "المودعة",
+      "onTime": "في الآجال",
+      "late": "متأخرة",
+      "pending": "قيد الانتظار",
+      "rate": "النسبة",
+      "person": "الشخص",
+      "open": "جارية",
+      "overdue": "متأخرة",
+      "count": "العدد",
+      "share": "الحصة",
+      "totalDays": "مجموع الأيام",
+      "averageDays": "متوسط التأخر"
+    },
+    "sheets": {
+      "OCCURRENCES": "المتابعة",
+      "COMPLIANCE": "المطابقة",
+      "WORKLOAD": "العبء",
+      "LATE_REASONS": "أسباب التأخر"
+    },
+    "actions": {
+      "TRANSITION": "تغيير الحالة",
+      "INSERT": "إنشاء",
+      "UPDATE": "تعديل",
+      "DELETE": "حذف",
+      "VIEW": "اطلاع",
+      "DOWNLOAD": "تحميل",
+      "EXPORT": "تصدير",
+      "UNLOCK": "إعادة فتح",
+      "LOGIN": "دخول",
+      "LOGOUT": "خروج",
+      "PERMISSION_CHANGE": "تغيير الصلاحيات"
+    },
+    "history": {
+      "when": "التاريخ",
+      "source": "المصدر",
+      "actor": "الفاعل",
+      "onBehalfOf": "نيابة عن",
+      "action": "الإجراء",
+      "fromStatus": "الحالة السابقة",
+      "toStatus": "الحالة الجديدة",
+      "reason": "السبب"
+    },
+    "dossier": {
+      "title": "بطاقة ملخّصة للملف",
+      "identification": "التعريف",
+      "deadlines": "الآجال",
+      "people": "المتدخّلون",
+      "documents": "الوثائق المرفقة",
+      "documentName": "الملف",
+      "documentSize": "الحجم",
+      "documentHash": "بصمة SHA-256",
+      "noDocument": "لا وثيقة مودعة.",
+      "timeline": "التسلسل الزمني",
+      "when": "التاريخ",
+      "who": "الفاعل",
+      "what": "الإجراء",
+      "detail": "التفصيل",
+      "noTimeline": "لا حدث مسجّل.",
+      "rectifications": "التصحيحات المدرجة",
+      "legalBasis": "الأساس القانوني",
+      "notSubmitted": "غير مودع",
+      "system": "النظام",
+      "onBehalfOf": "نيابة عن {name}",
+      "generatedBy": "أُنتج بواسطة CONFORMIA — AGROESPACE",
+      "manifestNote": "أُعيد حساب بصمات هذا الفهرس أثناء النسخ، ولم تُنقل من قاعدة البيانات. يبيّن الحقل « matches » ما إذا كانت بصمة الملف المؤرشف مطابقة للمسجّلة عند الإيداع.",
+      "download": "تصدير الملف (ZIP)"
+    },
+    "report": {
+      "title": "تقرير المطابقة",
+      "subtitle": "الفترة من {from} إلى {to}",
+      "summary": "الخلاصة",
+      "totalOccurrences": "الملفات",
+      "submitted": "المودعة",
+      "onTimeRate": "نسبة المطابقة",
+      "lateCount": "التأخّرات",
+      "pendingCount": "قيد الانتظار",
+      "ofSubmitted": "من الملفات المودعة",
+      "byObligation": "المطابقة حسب الالتزام",
+      "lateList": "تفصيل التأخّرات",
+      "noLate": "لا تأخّر خلال الفترة.",
+      "causes": "توزيع الأسباب",
+      "noCause": "لا تأخّر للتحليل.",
+      "signature": "توقيع الإنتاج",
+      "generatedBy": "الفاعل",
+      "generatedAt": "التاريخ",
+      "scope": "النطاق",
+      "fingerprint": "بصمة المعطيات",
+      "fingerprintNote": "تحدّد هذه البصمة نسخة المعطيات المجمّعة. سحبان لنفس النطاق دون تغيير يحملان القيمة ذاتها.",
+      "andMore": "{count} تأخّر آخر غير مفصّل — انظروا التصدير الجدولي."
+    },
+    "page": {
+      "intro": "أنتجوا ملفا قابلا للاحتجاج، أو جدول متابعة، أو تقرير خلاصة. لا يتضمّن أي تصدير إلا ما يحقّ لكم الاطلاع عليه.",
+      "type": "نوع التصدير",
+      "format": "الصيغة",
+      "from": "من",
+      "to": "إلى",
+      "domain": "المجال",
+      "authority": "الهيئة",
+      "allDomains": "كل المجالات",
+      "allAuthorities": "كل الهيئات",
+      "generate": "إنتاج التصدير",
+      "generating": "الإنتاج جار…",
+      "history": "سجلّ التصديرات",
+      "noHistory": "لا تصدير منتج حتى الآن.",
+      "author": "الفاعل",
+      "when": "التاريخ",
+      "scope": "النطاق",
+      "rows": "الملفات",
+      "size": "الحجم",
+      "statusLabel": "الحالة",
+      "asyncQueued": "تصدير ضخم: يُنتج في الخلفية. ستُعلَمون حالما يكون جاهزا.",
+      "empty": "لا ملف يطابق هذه المرشّحات.",
+      "failed": "تعذّر إنتاج التصدير.",
+      "kinds": {
+        "OCCURRENCES": "متابعة الاستحقاقات",
+        "COMPLIANCE": "جدول المطابقة",
+        "WORKLOAD": "العبء حسب الشخص",
+        "LATE_REASONS": "تحليل أسباب التأخر",
+        "REPORT": "تقرير المطابقة (PDF)",
+        "PERIOD": "ملف مجمّع على فترة (ZIP)",
+        "DOSSIER": "ملف مفرد (ZIP)"
+      },
+      "statuses": {
+        "RUNNING": "جار",
+        "SUCCEEDED": "منتهٍ",
+        "FAILED": "فشل",
+        "PARTIAL": "جزئي"
+      }
     }
   }
 }

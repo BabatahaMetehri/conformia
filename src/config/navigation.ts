@@ -150,7 +150,7 @@ export const NAVIGATION: readonly NavItem[] = [
   },
   {
     id: "reports",
-    href: "/reports",
+    href: "/rapports",
     icon: "reports",
     labelKey: "reports",
     requires: { kind: "all", permissions: ["export.generate"] },

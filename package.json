@@ -18,7 +18,10 @@
     "db:types": "supabase gen types typescript --local --schema public > src/types/database.types.ts.tmp && node -e \"const fs=require('fs');const f='src/types/database.types.ts.tmp';if(fs.statSync(f).size<1000){fs.unlinkSync(f);console.error('Generation des types vide ou tronquee : fichier conserve.');process.exit(1)}fs.renameSync(f,'src/types/database.types.ts')\"",
     "db:reset": "supabase db reset",
     "db:seed": "node scripts/seed.mjs",
-    "prepare": "husky"
+    "prepare": "husky",
+    "backup": "node scripts/backup.ts",
+    "restore": "node scripts/restore.ts",
+    "restore:test": "node scripts/restore-test.ts"
   },
   "lint-staged": {
     "*.{ts,tsx}": [
@@ -33,15 +36,18 @@
     "@hookform/resolvers": "^5.9.1",
     "@react-email/components": "^1.0.12",
     "@react-email/render": "^2.1.0",
+    "@react-pdf/renderer": "^4.9.0",
     "@supabase/ssr": "0.12.4",
     "@supabase/supabase-js": "2.112.3",
     "@tanstack/react-query": "5.101.4",
     "@tanstack/react-table": "8.21.3",
+    "archiver": "^8.0.0",
     "class-variance-authority": "0.7.1",
     "clsx": "2.1.1",
     "cmdk": "^1.1.1",
     "date-fns": "4.4.0",
     "date-fns-tz": "3.2.0",
+    "exceljs": "^4.4.0",
     "lucide-react": "1.38.0",
     "next": "15.5.22",
     "next-intl": "4.13.6",
@@ -65,6 +71,7 @@
     "@eslint/eslintrc": "^3",
     "@playwright/test": "1.62.1",
     "@tailwindcss/postcss": "^4",
+    "@types/archiver": "^8.0.0",
     "@types/node": "^20",
     "@types/nodemailer": "^8.0.1",
     "@types/pg": "8.21.0",

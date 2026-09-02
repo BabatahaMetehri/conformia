@@ -8,6 +8,12 @@ import fr from "@/i18n/messages/fr.json";
 /**
  * Traducteur HORS REQUÊTE.
  *
+ * ⚠️ Déplacé de `src/emails/` vers `src/lib/` : les courriels n'en sont plus le
+ * seul usage. Les exports en ont besoin aussi — un gestionnaire de route qui
+ * produit une archive n'a pas de segment de locale dans son chemin, donc pas de
+ * contexte de requête i18n. Le laisser sous `emails/` aurait obligé la couche
+ * export à importer un module de courriel pour traduire un nom de colonne.
+ *
  * ⚠️ `getTranslations` de `next-intl/server` lit le contexte de requête. Les
  * courriels partent d'une tâche planifiée : il n'y a ni requête, ni cookie, ni
  * en-tête `Accept-Language`. `createTranslator` prend ses messages en argument
@@ -33,7 +39,7 @@ const CATALOGUES: Readonly<Record<Locale, typeof fr>> = { fr, ar };
  * jour où un destinataire arabophone existe, seul l'appelant change. Coder `fr`
  * dans les gabarits aurait demandé d'y revenir un par un.
  */
-export function emailTranslator(locale: Locale = DEFAULT_LOCALE) {
+export function appTranslator(locale: Locale = DEFAULT_LOCALE) {
   return createTranslator({
     locale,
     messages: CATALOGUES[locale],
@@ -42,4 +48,10 @@ export function emailTranslator(locale: Locale = DEFAULT_LOCALE) {
 }
 
 /** Le type EST celui de la fabrique : il ne peut pas s'en écarter. */
-export type EmailTranslator = ReturnType<typeof emailTranslator>;
+export type AppTranslator = ReturnType<typeof appTranslator>;
+
+/** Ancien nom, conservé pour les gabarits de courriel. */
+export type EmailTranslator = AppTranslator;
+
+/** Ancien nom, conservé pour les gabarits de courriel. */
+export const emailTranslator = appTranslator;

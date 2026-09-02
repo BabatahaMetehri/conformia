@@ -3,8 +3,10 @@
  *
  * Trois étapes, dans cet ordre et sans exception :
  *   1. planifier — remplir la file d'après les jalons et l'escalade ;
- *   2. préparer le résumé hebdomadaire, s'il est l'heure ;
- *   3. diffuser — vider la file d'envoi.
+ *   2. vérifier l'ÂGE DE LA DERNIÈRE SAUVEGARDE et alerter si besoin ;
+ *   3. préparer le résumé hebdomadaire, s'il est l'heure ;
+ *   4. construire les exports asynchrones en attente ;
+ *   5. diffuser — vider la file d'envoi.
  *
  * ⚠️ L'ORDRE N'EST PAS INDIFFÉRENT. Planifier avant de diffuser fait partir les
  * alertes du cycle courant dans le même cycle ; l'inverse les retarderait d'une
@@ -30,9 +32,12 @@ import {
   unlockJob,
   type GenerationClient,
 } from "@/data/queries/generation";
+import { BACKUP_STALE_AFTER_HOURS } from "@/config/notifications";
+import { notifyStaleBackup } from "@/data/queries/notifications";
 import { dispatchNotifications } from "@/services/notifications/dispatcher";
 import { scheduleNotifications } from "@/services/notifications/scheduler";
 import { scheduleWeeklyDigest } from "@/services/notifications/digest";
+import { runAsyncExportJob } from "@/server/jobs/build-async-exports";
 
 export const JOB_NAME = "process-notifications";
 
@@ -43,10 +48,20 @@ export interface NotificationJobOutcome {
   readonly sent: number;
   readonly failed: number;
   readonly digestQueued: number;
+  readonly backupAlerts: number;
+  readonly exportsBuilt: number;
   readonly runId: number | null;
 }
 
-const NOTHING = { scheduled: 0, duplicates: 0, sent: 0, failed: 0, digestQueued: 0 };
+const NOTHING = {
+  scheduled: 0,
+  duplicates: 0,
+  sent: 0,
+  failed: 0,
+  digestQueued: 0,
+  backupAlerts: 0,
+  exportsBuilt: 0,
+};
 
 /**
  * Exécute un cycle complet, sous verrou.
@@ -93,7 +108,37 @@ export async function runNotificationJob(
 
   try {
     const scheduling = await scheduleNotifications(client, now);
+
+    /*
+     * ⚠️ L'ALERTE DE SAUVEGARDE PÉRIMÉE, greffée sur le cycle qui tourne déjà.
+     *
+     * La panne classique n'est pas la sauvegarde qui échoue — celle-là se voit.
+     * C'est celle qui échoue SILENCIEUSEMENT pendant huit mois. Le bandeau du
+     * tableau de bord ne suffit pas : il faut ouvrir un écran d'administration
+     * pour le voir. Ici l'alerte est POUSSÉE vers les administrateurs et la
+     * Direction, en interne et par courriel.
+     *
+     * Son échec ne fait pas échouer le cycle : les jalons du jour comptent
+     * davantage qu'une alerte qui repassera dans une heure.
+     */
+    const backupAlert = await notifyStaleBackup(client, BACKUP_STALE_AFTER_HOURS);
+    if (!backupAlert.ok) {
+      logger.error("Contrôle de fraîcheur des sauvegardes en échec", {
+        code: backupAlert.error.code,
+      });
+    }
+
     const digest = await scheduleWeeklyDigest(client, now);
+
+    /*
+     * ⚠️ Les exports asynchrones sont construits ICI, et non par un ordonnanceur
+     * à eux. Un second planificateur, c'est un second dispositif dont personne ne
+     * surveille la santé : si celui-là s'arrêtait, les demandes resteraient
+     * ouvertes six heures puis seraient ignorées, et leur auteur ne saurait
+     * jamais que son export ne viendra pas. Greffé sur le cycle horaire, il
+     * partage sa surveillance.
+     */
+    const exports = await runAsyncExportJob(client);
     const dispatch = await dispatchNotifications(client, now);
 
     /*
@@ -113,7 +158,8 @@ export async function runNotificationJob(
     const failures =
       scheduling.value.failed +
       (dispatchFailed ? 1 : dispatch.value.failed) +
-      (digestFailed ? 1 : digest.value.failed);
+      (digestFailed ? 1 : digest.value.failed) +
+      exports.failed;
 
     const status = failures > 0 ? "PARTIAL" : "SUCCEEDED";
 
@@ -124,6 +170,8 @@ export async function runNotificationJob(
       schedulingFailures: scheduling.value.failures,
       digest: digestFailed ? { error: digest.error.code } : digest.value,
       dispatch: dispatchFailed ? { error: dispatch.error.code } : dispatch.value,
+      backupAlerts: backupAlert.ok ? backupAlert.value : null,
+      asyncExports: exports,
     });
 
     const outcome: NotificationJobOutcome = {
@@ -133,6 +181,8 @@ export async function runNotificationJob(
       sent: dispatchFailed ? 0 : dispatch.value.sent,
       failed: failures,
       digestQueued: digestFailed ? 0 : digest.value.queued,
+      backupAlerts: backupAlert.ok ? backupAlert.value : 0,
+      exportsBuilt: exports.succeeded,
       runId: run.value,
     };
 

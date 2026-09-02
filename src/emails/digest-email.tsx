@@ -1,7 +1,7 @@
 import { Heading } from "@react-email/components";
 
 import { EmailLayout, EmailList, EmailText, emailStyles } from "@/emails/layout";
-import type { EmailTranslator } from "@/emails/translator";
+import type { EmailTranslator } from "@/lib/translator";
 
 /**
  * Résumé hebdomadaire — lundi 07 h 00, heure d'Alger.
