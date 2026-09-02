@@ -527,6 +527,7 @@
     "reports": "Rapports & exports",
     "admin": "Administration",
     "adminUsers": "Utilisateurs & rôles",
+    "adminRoles": "Rôles et permissions",
     "adminDelegations": "Délégations",
     "adminReferentials": "Référentiels",
     "adminNotifications": "Règles de notification",
@@ -551,6 +552,57 @@
       "EMAIL": "Courriel",
       "IN_APP": "Dans l'application",
       "SMS": "SMS"
+    },
+    "panelTitle": "Notifications",
+    "viewAll": "Tout afficher",
+    "markRead": "Marquer comme lu",
+    "dismiss": "Masquer",
+    "unreadCount": "{count} non lue(s)",
+    "filters": {
+      "label": "Afficher",
+      "all": "Toutes",
+      "unread": "Non lues"
+    },
+    "kind": {
+      "VALIDATION_REQUESTED": "Validation demandée",
+      "OCCURRENCE_REJECTED": "Dossier rejeté",
+      "OCCURRENCE_UNLOCKED": "Dossier rouvert",
+      "MFA_RESET": "Second facteur réinitialisé",
+      "HOLIDAY_CALENDAR_CHANGED": "Calendrier des fériés modifié",
+      "ROLE_GRANTED": "Rôle attribué",
+      "ROLE_REVOKED": "Rôle retiré",
+      "UPCOMING_DEADLINE": "Échéance à venir",
+      "OVERDUE_ALERT": "Échéance dépassée",
+      "ESCALATION": "Escalade",
+      "WEEKLY_DIGEST": "Résumé hebdomadaire",
+      "USER_INVITATION": "Invitation",
+      "PASSWORD_RESET": "Mot de passe",
+      "INTEGRITY_ALERT": "Alerte d'intégrité",
+      "BACKUP_FAILURE": "Sauvegarde en échec",
+      "DELIVERY_FAILURE": "Envoi de courriel en échec"
+    },
+    "preferences": {
+      "title": "Préférences de notification",
+      "description": "Ces réglages portent sur les alertes d'échéance. Les messages liés à une validation ou à un rejet vous parviennent toujours : ils matérialisent une responsabilité.",
+      "channelLabel": "Canal {channel}",
+      "enabled": "Recevoir",
+      "digestLabel": "Résumé",
+      "digest": {
+        "NONE": "Aucun",
+        "DAILY": "Quotidien",
+        "WEEKLY": "Hebdomadaire"
+      },
+      "smsUnavailable": "Le canal SMS n'est pas ouvert en version 1.",
+      "saved": "Préférences enregistrées"
+    },
+    "deliveryFailure": {
+      "subject": "Des courriels ne partent pas",
+      "body": "Un ou plusieurs messages ont épuisé leurs tentatives d'envoi. Vérifiez la configuration du fournisseur de courriel."
+    },
+    "errors": {
+      "smsNotConfigured": "Canal SMS non configuré.",
+      "loadFailed": "Impossible de charger les notifications.",
+      "updateFailed": "La notification n'a pas pu être mise à jour."
     }
   },
   "obligations": {
@@ -1140,6 +1192,10 @@
     "adminRoles": {
       "title": "Rôles & permissions",
       "description": "Matrice des rôles et des permissions, et simulateur d'accès."
+    },
+    "notifications": {
+      "title": "Notifications",
+      "description": "Vos messages et vos préférences d'alerte."
     }
   },
   "validation": {
@@ -1248,6 +1304,139 @@
       "VALIDATION_REQUESTED": "Un dossier attend votre validation.",
       "OCCURRENCE_REJECTED": "Un de vos dossiers a été rejeté.",
       "OCCURRENCE_UNLOCKED": "Un dossier archivé a été rouvert."
+    }
+  },
+  "emails": {
+    "common": {
+      "footer": "Message automatique de CONFORMIA — AGROESPACE. Ne contient aucune pièce jointe : le détail du dossier reste dans l'application.",
+      "viewOccurrence": "Ouvrir le dossier",
+      "facts": {
+        "obligation": "Obligation",
+        "period": "Période",
+        "internalDue": "Échéance interne",
+        "legalDue": "Échéance légale",
+        "authority": "Organisme"
+      }
+    },
+    "upcomingDeadline": {
+      "subject": "{obligation} — échéance dans {days} jour(s)",
+      "preview": "Une échéance approche.",
+      "heading": "Échéance à venir",
+      "lead": "Ce dossier arrive à échéance interne dans {days} jour(s)."
+    },
+    "overdueAlert": {
+      "subject": "{obligation} — en retard de {days} jour(s)",
+      "preview": "Une échéance interne est dépassée.",
+      "heading": "Échéance dépassée",
+      "lead": "L'échéance interne de ce dossier est dépassée depuis {days} jour(s)."
+    },
+    "validationRequested": {
+      "subject": "{obligation} — votre validation est attendue",
+      "preview": "Un dossier attend votre validation.",
+      "heading": "Validation attendue",
+      "lead": "Un dossier a été soumis et attend votre validation."
+    },
+    "submissionRejected": {
+      "subject": "{obligation} — dossier rejeté",
+      "preview": "Un dossier a été rejeté.",
+      "heading": "Dossier rejeté",
+      "lead": "Le dossier vous est renvoyé pour correction.",
+      "reasonLabel": "Motif"
+    },
+    "escalation": {
+      "subject": "{obligation} — escalade, {days} jour(s) de retard",
+      "preview": "Un dossier en retard est escaladé.",
+      "heading": "Escalade d'un dossier en retard",
+      "lead": "Ce dossier, porté par {owner}, accuse {days} jour(s) de retard. Vous en êtes informé au titre de la chaîne d'escalade."
+    },
+    "groupedAlerts": {
+      "subject": "{count} échéances à suivre",
+      "preview": "{count} alertes réunies en un message.",
+      "heading": "{count} dossiers appellent votre attention",
+      "lead": "Bonjour {name}, voici les alertes de cette heure, réunies en un seul message.",
+      "openList": "Ouvrir l'échéancier"
+    },
+    "weeklyDigest": {
+      "subject": "Votre semaine — {week}",
+      "preview": "Résumé hebdomadaire du {week}.",
+      "heading": "Résumé de la semaine du {week}",
+      "lead": "Bonjour {name}, voici l'état des obligations dont vous avez la responsabilité.",
+      "nothing": "Aucune échéance, aucun retard et aucune validation en attente. Rien ne vous attend cette semaine.",
+      "andMore": "et {count} autre(s) — voir l'échéancier.",
+      "openDashboard": "Ouvrir le tableau de bord",
+      "itemWithDate": "{label} — {date}",
+      "sections": {
+        "overdue": "Retards en cours",
+        "pendingValidation": "Validations en attente",
+        "weekAhead": "Échéances de la semaine",
+        "newObligations": "Nouveautés du référentiel"
+      }
+    },
+    "userInvitation": {
+      "subject": "Votre accès à CONFORMIA",
+      "preview": "Vous êtes invité à rejoindre CONFORMIA.",
+      "heading": "Bienvenue sur CONFORMIA",
+      "lead": "{inviter} vous a ouvert un accès à la plateforme de suivi des obligations d'AGROESPACE.",
+      "role": "Rôle attribué : {role}.",
+      "expiry": "Ce lien est valable {hours} heure(s).",
+      "choosePassword": "Vous choisirez votre mot de passe vous-même : aucun mot de passe ne circule par courriel.",
+      "accept": "Activer mon accès"
+    },
+    "passwordReset": {
+      "subject": "Réinitialisation de votre mot de passe",
+      "preview": "Lien de réinitialisation.",
+      "heading": "Réinitialiser votre mot de passe",
+      "lead": "Une réinitialisation de mot de passe a été demandée pour votre compte.",
+      "expiry": "Ce lien est valable {minutes} minutes.",
+      "ignore": "Si vous n'êtes pas à l'origine de cette demande, ignorez ce message et prévenez votre administrateur.",
+      "reset": "Choisir un nouveau mot de passe"
+    },
+    "integrityAlert": {
+      "subject": "Intégrité : {count} document(s) divergent(s)",
+      "preview": "{count} document(s) ne correspondent plus à leur empreinte.",
+      "heading": "Contrôle d'intégrité — divergence détectée",
+      "lead": "Le contrôle périodique a relevé {count} document(s) dont l'empreinte ne correspond plus à celle enregistrée au dépôt.",
+      "checkedAt": "Contrôle du",
+      "checked": "Documents contrôlés",
+      "divergent": "Documents divergents",
+      "doNotDelete": "Ne supprimez aucun document avant analyse : la divergence est elle-même une preuve.",
+      "openReport": "Ouvrir le rapport"
+    },
+    "backupFailure": {
+      "subject": "Sauvegarde en échec depuis {hours} heures",
+      "preview": "Aucune sauvegarde réussie depuis {hours} heures.",
+      "heading": "Sauvegarde en échec",
+      "lead": "Aucune sauvegarde n'a abouti depuis {hours} heures.",
+      "lastSuccess": "Dernière sauvegarde réussie",
+      "never": "jamais",
+      "openReport": "Ouvrir le rapport"
+    }
+  },
+  "calendar": {
+    "feed": {
+      "name": "CONFORMIA — mes échéances",
+      "description": "Échéances internes des obligations dont vous avez la charge."
+    },
+    "event": {
+      "summary": "{code} — {name}",
+      "description": "Organisme : {authority}\nStatut : {status}\nPériode : {period}\nÉchéance légale : {legalDue}\n\n{url}",
+      "noAuthority": "non précisé",
+      "alarm": "Échéance interne de {name} dans une semaine."
+    },
+    "page": {
+      "intro": "Abonnez votre agenda à vos échéances internes. Le flux ne contient que le libellé de l'obligation, sa période et son échéance — jamais un document.",
+      "urlLabel": "Adresse du flux",
+      "copy": "Copier l'adresse",
+      "copied": "Adresse copiée",
+      "regenerate": "Régénérer le jeton",
+      "regenerateHint": "Régénérer invalide immédiatement l'ancienne adresse : tout agenda déjà abonné cessera de se mettre à jour et devra être réabonné.",
+      "regenerated": "Nouveau jeton en place. L'ancienne adresse ne fonctionne plus.",
+      "rotatedAt": "Jeton régénéré le {date}",
+      "secretWarning": "Cette adresse vaut mot de passe : qui la détient voit vos échéances. Ne la partagez pas, et régénérez-la en cas de doute.",
+      "howTo": "Comment s'abonner",
+      "outlook": "Outlook : Calendrier → Ajouter un calendrier → S'abonner à partir du web → collez l'adresse.",
+      "google": "Google Agenda : Autres agendas → + → À partir de l'URL → collez l'adresse.",
+      "refreshNote": "Les agendas rafraîchissent un flux à leur propre rythme, souvent toutes les quelques heures : une échéance déplacée peut mettre un moment à apparaître."
     }
   }
 }

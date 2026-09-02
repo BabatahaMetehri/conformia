@@ -189,7 +189,9 @@ export async function loadOwnerLabels(
   const supabase = await createSupabaseServerClient();
   const { data, error } = await supabase
     .from("profiles")
-    .select("id, full_name, department_id, departments(name)")
+    // ⚠️ Contrainte nommée : voir admin.ts. `departments.head_id` a introduit un
+    // second chemin entre `profiles` et `departments`, et PostgREST ne devine pas.
+    .select("id, full_name, department_id, departments!profiles_department_id_fkey(name)")
     .in("id", [...ids]);
 
   if (error !== null) return err(mapPostgrestError(error));

@@ -30,6 +30,18 @@ const serverSchema = z.object({
   SUPABASE_SERVICE_ROLE_KEY: z.string().min(1),
   DATABASE_URL: z.string().min(1).startsWith("postgres"),
 
+  /*
+   * ⚠️ OPTIONNELLE, contrairement à toutes les autres.
+   *
+   * Le fournisseur d'envoi est un réglage EN BASE (`app_settings.email_provider`) :
+   * une installation qui a basculé sur le serveur SMTP d'entreprise n'a aucune
+   * raison de détenir une clé Resend, et l'exiger ferait échouer son démarrage
+   * pour un service qu'elle n'utilise pas. L'absence est donc rattrapée à la
+   * construction du fournisseur, qui rend une erreur nommant cette variable —
+   * pas au chargement du module.
+   */
+  RESEND_API_KEY: z.string().min(1).optional(),
+
   SMTP_HOST: z.string().min(1),
   SMTP_PORT: z.coerce.number().int().min(1).max(65535),
   SMTP_USER: z.string().min(1),

@@ -12,27 +12,39 @@ export type Database = {
       app_settings: {
         Row: {
           description: string
+          email_provider: string
           key: string
+          notification_sender: string
           updated_at: string
           updated_by: string | null
           value: Json
           value_type: string
+          weekly_digest_day: number
+          weekly_digest_hour: number
         }
         Insert: {
           description: string
+          email_provider?: string
           key: string
+          notification_sender?: string
           updated_at?: string
           updated_by?: string | null
           value: Json
           value_type: string
+          weekly_digest_day?: number
+          weekly_digest_hour?: number
         }
         Update: {
           description?: string
+          email_provider?: string
           key?: string
+          notification_sender?: string
           updated_at?: string
           updated_by?: string | null
           value?: Json
           value_type?: string
+          weekly_digest_day?: number
+          weekly_digest_hour?: number
         }
         Relationships: [
           {
@@ -1662,11 +1674,48 @@ export type Database = {
         }
         Relationships: []
       }
+      calendar_feed_tokens: {
+        Row: {
+          created_at: string
+          rotated_at: string | null
+          token: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          rotated_at?: string | null
+          token?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          rotated_at?: string | null
+          token?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "calendar_feed_tokens_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: true
+            referencedRelation: "profile_directory"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "calendar_feed_tokens_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: true
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       departments: {
         Row: {
           code: string
           created_at: string
           entity_id: string
+          head_id: string | null
           id: string
           name: string
         }
@@ -1674,6 +1723,7 @@ export type Database = {
           code: string
           created_at?: string
           entity_id?: string
+          head_id?: string | null
           id?: string
           name: string
         }
@@ -1681,6 +1731,7 @@ export type Database = {
           code?: string
           created_at?: string
           entity_id?: string
+          head_id?: string | null
           id?: string
           name?: string
         }
@@ -1690,6 +1741,20 @@ export type Database = {
             columns: ["entity_id"]
             isOneToOne: false
             referencedRelation: "entities"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "departments_head_id_fkey"
+            columns: ["head_id"]
+            isOneToOne: false
+            referencedRelation: "profile_directory"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "departments_head_id_fkey"
+            columns: ["head_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
             referencedColumns: ["id"]
           },
         ]
@@ -2975,6 +3040,121 @@ export type Database = {
         }
         Relationships: []
       }
+      escalation_policies: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          criticality: Database["public"]["Enums"]["criticality"] | null
+          days_after_due: number
+          id: string
+          is_active: boolean
+          notify_audience:
+            | Database["public"]["Enums"]["notification_audience"]
+            | null
+          notify_role_id: string | null
+          notify_user_id: string | null
+          obligation_type_id: string | null
+          updated_at: string
+          updated_by: string | null
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          criticality?: Database["public"]["Enums"]["criticality"] | null
+          days_after_due: number
+          id?: string
+          is_active?: boolean
+          notify_audience?:
+            | Database["public"]["Enums"]["notification_audience"]
+            | null
+          notify_role_id?: string | null
+          notify_user_id?: string | null
+          obligation_type_id?: string | null
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          criticality?: Database["public"]["Enums"]["criticality"] | null
+          days_after_due?: number
+          id?: string
+          is_active?: boolean
+          notify_audience?:
+            | Database["public"]["Enums"]["notification_audience"]
+            | null
+          notify_role_id?: string | null
+          notify_user_id?: string | null
+          obligation_type_id?: string | null
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "escalation_policies_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profile_directory"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "escalation_policies_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "escalation_policies_notify_role_id_fkey"
+            columns: ["notify_role_id"]
+            isOneToOne: false
+            referencedRelation: "roles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "escalation_policies_notify_user_id_fkey"
+            columns: ["notify_user_id"]
+            isOneToOne: false
+            referencedRelation: "profile_directory"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "escalation_policies_notify_user_id_fkey"
+            columns: ["notify_user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "escalation_policies_obligation_type_id_fkey"
+            columns: ["obligation_type_id"]
+            isOneToOne: false
+            referencedRelation: "documents_search"
+            referencedColumns: ["obligation_type_id"]
+          },
+          {
+            foreignKeyName: "escalation_policies_obligation_type_id_fkey"
+            columns: ["obligation_type_id"]
+            isOneToOne: false
+            referencedRelation: "obligation_types"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "escalation_policies_updated_by_fkey"
+            columns: ["updated_by"]
+            isOneToOne: false
+            referencedRelation: "profile_directory"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "escalation_policies_updated_by_fkey"
+            columns: ["updated_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       holidays: {
         Row: {
           created_at: string
@@ -3053,36 +3233,157 @@ export type Database = {
         }
         Relationships: []
       }
+      notification_rules: {
+        Row: {
+          audience: Database["public"]["Enums"]["notification_audience"]
+          channel: Database["public"]["Enums"]["notification_channel"]
+          created_at: string
+          created_by: string | null
+          criticality: Database["public"]["Enums"]["criticality"] | null
+          id: string
+          is_active: boolean
+          obligation_type_id: string | null
+          offset_days: number
+          template_key: string
+          updated_at: string
+          updated_by: string | null
+        }
+        Insert: {
+          audience: Database["public"]["Enums"]["notification_audience"]
+          channel: Database["public"]["Enums"]["notification_channel"]
+          created_at?: string
+          created_by?: string | null
+          criticality?: Database["public"]["Enums"]["criticality"] | null
+          id?: string
+          is_active?: boolean
+          obligation_type_id?: string | null
+          offset_days: number
+          template_key: string
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Update: {
+          audience?: Database["public"]["Enums"]["notification_audience"]
+          channel?: Database["public"]["Enums"]["notification_channel"]
+          created_at?: string
+          created_by?: string | null
+          criticality?: Database["public"]["Enums"]["criticality"] | null
+          id?: string
+          is_active?: boolean
+          obligation_type_id?: string | null
+          offset_days?: number
+          template_key?: string
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "notification_rules_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profile_directory"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "notification_rules_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "notification_rules_obligation_type_id_fkey"
+            columns: ["obligation_type_id"]
+            isOneToOne: false
+            referencedRelation: "documents_search"
+            referencedColumns: ["obligation_type_id"]
+          },
+          {
+            foreignKeyName: "notification_rules_obligation_type_id_fkey"
+            columns: ["obligation_type_id"]
+            isOneToOne: false
+            referencedRelation: "obligation_types"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "notification_rules_updated_by_fkey"
+            columns: ["updated_by"]
+            isOneToOne: false
+            referencedRelation: "profile_directory"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "notification_rules_updated_by_fkey"
+            columns: ["updated_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       notifications: {
         Row: {
           actor_id: string | null
+          body_html: string | null
+          body_text: string | null
+          channel: Database["public"]["Enums"]["notification_channel"]
           created_at: string
+          dismissed_at: string | null
+          error_message: string | null
+          escalation_policy_id: string | null
           id: number
           kind: string
           occurrence_id: string | null
           read_at: string | null
           reason: string | null
           recipient_id: string
+          retry_count: number
+          rule_id: string | null
+          scheduled_for: string
+          sent_at: string | null
+          subject: string | null
         }
         Insert: {
           actor_id?: string | null
+          body_html?: string | null
+          body_text?: string | null
+          channel?: Database["public"]["Enums"]["notification_channel"]
           created_at?: string
+          dismissed_at?: string | null
+          error_message?: string | null
+          escalation_policy_id?: string | null
           id?: number
           kind: string
           occurrence_id?: string | null
           read_at?: string | null
           reason?: string | null
           recipient_id: string
+          retry_count?: number
+          rule_id?: string | null
+          scheduled_for?: string
+          sent_at?: string | null
+          subject?: string | null
         }
         Update: {
           actor_id?: string | null
+          body_html?: string | null
+          body_text?: string | null
+          channel?: Database["public"]["Enums"]["notification_channel"]
           created_at?: string
+          dismissed_at?: string | null
+          error_message?: string | null
+          escalation_policy_id?: string | null
           id?: number
           kind?: string
           occurrence_id?: string | null
           read_at?: string | null
           reason?: string | null
           recipient_id?: string
+          retry_count?: number
+          rule_id?: string | null
+          scheduled_for?: string
+          sent_at?: string | null
+          subject?: string | null
         }
         Relationships: [
           {
@@ -3097,6 +3398,13 @@ export type Database = {
             columns: ["actor_id"]
             isOneToOne: false
             referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "notifications_escalation_policy_id_fkey"
+            columns: ["escalation_policy_id"]
+            isOneToOne: false
+            referencedRelation: "escalation_policies"
             referencedColumns: ["id"]
           },
           {
@@ -3132,6 +3440,13 @@ export type Database = {
             columns: ["recipient_id"]
             isOneToOne: false
             referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "notifications_rule_id_fkey"
+            columns: ["rule_id"]
+            isOneToOne: false
+            referencedRelation: "notification_rules"
             referencedColumns: ["id"]
           },
         ]
@@ -4186,6 +4501,45 @@ export type Database = {
           },
         ]
       }
+      user_notification_preferences: {
+        Row: {
+          channel: Database["public"]["Enums"]["notification_channel"]
+          digest_frequency: Database["public"]["Enums"]["digest_frequency"]
+          is_enabled: boolean
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          channel: Database["public"]["Enums"]["notification_channel"]
+          digest_frequency?: Database["public"]["Enums"]["digest_frequency"]
+          is_enabled?: boolean
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          channel?: Database["public"]["Enums"]["notification_channel"]
+          digest_frequency?: Database["public"]["Enums"]["digest_frequency"]
+          is_enabled?: boolean
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "user_notification_preferences_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profile_directory"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "user_notification_preferences_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       user_roles: {
         Row: {
           created_at: string
@@ -5102,8 +5456,27 @@ export type Database = {
         }
         Returns: Json
       }
+      calendar_feed: {
+        Args: { p_months?: number; p_token: string }
+        Returns: {
+          authority_name: string
+          criticality: Database["public"]["Enums"]["criticality"]
+          internal_due_date: string
+          legal_due_date: string
+          obligation_code: string
+          obligation_name: string
+          occurrence_id: string
+          period_key: string
+          status: Database["public"]["Enums"]["occurrence_status"]
+          updated_at: string
+        }[]
+      }
       can_see_occurrence: {
         Args: { p_occurrence_id: string }
+        Returns: boolean
+      }
+      can_see_occurrence_for: {
+        Args: { p_occurrence_id: string; p_user: string }
         Returns: boolean
       }
       can_validate_occurrence: {
@@ -5230,7 +5603,47 @@ export type Database = {
         Args: { p_permission: string }
         Returns: string[]
       }
+      due_notification_candidates: {
+        Args: { p_now?: string }
+        Returns: {
+          authority_name: string
+          channel: Database["public"]["Enums"]["notification_channel"]
+          criticality: Database["public"]["Enums"]["criticality"]
+          escalation_policy_id: string
+          internal_due_date: string
+          kind: string
+          legal_due_date: string
+          obligation_code: string
+          obligation_name: string
+          occurrence_id: string
+          offset_days: number
+          owner_name: string
+          period_key: string
+          recipient_email: string
+          recipient_id: string
+          recipient_name: string
+          rule_id: string
+          status: Database["public"]["Enums"]["occurrence_status"]
+          template_key: string
+        }[]
+      }
       effective_principals: { Args: never; Returns: string[] }
+      effective_principals_for: { Args: { p_user: string }; Returns: string[] }
+      enqueue_notification: {
+        Args: {
+          p_body_html?: string
+          p_body_text: string
+          p_channel: Database["public"]["Enums"]["notification_channel"]
+          p_escalation?: string
+          p_kind: string
+          p_occurrence?: string
+          p_recipient: string
+          p_rule?: string
+          p_scheduled_for: string
+          p_subject: string
+        }
+        Returns: number
+      }
       ensure_month_partition: {
         Args: { base_table: string; month_start: string }
         Returns: undefined
@@ -5270,8 +5683,13 @@ export type Database = {
         Args: { perm: string; target_domain: string }
         Returns: boolean
       }
+      has_permission_in_domain_for: {
+        Args: { p_user: string; perm: string; target_domain: string }
+        Returns: boolean
+      }
       has_verified_mfa: { Args: { p_user_id: string }; Returns: boolean }
       is_active_user: { Args: never; Returns: boolean }
+      is_active_user_for: { Args: { p_user: string }; Returns: boolean }
       is_admin: { Args: never; Returns: boolean }
       is_auth_throttled: {
         Args: { p_email: string; p_ip?: unknown }
@@ -5306,6 +5724,11 @@ export type Database = {
         }
         Returns: undefined
       }
+      mark_notifications_failed: {
+        Args: { p_error: string; p_ids: number[] }
+        Returns: number
+      }
+      mark_notifications_sent: { Args: { p_ids: number[] }; Returns: number }
       mfa_required_for: { Args: { p_user_id: string }; Returns: boolean }
       navigation_counters: {
         Args: never
@@ -5314,6 +5737,17 @@ export type Database = {
           overdue: number
           pending_validation: number
         }[]
+      }
+      notification_audience_members: {
+        Args: {
+          p_audience: Database["public"]["Enums"]["notification_audience"]
+          p_occurrence: string
+        }
+        Returns: string[]
+      }
+      notify_admins_of_delivery_failures: {
+        Args: { p_max_attempts: number }
+        Returns: number
       }
       obligation_domain_of_occurrence: {
         Args: { occurrence_id: string }
@@ -5371,6 +5805,21 @@ export type Database = {
         Args: never
         Returns: Database["public"]["Enums"]["occurrence_status"][]
       }
+      own_ics_token: { Args: never; Returns: string }
+      pending_email_notifications: {
+        Args: { p_limit: number; p_max_attempts: number; p_now: string }
+        Returns: {
+          body_html: string
+          body_text: string
+          id: number
+          recipient_email: string
+          recipient_id: string
+          recipient_name: string
+          retry_count: number
+          scheduled_for: string
+          subject: string
+        }[]
+      }
       pending_validation_count: { Args: never; Returns: number }
       purge_auth_attempts: { Args: never; Returns: undefined }
       reassign_occurrences: {
@@ -5406,6 +5855,7 @@ export type Database = {
       }
       refresh_dashboard_views: { Args: never; Returns: undefined }
       refresh_occurrence_stats: { Args: never; Returns: undefined }
+      regenerate_ics_token: { Args: never; Returns: string }
       reject_document_upload_ticket: {
         Args: { p_reason: string; p_ticket_id: string }
         Returns: boolean
@@ -5413,6 +5863,32 @@ export type Database = {
       reset_user_mfa: {
         Args: { p_reason: string; p_user_id: string }
         Returns: boolean
+      }
+      resolve_escalation_policies: {
+        Args: {
+          p_criticality: Database["public"]["Enums"]["criticality"]
+          p_obligation: string
+        }
+        Returns: {
+          days_after_due: number
+          id: string
+          notify_audience: Database["public"]["Enums"]["notification_audience"]
+          notify_role_id: string
+          notify_user_id: string
+        }[]
+      }
+      resolve_notification_rules: {
+        Args: {
+          p_criticality: Database["public"]["Enums"]["criticality"]
+          p_obligation: string
+        }
+        Returns: {
+          audience: Database["public"]["Enums"]["notification_audience"]
+          channel: Database["public"]["Enums"]["notification_channel"]
+          id: string
+          offset_days: number
+          template_key: string
+        }[]
       }
       revoke_validation_delegation: {
         Args: { p_delegation_id: string; p_reason: string }
@@ -5469,9 +5945,27 @@ export type Database = {
         Args: { p_occurrence_id: string }
         Returns: number
       }
+      weekly_digest_recipients: {
+        Args: never
+        Returns: {
+          email: string
+          full_name: string
+          user_id: string
+        }[]
+      }
+      weekly_digest_rows: {
+        Args: { p_limit: number; p_now: string; p_user: string }
+        Returns: {
+          due_date: string
+          label: string
+          ordering: string
+          section: string
+        }[]
+      }
     }
     Enums: {
       criticality: "LOW" | "MEDIUM" | "HIGH" | "CRITICAL"
+      digest_frequency: "NONE" | "DAILY" | "WEEKLY"
       document_integrity_status: "PENDING" | "VERIFIED" | "MISMATCH" | "MISSING"
       late_reason_code:
         | "MISSING_DOCUMENT"
@@ -5479,6 +5973,12 @@ export type Database = {
         | "LATE_EXTERNAL_INFORMATION"
         | "OVERSIGHT"
         | "OTHER"
+      notification_audience:
+        | "OWNER"
+        | "VALIDATOR"
+        | "DEPARTMENT_HEAD"
+        | "DIRECTION"
+      notification_channel: "EMAIL" | "IN_APP" | "SMS"
       occurrence_status:
         | "TODO"
         | "IN_PROGRESS"
@@ -5624,6 +6124,7 @@ export const Constants = {
   public: {
     Enums: {
       criticality: ["LOW", "MEDIUM", "HIGH", "CRITICAL"],
+      digest_frequency: ["NONE", "DAILY", "WEEKLY"],
       document_integrity_status: ["PENDING", "VERIFIED", "MISMATCH", "MISSING"],
       late_reason_code: [
         "MISSING_DOCUMENT",
@@ -5632,6 +6133,13 @@ export const Constants = {
         "OVERSIGHT",
         "OTHER",
       ],
+      notification_audience: [
+        "OWNER",
+        "VALIDATOR",
+        "DEPARTMENT_HEAD",
+        "DIRECTION",
+      ],
+      notification_channel: ["EMAIL", "IN_APP", "SMS"],
       occurrence_status: [
         "TODO",
         "IN_PROGRESS",

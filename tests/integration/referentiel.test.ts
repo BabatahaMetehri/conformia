@@ -56,7 +56,44 @@ const EVENT_DRIVEN = [
  */
 const EXPIRY_ANCHORED = ["ASSUR", "ATT-FISC"] as const;
 
+/*
+ * ⚠️ Ce qui existait AVANT le seed, pour ne défaire que ce que ce fichier a fait.
+ *
+ * Sans cette précaution le référentiel entier — 23 obligations et les occurrences
+ * qu'il engendre — restait en base après la suite. Les fichiers exécutés ensuite
+ * comptaient alors des lignes qu'ils n'avaient pas créées : `rls` voyait vingt-deux
+ * occurrences là où son jeu d'essai en pose une, `navigation` trouvait des
+ * résultats de recherche venus d'ailleurs. Les échecs changeaient de nom d'une
+ * exécution à l'autre, parce que l'ordre des fichiers n'est pas garanti — le
+ * symptôme le plus coûteux qui soit, puisqu'il se lit comme une régression.
+ */
+interface Preexisting {
+  readonly obligations: readonly string[];
+  readonly authorities: readonly string[];
+  readonly departments: readonly string[];
+  readonly holidays: readonly string[];
+}
+
+let preexisting: Preexisting = {
+  obligations: [],
+  authorities: [],
+  departments: [],
+  holidays: [],
+};
+
+async function idsOf(table: string): Promise<readonly string[]> {
+  const { rows } = await pool.query<{ id: string }>(`select id::text from public.${table}`);
+  return rows.map((row) => row.id);
+}
+
 beforeAll(async () => {
+  preexisting = {
+    obligations: await idsOf("obligation_types"),
+    authorities: await idsOf("authorities"),
+    departments: await idsOf("departments"),
+    holidays: await idsOf("holidays"),
+  };
+
   // Appliqué DEUX FOIS : la seconde passe ne doit produire aucun doublon, et
   // c'est le critère d'acceptation le plus important du référentiel.
   const sql = readFileSync("supabase/seed/0002_referentiel_agroespace.sql", "utf8");
@@ -65,8 +102,48 @@ beforeAll(async () => {
 }, 120_000);
 
 afterAll(async () => {
-  await pool.end();
-});
+  // `occurrence_transitions` est en ajout seul : le trigger refuse le DELETE
+  // même au propriétaire. On le lève le temps du nettoyage, puis on le remet —
+  // dans un `finally`, pour qu'un échec ici ne laisse pas la table sans garde.
+  try {
+    await pool.query(
+      "alter table public.occurrence_transitions disable trigger trg_occurrence_transitions_append_only",
+    );
+    await pool.query(
+      `delete from public.occurrence_transitions where occurrence_id in (
+         select id from public.obligation_occurrences
+         where obligation_type_id <> all($1::uuid[]))`,
+      [preexisting.obligations],
+    );
+    await pool.query(
+      "delete from public.obligation_occurrences where obligation_type_id <> all($1::uuid[])",
+      [preexisting.obligations],
+    );
+    await pool.query(
+      "delete from public.obligation_required_documents where obligation_type_id <> all($1::uuid[])",
+      [preexisting.obligations],
+    );
+    await pool.query("delete from public.obligation_types where id <> all($1::uuid[])", [
+      preexisting.obligations,
+    ]);
+    await pool.query("delete from public.holidays where id <> all($1::uuid[])", [
+      preexisting.holidays,
+    ]);
+    await pool.query("delete from public.departments where id <> all($1::uuid[])", [
+      preexisting.departments,
+    ]);
+    await pool.query("delete from public.authorities where id <> all($1::uuid[])", [
+      preexisting.authorities,
+    ]);
+  } finally {
+    await pool
+      .query(
+        "alter table public.occurrence_transitions enable trigger trg_occurrence_transitions_append_only",
+      )
+      .catch(() => undefined);
+    await pool.end();
+  }
+}, 120_000);
 
 describe("contenu du référentiel", () => {
   it("porte 23 obligations, réparties sur les quatre domaines", async () => {

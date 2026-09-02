@@ -68,6 +68,15 @@ export default defineConfig({
       "server-only": fileURLToPath(new URL("./tests/stubs/server-only.ts", import.meta.url)),
     },
   },
+  /*
+   * ⚠️ Transformation JSX AUTOMATIQUE, imposée ici. Le `tsconfig.json` du projet déclare
+   * `jsx: "preserve"` — c'est ce qu'attend Next.js, qui transforme le JSX
+   * lui-même — et Vite reprend ce réglage tel quel : il laisse alors passer du
+   * JSX brut, que l'analyseur d'imports refuse. Les gabarits de courriel sont
+   * des composants React ; sans cette ligne, tout module qui les importe, même
+   * indirectement, casse au chargement du test.
+   */
+  oxc: { jsx: { runtime: "automatic", importSource: "react" } },
   test: {
     environment: "node",
     include: ["tests/integration/**/*.test.ts"],

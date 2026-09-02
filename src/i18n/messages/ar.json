@@ -527,6 +527,7 @@
     "reports": "التقارير والتصدير",
     "admin": "الإدارة",
     "adminUsers": "المستخدمون والأدوار",
+    "adminRoles": "الأدوار والصلاحيات",
     "adminDelegations": "التفويضات",
     "adminReferentials": "المراجع",
     "adminNotifications": "قواعد الإشعارات",
@@ -551,6 +552,57 @@
       "EMAIL": "بريد إلكتروني",
       "IN_APP": "داخل التطبيق",
       "SMS": "رسالة قصيرة"
+    },
+    "panelTitle": "الإشعارات",
+    "viewAll": "عرض الكل",
+    "markRead": "تعليم كمقروء",
+    "dismiss": "إخفاء",
+    "unreadCount": "{count} غير مقروءة",
+    "filters": {
+      "label": "عرض",
+      "all": "الكل",
+      "unread": "غير المقروءة"
+    },
+    "kind": {
+      "VALIDATION_REQUESTED": "مصادقة مطلوبة",
+      "OCCURRENCE_REJECTED": "ملف مرفوض",
+      "OCCURRENCE_UNLOCKED": "ملف أُعيد فتحه",
+      "MFA_RESET": "إعادة تعيين العامل الثاني",
+      "HOLIDAY_CALENDAR_CHANGED": "تعديل رزنامة العطل",
+      "ROLE_GRANTED": "دور مسند",
+      "ROLE_REVOKED": "دور مسحوب",
+      "UPCOMING_DEADLINE": "أجل قادم",
+      "OVERDUE_ALERT": "أجل متجاوَز",
+      "ESCALATION": "تصعيد",
+      "WEEKLY_DIGEST": "ملخّص أسبوعي",
+      "USER_INVITATION": "دعوة",
+      "PASSWORD_RESET": "كلمة السر",
+      "INTEGRITY_ALERT": "تنبيه سلامة",
+      "BACKUP_FAILURE": "فشل النسخ الاحتياطي",
+      "DELIVERY_FAILURE": "فشل إرسال البريد"
+    },
+    "preferences": {
+      "title": "تفضيلات الإشعار",
+      "description": "تخصّ هذه الإعدادات تنبيهات الآجال. أمّا رسائل المصادقة أو الرفض فتصلكم دائما: فهي تجسّد مسؤولية.",
+      "channelLabel": "قناة {channel}",
+      "enabled": "الاستلام",
+      "digestLabel": "الملخّص",
+      "digest": {
+        "NONE": "بدون",
+        "DAILY": "يومي",
+        "WEEKLY": "أسبوعي"
+      },
+      "smsUnavailable": "قناة الرسائل القصيرة غير مفتوحة في الإصدار الأول.",
+      "saved": "حُفظت التفضيلات"
+    },
+    "deliveryFailure": {
+      "subject": "رسائل بريد لا تُرسَل",
+      "body": "استنفدت رسالة أو أكثر محاولات الإرسال. تحقّقوا من إعداد مزوّد البريد."
+    },
+    "errors": {
+      "smsNotConfigured": "قناة الرسائل القصيرة غير مهيّأة.",
+      "loadFailed": "تعذّر تحميل الإشعارات.",
+      "updateFailed": "تعذّر تحديث الإشعار."
     }
   },
   "obligations": {
@@ -1140,6 +1192,10 @@
     "adminRoles": {
       "title": "الأدوار والصلاحيات",
       "description": "مصفوفة الأدوار والصلاحيات، ومحاكي النفاذ."
+    },
+    "notifications": {
+      "title": "الإشعارات",
+      "description": "رسائلكم وتفضيلات التنبيه."
     }
   },
   "validation": {
@@ -1248,6 +1304,139 @@
       "VALIDATION_REQUESTED": "ملف بانتظار مصادقتك.",
       "OCCURRENCE_REJECTED": "رُفض أحد ملفاتك.",
       "OCCURRENCE_UNLOCKED": "أُعيد فتح ملف مؤرشف."
+    }
+  },
+  "emails": {
+    "common": {
+      "footer": "رسالة آلية من CONFORMIA — AGROESPACE. لا تتضمّن أي مرفق: تفاصيل الملف تبقى داخل التطبيق.",
+      "viewOccurrence": "فتح الملف",
+      "facts": {
+        "obligation": "الالتزام",
+        "period": "الفترة",
+        "internalDue": "الأجل الداخلي",
+        "legalDue": "الأجل القانوني",
+        "authority": "الهيئة"
+      }
+    },
+    "upcomingDeadline": {
+      "subject": "{obligation} — الأجل خلال {days} يوم",
+      "preview": "أجل يقترب.",
+      "heading": "أجل قادم",
+      "lead": "يحلّ الأجل الداخلي لهذا الملف خلال {days} يوم."
+    },
+    "overdueAlert": {
+      "subject": "{obligation} — متأخر بـ {days} يوم",
+      "preview": "تجاوز الأجل الداخلي.",
+      "heading": "أجل متجاوَز",
+      "lead": "تجاوز الأجل الداخلي لهذا الملف منذ {days} يوم."
+    },
+    "validationRequested": {
+      "subject": "{obligation} — مصادقتكم مطلوبة",
+      "preview": "ملف ينتظر مصادقتكم.",
+      "heading": "مصادقة مطلوبة",
+      "lead": "أُودع ملف وينتظر مصادقتكم."
+    },
+    "submissionRejected": {
+      "subject": "{obligation} — ملف مرفوض",
+      "preview": "رُفض ملف.",
+      "heading": "ملف مرفوض",
+      "lead": "أُعيد إليكم الملف للتصحيح.",
+      "reasonLabel": "السبب"
+    },
+    "escalation": {
+      "subject": "{obligation} — تصعيد، تأخر {days} يوم",
+      "preview": "تصعيد ملف متأخر.",
+      "heading": "تصعيد ملف متأخر",
+      "lead": "هذا الملف، الذي يتولاه {owner}، متأخر بـ {days} يوم. تُعلَمون به ضمن سلسلة التصعيد."
+    },
+    "groupedAlerts": {
+      "subject": "{count} آجال للمتابعة",
+      "preview": "{count} تنبيهات مجمّعة في رسالة واحدة.",
+      "heading": "{count} ملفات تستدعي انتباهكم",
+      "lead": "مرحبا {name}، إليكم تنبيهات هذه الساعة مجمّعة في رسالة واحدة.",
+      "openList": "فتح الرزنامة"
+    },
+    "weeklyDigest": {
+      "subject": "أسبوعكم — {week}",
+      "preview": "ملخّص أسبوعي ليوم {week}.",
+      "heading": "ملخّص أسبوع {week}",
+      "lead": "مرحبا {name}، إليكم حالة الالتزامات التي تتولّون مسؤوليتها.",
+      "nothing": "لا آجال، لا تأخّرات، ولا مصادقات معلّقة. لا شيء ينتظركم هذا الأسبوع.",
+      "andMore": "و{count} أخرى — انظروا الرزنامة.",
+      "openDashboard": "فتح لوحة القيادة",
+      "itemWithDate": "{label} — {date}",
+      "sections": {
+        "overdue": "تأخّرات جارية",
+        "pendingValidation": "مصادقات معلّقة",
+        "weekAhead": "آجال الأسبوع",
+        "newObligations": "مستجدّات المرجعية"
+      }
+    },
+    "userInvitation": {
+      "subject": "وصولكم إلى CONFORMIA",
+      "preview": "دُعيتم للانضمام إلى CONFORMIA.",
+      "heading": "مرحبا بكم في CONFORMIA",
+      "lead": "فتح لكم {inviter} وصولا إلى منصّة متابعة التزامات AGROESPACE.",
+      "role": "الدور المسند: {role}.",
+      "expiry": "هذا الرابط صالح {hours} ساعة.",
+      "choosePassword": "ستختارون كلمة السر بأنفسكم: لا تنتقل أي كلمة سر عبر البريد.",
+      "accept": "تفعيل وصولي"
+    },
+    "passwordReset": {
+      "subject": "إعادة تعيين كلمة السر",
+      "preview": "رابط إعادة التعيين.",
+      "heading": "إعادة تعيين كلمة السر",
+      "lead": "طُلبت إعادة تعيين كلمة السر لحسابكم.",
+      "expiry": "هذا الرابط صالح {minutes} دقيقة.",
+      "ignore": "إن لم تكونوا أصحاب الطلب، تجاهلوا هذه الرسالة وأعلموا مسؤول النظام.",
+      "reset": "اختيار كلمة سر جديدة"
+    },
+    "integrityAlert": {
+      "subject": "السلامة: {count} وثيقة متباينة",
+      "preview": "{count} وثيقة لم تعد مطابقة لبصمتها.",
+      "heading": "مراقبة السلامة — تباين مرصود",
+      "lead": "رصدت المراقبة الدورية {count} وثيقة لم تعد بصمتها مطابقة للمسجّلة عند الإيداع.",
+      "checkedAt": "تاريخ المراقبة",
+      "checked": "وثائق مراقَبة",
+      "divergent": "وثائق متباينة",
+      "doNotDelete": "لا تحذفوا أي وثيقة قبل التحليل: التباين نفسه دليل.",
+      "openReport": "فتح التقرير"
+    },
+    "backupFailure": {
+      "subject": "فشل النسخ الاحتياطي منذ {hours} ساعة",
+      "preview": "لا نسخة احتياطية ناجحة منذ {hours} ساعة.",
+      "heading": "فشل النسخ الاحتياطي",
+      "lead": "لم تنجح أي نسخة احتياطية منذ {hours} ساعة.",
+      "lastSuccess": "آخر نسخة ناجحة",
+      "never": "أبدا",
+      "openReport": "فتح التقرير"
+    }
+  },
+  "calendar": {
+    "feed": {
+      "name": "CONFORMIA — آجالي",
+      "description": "الآجال الداخلية للالتزامات التي تتولّونها."
+    },
+    "event": {
+      "summary": "{code} — {name}",
+      "description": "الهيئة: {authority}\nالحالة: {status}\nالفترة: {period}\nالأجل القانوني: {legalDue}\n\n{url}",
+      "noAuthority": "غير محدّد",
+      "alarm": "الأجل الداخلي لـ {name} خلال أسبوع."
+    },
+    "page": {
+      "intro": "اشتركوا برزنامتكم في آجالكم الداخلية. لا يتضمّن التدفّق سوى تسمية الالتزام وفترته وأجله — ولا أي وثيقة.",
+      "urlLabel": "عنوان التدفّق",
+      "copy": "نسخ العنوان",
+      "copied": "نُسخ العنوان",
+      "regenerate": "تجديد الرمز",
+      "regenerateHint": "التجديد يُبطل العنوان القديم فورا: كل رزنامة مشتركة ستتوقّف عن التحديث وتحتاج إلى إعادة اشتراك.",
+      "regenerated": "رمز جديد ساري. لم يعد العنوان القديم يعمل.",
+      "rotatedAt": "جُدّد الرمز في {date}",
+      "secretWarning": "هذا العنوان بمثابة كلمة سر: من يملكه يرى آجالكم. لا تشاركوه، وجدّدوه عند الشكّ.",
+      "howTo": "كيفية الاشتراك",
+      "outlook": "Outlook: الرزنامة ← إضافة رزنامة ← الاشتراك من الويب ← ألصقوا العنوان.",
+      "google": "Google Agenda: رزنامات أخرى ← + ← من رابط ← ألصقوا العنوان.",
+      "refreshNote": "تحدّث الرزنامات التدفّق وفق إيقاعها الخاص، غالبا كل بضع ساعات: قد يتأخّر ظهور أجل مُعدَّل."
     }
   }
 }

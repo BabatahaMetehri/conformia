@@ -6,8 +6,26 @@ export default defineConfig({
   resolve: {
     alias: {
       "@": fileURLToPath(new URL("./src", import.meta.url)),
+      /*
+       * ⚠️ `server-only` lève à l'import hors composant serveur. Plusieurs
+       * modules éprouvés ici — planificateur, diffuseur, résumé — le déclarent à
+       * juste titre, et leurs fonctions PURES resteraient sans test sans ce
+       * remplaçant. Il est CANTONNÉ au lanceur : la garantie de production reste
+       * le build Next.js, qui échoue si un module `server-only` atteint un
+       * bundle client. Même choix, même raison, que dans vitest.integration.mts.
+       */
+      "server-only": fileURLToPath(new URL("./tests/stubs/server-only.ts", import.meta.url)),
     },
   },
+  /*
+   * ⚠️ Transformation JSX AUTOMATIQUE, imposée ici. Le `tsconfig.json` du projet déclare
+   * `jsx: "preserve"` — c'est ce qu'attend Next.js, qui transforme le JSX
+   * lui-même — et Vite reprend ce réglage tel quel : il laisse alors passer du
+   * JSX brut, que l'analyseur d'imports refuse. Les gabarits de courriel sont
+   * des composants React ; sans cette ligne, tout module qui les importe, même
+   * indirectement, casse au chargement du test.
+   */
+  oxc: { jsx: { runtime: "automatic", importSource: "react" } },
   test: {
     environment: "jsdom",
     include: ["tests/unit/**/*.test.{ts,tsx}", "src/**/*.test.{ts,tsx}"],

@@ -44,7 +44,12 @@ export async function listUsers(): Promise<Result<readonly UserRow[]>> {
       // ⚠️ `user_roles` pointe TROIS fois vers `profiles` (titulaire, attributeur,
       // révocateur) : sans nommer la contrainte, PostgREST ne sait pas laquelle
       // suivre et refuse la jointure.
-      "id, full_name, email, mfa_enrolled, last_login_at, deactivated_at, departments(name), user_roles!user_roles_user_id_fkey(id, expires_at, revoked_at, roles(code, label), domains(label))",
+      // ⚠️ La contrainte est NOMMÉE. Depuis que `departments.head_id` existe
+      // (0014), deux chemins relient `profiles` et `departments` — le service
+      // d'un agent, et le service qu'il dirige. PostgREST refuse alors de
+      // choisir, et la requête entière échoue : l'écran affichait « les comptes
+      // n'ont pas pu être chargés », sans dire pourquoi.
+      "id, full_name, email, mfa_enrolled, last_login_at, deactivated_at, departments!profiles_department_id_fkey(name), user_roles!user_roles_user_id_fkey(id, expires_at, revoked_at, roles(code, label), domains(label))",
     )
     .order("full_name");
 
