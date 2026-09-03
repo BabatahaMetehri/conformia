@@ -6,7 +6,15 @@
  * cet œuf-et-poule sur un poste de développement, et nulle part ailleurs.
  *
  *   node scripts/create-user.mjs <email> <mot-de-passe> <ROLE> [DOMAINE]
- *   node scripts/create-user.mjs demo@agroespace.dz Conformia2026! COMPTA_MANAGER FISCAL
+ *   node scripts/create-user.mjs demo@agroespace.dz Conformia2026! SUPERVISEUR
+ *
+ * ⚠️ LES RÔLES PAR SERVICE NE SONT PLUS ATTRIBUABLES. La migration 0018 a
+ * introduit la triade RESPONSABLE / SUPPLEANT / SUPERVISEUR et DÉSACTIVÉ
+ * COMPTA_MANAGER, COMPTA_AGENT, RH_MANAGER, RH_AGENT et REGLEMENTAIRE. Ils
+ * demeurent en base — `user_roles` et `audit_log` portent leurs identifiants, et
+ * l'historique doit rester lisible — mais un trigger refuse toute NOUVELLE
+ * attribution. Ce script le dit AVANT d'essayer, plutôt que de laisser remonter
+ * l'erreur du trigger.
  *
  * ⚠️ N'EMPLOIE PAS la clé `service_role` : il écrit directement dans Postgres,
  * comme `seed.mjs`. Le mot de passe est haché par `crypt()` avec `gen_salt('bf')`
@@ -48,10 +56,25 @@ const [email, password, roleCode, domainCode] = process.argv.slice(2);
 
 if (!email || !password || !roleCode) {
   console.error(
-    "Usage : node scripts/create-user.mjs <email> <mot-de-passe> <ROLE> [DOMAINE]\n" +
-      "Rôles  : ADMIN, DIRECTION, COMPTA_MANAGER, COMPTA_AGENT, RH_MANAGER, RH_AGENT,\n" +
-      "         REGLEMENTAIRE, AUDITOR, EXTERNAL\n" +
+    [
+      "Usage : node scripts/create-user.mjs <email> <mot-de-passe> <ROLE> [DOMAINE]",
+      "",
+      "Rôles attribuables :",
+      "  RESPONSABLE  prépare et soumet les dossiers",
+      "  SUPPLEANT    exactement les mêmes droits ; seule la trace le distingue",
+      "  SUPERVISEUR  prépare, valide, affecte, supprime des pièces",
+      "  DIRECTION    valide, déverrouille, gère le référentiel et les registres",
+      "  ADMIN        comptes, rôles, réglages — AUCUN accès au contenu des dossiers",
+      "  AUDITOR      lecture seule, journal d'audit compris",
+      "  EXTERNAL     intervenant externe, borné au domaine FISCAL",
+      "",
       "Domaines : FISCAL, SOCIAL, REGLEMENTAIRE, JURIDIQUE (omettre = portée globale)",
+      "  RESPONSABLE, SUPPLEANT, SUPERVISEUR et DIRECTION sont GLOBAUX par défaut :",
+      "  omettre le domaine est le cas normal. Le préciser sert à éprouver le",
+      "  cloisonnement, pas à s'en servir au quotidien.",
+      "",
+      "Pour découvrir l'application, SUPERVISEUR sans domaine ouvre le plus d'écrans.",
+    ].join("\n"),
   );
   process.exit(1);
 }
@@ -79,6 +102,77 @@ if (password.length < 12) {
 const pool = new Pool({ connectionString, max: 1 });
 
 try {
+  /*
+   * ⚠️ LE RÔLE EST VÉRIFIÉ AVANT D'ÊTRE ATTRIBUÉ, et il y a trois issues
+   * distinctes qu'il serait faux de confondre :
+   *
+   *   • rôle inconnu       → faute de frappe ;
+   *   • rôle DÉSACTIVÉ     → il existe, il est lisible dans l'historique, et le
+   *                          trigger `enforce_active_role_grant` (0018) refusera
+   *                          l'attribution ;
+   *   • domaine inconnu    → le plus sournois. La requête d'attribution fait une
+   *                          jointure EXTERNE sur les domaines : un code erroné
+   *                          n'échoue pas, il donne un domaine NULL, c'est-à-dire
+   *                          une PORTÉE GLOBALE. On demande FISCAL, on obtient
+   *                          tous les domaines, et rien ne le signale.
+   */
+  const { rows: roleRows } = await pool.query(
+    "select code, is_active, max_duration_days from public.roles where code = $1",
+    [roleCode],
+  );
+
+  if (roleRows.length === 0) {
+    const { rows: available } = await pool.query(
+      "select code from public.roles where is_active order by code",
+    );
+    console.error(
+      `ÉCHEC : rôle « ${roleCode} » inconnu.\n` +
+        `Rôles attribuables : ${available.map((row) => row.code).join(", ")}`,
+    );
+    process.exit(1);
+  }
+
+  if (!roleRows[0].is_active) {
+    console.error(
+      `ÉCHEC : le rôle « ${roleCode} » est DÉSACTIVÉ depuis la migration 0018.\n` +
+        "Les rôles par service ont été remplacés par la triade d'affectation :\n" +
+        "  COMPTA_AGENT, RH_AGENT, REGLEMENTAIRE  →  RESPONSABLE (ou SUPPLEANT)\n" +
+        "  COMPTA_MANAGER, RH_MANAGER             →  SUPERVISEUR\n" +
+        "Le rôle reste en base pour que l'historique d'audit qui le cite demeure\n" +
+        "lisible ; il n'est simplement plus attribuable.",
+    );
+    process.exit(1);
+  }
+
+  if (domainCode) {
+    const { rowCount: domainFound } = await pool.query(
+      "select 1 from public.domains where code = $1",
+      [domainCode],
+    );
+    if (domainFound === 0) {
+      const { rows: domains } = await pool.query("select code from public.domains order by code");
+      console.error(
+        `ÉCHEC : domaine « ${domainCode} » inconnu.\n` +
+          `Domaines : ${domains.map((row) => row.code).join(", ")}\n` +
+          "Sans cette vérification, le compte aurait été créé en portée GLOBALE.",
+      );
+      process.exit(1);
+    }
+  }
+
+  /*
+   * ⚠️ CERTAINS RÔLES SONT À DURÉE BORNÉE, et la base le fait respecter :
+   * AUDITOR expire au bout de 90 jours, EXTERNAL au bout de 365. Sans date
+   * d'expiration, l'attribution est refusée par une contrainte — « Le rôle
+   * AUDITOR exige une date d'expiration ». Ce n'est pas une friction à
+   * contourner : un accès en lecture accordé à un auditeur externe ne doit pas
+   * survivre à la mission qui l'a justifié.
+   *
+   * On pose donc le maximum autorisé, en le DISANT : sur un poste de
+   * développement, la date qui compte est celle qui ne surprend pas trois mois
+   * plus tard par une déconnexion inexpliquée.
+   */
+
   const { rows: existing } = await pool.query("select id from auth.users where email = $1", [
     email,
   ]);
@@ -130,15 +224,23 @@ try {
     email.split("@")[0],
   ]);
 
+  const maxDays = roleRows[0].max_duration_days;
+
   const { rowCount } = await pool.query(
-    `insert into public.user_roles (user_id, role_id, domain_id)
-     select $1, r.id, d.id
+    `insert into public.user_roles (user_id, role_id, domain_id, expires_at)
+     select $1, r.id, d.id,
+            case when $4::int is null then null
+                 else pg_catalog.now() + ($4::int || ' days')::interval end
      from public.roles r
      left join public.domains d on d.code = $3
      where r.code = $2
      on conflict do nothing`,
-    [userId, roleCode, domainCode ?? null],
+    [userId, roleCode, domainCode ?? null, maxDays ?? null],
   );
+
+  if (maxDays !== null && rowCount > 0) {
+    console.log(`expiration   : dans ${maxDays} jours (imposée par le rôle)`);
+  }
 
   if (rowCount === 0) {
     const { rows: already } = await pool.query(
@@ -147,7 +249,10 @@ try {
       [userId],
     );
     if (already.length === 0) {
-      console.error(`ÉCHEC : rôle « ${roleCode} » inconnu.`);
+      // Le rôle a été vérifié plus haut : arriver ici sans aucune attribution
+      // signifie que l'insertion a été refusée pour une raison qu'on n'a pas su
+      // anticiper. On le dit plutôt que de laisser croire à un succès.
+      console.error(`ÉCHEC : l'attribution du rôle « ${roleCode} » n'a rien inséré.`);
       process.exit(1);
     }
     console.log(`rôle déjà attribué : ${already.map((row) => row.code).join(", ")}`);
