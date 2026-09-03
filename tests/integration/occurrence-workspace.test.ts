@@ -52,7 +52,7 @@ on conflict (id) do nothing;
 insert into public.user_roles (user_id, role_id, domain_id)
 values
   ('${USER.direction}',   (select id from public.roles where code='DIRECTION'), null),
-  ('${USER.comptaAgent}', (select id from public.roles where code='COMPTA_AGENT'),
+  ('${USER.comptaAgent}', (select id from public.roles where code='RESPONSABLE'),
                           (select id from public.domains where code='FISCAL')),
   ('${USER.admin}',       (select id from public.roles where code='ADMIN'), null);
 
@@ -518,7 +518,7 @@ describe("réaffectation groupée", () => {
 
   it("⚠️ ne franchit PAS le cloisonnement, malgré SECURITY DEFINER", async () => {
     /*
-     * Le contrôle qui compte sur cette fonction. COMPTA_MANAGER détient
+     * Le contrôle qui compte sur cette fonction. SUPERVISEUR détient
      * occurrence.assign, mais sur le seul domaine FISCAL : les dossiers des
      * autres domaines doivent lui rester intouchables, alors même que la
      * fonction s'exécute avec les droits du propriétaire.
@@ -535,7 +535,7 @@ describe("réaffectation groupée", () => {
     await pool.query(
       `insert into public.user_roles (user_id, role_id, domain_id)
        select $1, r.id, d.id from public.roles r, public.domains d
-       where r.code = 'COMPTA_MANAGER' and d.code = 'FISCAL'
+       where r.code = 'SUPERVISEUR' and d.code = 'FISCAL'
        on conflict do nothing`,
       [USER.comptaAgent],
     );

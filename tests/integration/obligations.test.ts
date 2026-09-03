@@ -64,7 +64,7 @@ insert into public.user_roles (user_id, role_id, domain_id)
 values
   ('${USER.direction}',   (select id from public.roles where code='DIRECTION'), null),
   ('${USER.admin}',       (select id from public.roles where code='ADMIN'), null),
-  ('${USER.comptaAgent}', (select id from public.roles where code='COMPTA_AGENT'),
+  ('${USER.comptaAgent}', (select id from public.roles where code='RESPONSABLE'),
                           (select id from public.domains where code='FISCAL'));
 
 insert into public.obligation_types

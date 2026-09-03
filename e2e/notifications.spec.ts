@@ -51,7 +51,7 @@ async function createUser(email: string): Promise<string | null> {
   await pool.query(
     `insert into public.user_roles (user_id, role_id, domain_id)
      select $1, r.id, d.id from public.roles r, public.domains d
-      where r.code = 'COMPTA_AGENT' and d.code = 'FISCAL'
+      where r.code = 'RESPONSABLE' and d.code = 'FISCAL'
      on conflict do nothing`,
     [id],
   );

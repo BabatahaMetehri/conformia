@@ -48,9 +48,23 @@ export type Permission = (typeof PERMISSIONS)[number];
 
 // ─── Rôles ───────────────────────────────────────────────────────────────────
 
+/*
+ * ⚠️ LES CINQ RÔLES PAR SERVICE RESTENT DÉCLARÉS, BIEN QUE DÉSACTIVÉS.
+ *
+ * La migration 0018 a introduit la triade responsable / suppléant / superviseur
+ * et posé `is_active = false` sur les rôles par service. Ils demeurent en base —
+ * `user_roles` et `audit_log` portent leurs identifiants, et les retirer d'ici
+ * empêcherait de typer l'historique. Un rôle inactif n'est plus ATTRIBUABLE ;
+ * il reste LISIBLE.
+ */
 export const ROLE_CODES = [
   "ADMIN",
   "DIRECTION",
+  // ── Triade d'affectation (0018) ──
+  "RESPONSABLE",
+  "SUPPLEANT",
+  "SUPERVISEUR",
+  // ── Répartition par service, désactivée mais conservée ──
   "COMPTA_MANAGER",
   "COMPTA_AGENT",
   "RH_MANAGER",
@@ -72,8 +86,14 @@ type AssertLength<
 
 /** Casse la compilation si le nombre de permissions dérive des 18 arrêtées. */
 export type PermissionCountIs18 = AssertLength<typeof PERMISSIONS, 18>;
-/** Casse la compilation si le nombre de rôles dérive des 9 arrêtés. */
-export type RoleCountIs9 = AssertLength<typeof ROLE_CODES, 9>;
+/**
+ * Casse la compilation si le nombre de rôles dérive des 12 arrêtés.
+ *
+ * ⚠️ Neuf jusqu'à la migration 0018, douze depuis : la triade s'ajoute sans que
+ * les cinq rôles par service ne disparaissent. Le compte est volontairement
+ * figé — un rôle qui apparaît sans décision se remarque ici, pas en production.
+ */
+export type RoleCountIs12 = AssertLength<typeof ROLE_CODES, 12>;
 
 // ─── Vérification ────────────────────────────────────────────────────────────
 

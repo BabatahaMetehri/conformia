@@ -109,17 +109,17 @@ update public.profiles set is_active = false where id = '${USER.disabled}';
 -- que les utilisateurs connectés).
 insert into public.user_roles (user_id, role_id, domain_id, expires_at)
 values
-  ('${USER.comptaAgent}',   (select id from public.roles where code='COMPTA_AGENT'),
+  ('${USER.comptaAgent}',   (select id from public.roles where code='RESPONSABLE'),
                             (select id from public.domains where code='FISCAL'), null),
-  ('${USER.comptaManager}', (select id from public.roles where code='COMPTA_MANAGER'),
+  ('${USER.comptaManager}', (select id from public.roles where code='SUPERVISEUR'),
                             (select id from public.domains where code='FISCAL'), null),
-  ('${USER.rhAgent}',       (select id from public.roles where code='RH_AGENT'),
+  ('${USER.rhAgent}',       (select id from public.roles where code='RESPONSABLE'),
                             (select id from public.domains where code='SOCIAL'), null),
   ('${USER.admin}',         (select id from public.roles where code='ADMIN'), null, null),
   ('${USER.direction}',     (select id from public.roles where code='DIRECTION'), null, null),
-  ('${USER.disabled}',      (select id from public.roles where code='COMPTA_AGENT'),
+  ('${USER.disabled}',      (select id from public.roles where code='RESPONSABLE'),
                             (select id from public.domains where code='FISCAL'), null),
-  ('${USER.expired}',       (select id from public.roles where code='COMPTA_AGENT'),
+  ('${USER.expired}',       (select id from public.roles where code='RESPONSABLE'),
                             (select id from public.domains where code='FISCAL'),
                             now() - interval '1 day');
 

@@ -143,7 +143,15 @@ async function seedFixture(): Promise<boolean> {
         legal_due_date, internal_due_date, status, owner_id, validator_id)
      values ($1, '2026-07', '2026-07-01', '2026-07-31', current_date + 20, current_date + 13,
              'IN_PROGRESS', $2, $2)
-     on conflict (entity_id, obligation_type_id, period_key) do nothing
+     -- ⚠️ LE PRÉDICAT EST OBLIGATOIRE DEPUIS LA MIGRATION 0018. L'unicité des
+     -- occurrences est portée par DEUX index partiels : l'un pour les dossiers
+     -- d'entreprise, l'autre pour ceux rattachés à un registre. PostgreSQL
+     -- n'infère un index partiel que si la clause WHERE de l'instruction reprend
+     -- son prédicat ; sans lui, l'insertion échoue sur « no unique or exclusion
+     -- constraint matching the ON CONFLICT specification ».
+     on conflict (entity_id, obligation_type_id, period_key)
+       where commercial_register_id is null
+       do nothing
      returning id`,
     [OBLIGATION, ids["fiscal"] ?? ""],
   );
@@ -218,8 +226,8 @@ async function seedFixture(): Promise<boolean> {
 
 test.beforeAll(async () => {
   if (SERVICE_KEY.length === 0) return;
-  const fiscal = await createUser(USERS.fiscal, "COMPTA_AGENT", "FISCAL");
-  const social = await createUser(USERS.social, "RH_AGENT", "SOCIAL");
+  const fiscal = await createUser(USERS.fiscal, "RESPONSABLE", "FISCAL");
+  const social = await createUser(USERS.social, "RESPONSABLE", "SOCIAL");
   if (fiscal === null || social === null) return;
   ids["fiscal"] = fiscal;
   ids["social"] = social;

@@ -26,7 +26,7 @@ import type {
  * produit le type `string`, et tout le retour s'effondre en `GenericStringError`.
  */
 const OBLIGATION_COLUMNS =
-  "id, entity_id, code, name, domain_id, authority_id, periodicity, due_rule, internal_lead_days, procedure_md, legal_basis, portal_url, default_owner_id, default_validator_id, criticality, requires_validation, validation_levels, requires_proof, allow_self_validation, depends_on_obligation_type_id, generation_horizon_months, retention_years, effective_from, effective_to, is_active, created_by, created_at, updated_by, updated_at, deleted_at";
+  "id, entity_id, code, name, domain_id, authority_id, periodicity, due_rule, internal_lead_days, procedure_md, legal_basis, portal_url, default_owner_id, default_deputy_id, default_validator_id, scope, criticality, requires_validation, validation_levels, requires_proof, allow_self_validation, depends_on_obligation_type_id, generation_horizon_months, retention_years, effective_from, effective_to, is_active, created_by, created_at, updated_by, updated_at, deleted_at";
 
 export interface ObligationListRow {
   readonly obligationType: ObligationTypeRow;
@@ -51,7 +51,7 @@ export async function listObligationTypes(
   let query = supabase
     .from("obligation_types")
     .select(
-      "id, entity_id, code, name, domain_id, authority_id, periodicity, due_rule, internal_lead_days, procedure_md, legal_basis, portal_url, default_owner_id, default_validator_id, criticality, requires_validation, validation_levels, requires_proof, allow_self_validation, depends_on_obligation_type_id, generation_horizon_months, retention_years, effective_from, effective_to, is_active, created_by, created_at, updated_by, updated_at, deleted_at, domains(id, code, label), authorities(id, code, name), owner:profiles!obligation_types_default_owner_id_fkey(id, full_name)",
+      "id, entity_id, code, name, domain_id, authority_id, periodicity, due_rule, internal_lead_days, procedure_md, legal_basis, portal_url, default_owner_id, default_deputy_id, default_validator_id, scope, criticality, requires_validation, validation_levels, requires_proof, allow_self_validation, depends_on_obligation_type_id, generation_horizon_months, retention_years, effective_from, effective_to, is_active, created_by, created_at, updated_by, updated_at, deleted_at, domains(id, code, label), authorities(id, code, name), owner:profiles!obligation_types_default_owner_id_fkey(id, full_name)",
     )
     .is("deleted_at", null)
     .order("code", { ascending: true });
@@ -166,7 +166,7 @@ export async function getObligationType(
   const { data, error } = await supabase
     .from("obligation_types")
     .select(
-      "id, entity_id, code, name, domain_id, authority_id, periodicity, due_rule, internal_lead_days, procedure_md, legal_basis, portal_url, default_owner_id, default_validator_id, criticality, requires_validation, validation_levels, requires_proof, allow_self_validation, depends_on_obligation_type_id, generation_horizon_months, retention_years, effective_from, effective_to, is_active, created_by, created_at, updated_by, updated_at, deleted_at, domains(id, code, label), authorities(id, code, name, portal_url), obligation_required_documents(id, obligation_type_id, label, description, is_mandatory, document_kind, accepted_mime_types, max_size_mb, order_index, created_at), owner:profiles!obligation_types_default_owner_id_fkey(id, full_name), validator:profiles!obligation_types_default_validator_id_fkey(id, full_name)",
+      "id, entity_id, code, name, domain_id, authority_id, periodicity, due_rule, internal_lead_days, procedure_md, legal_basis, portal_url, default_owner_id, default_deputy_id, default_validator_id, scope, criticality, requires_validation, validation_levels, requires_proof, allow_self_validation, depends_on_obligation_type_id, generation_horizon_months, retention_years, effective_from, effective_to, is_active, created_by, created_at, updated_by, updated_at, deleted_at, domains(id, code, label), authorities(id, code, name, portal_url), obligation_required_documents(id, obligation_type_id, label, description, is_mandatory, document_kind, accepted_mime_types, max_size_mb, order_index, created_at), owner:profiles!obligation_types_default_owner_id_fkey(id, full_name), validator:profiles!obligation_types_default_validator_id_fkey(id, full_name)",
     )
     .eq("id", id)
     .is("deleted_at", null)
@@ -234,7 +234,7 @@ export async function listOccurrencesOfObligation(
   const { data, error } = await supabase
     .from("obligation_occurrences")
     .select(
-      "id, entity_id, obligation_type_id, period_key, period_start, period_end, event_date, expiry_date, legal_due_date, internal_due_date, status, owner_id, validator_id, rectifies_occurrence_id, rectification_index, started_at, submitted_for_validation_at, validated_at, validated_by, submitted_at, submitted_by, reference_number, na_reason, rejection_reason, late_reason, late_reason_code, penalty_incurred, penalty_note, is_locked, locked_at, locked_by, version, created_at, updated_at, deleted_at",
+      "id, entity_id, obligation_type_id, period_key, period_start, period_end, event_date, expiry_date, legal_due_date, internal_due_date, status, owner_id, deputy_id, validator_id, commercial_register_id, rectifies_occurrence_id, rectification_index, started_at, submitted_for_validation_at, validated_at, validated_by, submitted_at, submitted_by, reference_number, na_reason, rejection_reason, late_reason, late_reason_code, penalty_incurred, penalty_note, is_locked, locked_at, locked_by, version, created_at, updated_at, deleted_at",
     )
     .eq("obligation_type_id", id)
     .is("deleted_at", null)
@@ -261,7 +261,7 @@ export async function listRecalculableOccurrences(
   const { data, error } = await supabase
     .from("obligation_occurrences")
     .select(
-      "id, entity_id, obligation_type_id, period_key, period_start, period_end, event_date, expiry_date, legal_due_date, internal_due_date, status, owner_id, validator_id, rectifies_occurrence_id, rectification_index, started_at, submitted_for_validation_at, validated_at, validated_by, submitted_at, submitted_by, reference_number, na_reason, rejection_reason, late_reason, late_reason_code, penalty_incurred, penalty_note, is_locked, locked_at, locked_by, version, created_at, updated_at, deleted_at",
+      "id, entity_id, obligation_type_id, period_key, period_start, period_end, event_date, expiry_date, legal_due_date, internal_due_date, status, owner_id, deputy_id, validator_id, commercial_register_id, rectifies_occurrence_id, rectification_index, started_at, submitted_for_validation_at, validated_at, validated_by, submitted_at, submitted_by, reference_number, na_reason, rejection_reason, late_reason, late_reason_code, penalty_incurred, penalty_note, is_locked, locked_at, locked_by, version, created_at, updated_at, deleted_at",
     )
     .eq("obligation_type_id", id)
     .eq("status", "TODO")

@@ -97,7 +97,7 @@ async function signIn(page: Page, email: string): Promise<void> {
 
 test.beforeAll(async () => {
   if (SERVICE_KEY.length === 0) return;
-  const agent = await createUser(USERS.agent, "COMPTA_AGENT", "FISCAL");
+  const agent = await createUser(USERS.agent, "RESPONSABLE", "FISCAL");
   const admin = await createUser(USERS.admin, "ADMIN", null);
   if (agent === null || admin === null) return;
   ids["agent"] = agent;
@@ -126,8 +126,12 @@ test.describe("mon profil", () => {
     // L'adresse : c'est ce qui prouve que la page lit la SESSION, pas un gabarit.
     await expect(page.getByText(USERS.agent).first()).toBeVisible();
 
-    // Le rôle ET son domaine : la réponse à « pourquoi je ne vois pas ce dossier ».
-    await expect(page.getByText(/Agent comptabilité/i).first()).toBeVisible();
+    /*
+     * Le rôle ET son domaine : la réponse à « pourquoi je ne vois pas ce
+     * dossier ». Le libellé est celui de la BASE — depuis la migration 0018,
+     * la triade a remplacé la répartition par service.
+     */
+    await expect(page.getByText(/Responsable/i).first()).toBeVisible();
     await expect(page.getByText(/Fiscal/i).first()).toBeVisible();
   });
 

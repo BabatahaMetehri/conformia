@@ -95,7 +95,7 @@ on conflict (entity_id, code) do nothing;
 insert into public.obligation_types (
   code, name, domain_id, authority_id, periodicity, due_rule,
   internal_lead_days, criticality, validation_levels, requires_proof,
-  legal_basis, effective_from
+  legal_basis, effective_from, scope
 )
 select
   v.code, v.name,
@@ -108,7 +108,28 @@ select
   v.validation_levels,
   v.requires_proof,
   v.legal_basis,
-  date '2024-01-01'
+  date '2024-01-01',
+  /*
+   * ⚠️ PORTÉE DÉDUITE DU CODE, et non ajoutée à chacun des vingt-trois tuples.
+   *
+   * Quatre obligations sur vingt-trois se déclarent PAR REGISTRE : l'extrait du
+   * registre lui-même, l'agrément sanitaire, l'établissement classé et les
+   * contrôles techniques. Toutes les autres — G50, IBS, CNAS, CASNOS comprises —
+   * se déclarent une seule fois pour l'entreprise entière.
+   *
+   * ⚠️ ENGRAIS-AUT reste ENTITY : l'homologation porte sur le PRODUIT, pas sur
+   * l'établissement. À basculer depuis l'écran du référentiel si la réalité
+   * administrative diffère, sans migration.
+   *
+   * ⚠️ Cette liste figure AUSSI dans la migration 0018, qui corrige les bases
+   * déjà peuplées. Ce n'est pas une règle métier en double : ici on POSE la
+   * valeur à la création, là-bas on RATTRAPE l'existant. Une migration est un
+   * fait daté ; elle ne peut pas déléguer à un fichier qui évoluera après elle.
+   */
+  case
+    when v.code in ('RC-MAJ', 'AGR-SANIT', 'ETAB-CLASSE', 'CTRL-TECH') then 'PER_REGISTER'
+    else 'ENTITY'
+  end
 from (values
 
 -- ── DOMAINE FISCAL — DGI ────────────────────────────────────────────────────

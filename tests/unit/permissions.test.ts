@@ -16,11 +16,32 @@ describe("vocabulaire d'autorisation", () => {
     expect(new Set(PERMISSIONS).size).toBe(18);
   });
 
-  it("déclare exactement les 9 rôles arrêtés", () => {
-    expect(ROLE_CODES).toHaveLength(9);
-    expect(new Set(ROLE_CODES).size).toBe(9);
+  it("déclare exactement les 12 rôles arrêtés", () => {
+    /*
+     * ⚠️ Neuf jusqu'à la migration 0018, douze depuis. La triade s'AJOUTE : les
+     * cinq rôles par service sont désactivés en base, pas retirés du
+     * vocabulaire. `user_roles` et `audit_log` portent leurs identifiants, et un
+     * historique doit rester typable.
+     */
+    expect(ROLE_CODES).toHaveLength(12);
+    expect(new Set(ROLE_CODES).size).toBe(12);
     expect(ROLE_CODES).toContain("ADMIN");
     expect(ROLE_CODES).toContain("EXTERNAL");
+
+    // La triade d'affectation.
+    for (const code of ["RESPONSABLE", "SUPPLEANT", "SUPERVISEUR"]) {
+      expect(ROLE_CODES).toContain(code);
+    }
+    // Et les rôles par service, toujours déclarés bien que désactivés.
+    for (const code of [
+      "COMPTA_AGENT",
+      "COMPTA_MANAGER",
+      "RH_AGENT",
+      "RH_MANAGER",
+      "REGLEMENTAIRE",
+    ]) {
+      expect(ROLE_CODES).toContain(code);
+    }
   });
 
   it("nomme les permissions en `domaine.action`", () => {

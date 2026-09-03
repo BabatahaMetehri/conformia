@@ -65,7 +65,7 @@ async function grantRoleAndSeed(id: string): Promise<void> {
     `insert into public.user_roles (user_id, role_id, domain_id)
      select $1, r.id, d.id
      from public.roles r, public.domains d
-     where r.code = 'RH_AGENT' and d.code = 'SOCIAL'
+     where r.code = 'RESPONSABLE' and d.code = 'SOCIAL'
      on conflict do nothing`,
     [id],
   );

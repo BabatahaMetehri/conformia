@@ -22,6 +22,8 @@ import { addMonths } from "date-fns";
 import { Criticality, Periodicity } from "@/config/constants";
 import {
   createOccurrenceIfAbsent,
+  listActiveRegisters,
+  type ActiveRegister,
   listFutureTodoOccurrences,
   listGeneratableObligations,
   loadHolidayDates,
@@ -30,6 +32,15 @@ import {
   type GeneratableObligation,
   type GenerationClient,
 } from "@/data/queries/generation";
+
+/**
+ * Portée par registre.
+ *
+ * ⚠️ Valeur littérale plutôt qu'énumération partagée : la colonne SQL porte sa
+ * propre contrainte CHECK, qui fait foi. Une seconde énumération en TypeScript
+ * finirait par diverger de celle qui décide réellement.
+ */
+const PER_REGISTER = "PER_REGISTER";
 import { nowInAppTz, toAppTz, toUtcFromAppTz, type PeriodDescriptor } from "@/lib/dates";
 import { AppError } from "@/lib/errors";
 import { err, ok, type Result } from "@/lib/result";
@@ -188,6 +199,97 @@ async function generateForObligation(
   }
 
   /*
+   * ⚠️ PORTÉE PAR REGISTRE : une passe par registre ACTIF.
+   *
+   * Un registre au statut SUSPENDU ou RADIE ne figure pas dans la liste et cesse
+   * donc de produire des dossiers, SANS que ceux déjà créés ne bougent — un
+   * registre radié laisse derrière lui des échéances qu'il faut encore clore.
+   * Symétriquement, un registre déclaré aujourd'hui verra ses dossiers futurs
+   * créés à la prochaine passe, sans intervention.
+   *
+   * L'idempotence tient par les deux index partiels de la migration 0018 : une
+   * seconde passe compte des `skipped`, elle ne crée aucun doublon.
+   */
+  if (obligation.scope === PER_REGISTER) {
+    const registers = await listActiveRegisters(client, obligation.entityId);
+    if (!registers.ok) return registers;
+
+    // Aucun registre actif : rien à produire, et ce n'est pas un échec. Une
+    // entreprise peut n'avoir aucun établissement ouvert sur une période.
+    if (registers.value.length === 0) return ok(empty);
+
+    let created = 0;
+    let skipped = 0;
+    const failures: { periodKey: string; reason: string }[] = [];
+
+    for (const register of registers.value) {
+      const one = await generateForScope(
+        client,
+        obligation,
+        holidays,
+        horizonMonths,
+        now,
+        register,
+      );
+      if (!one.ok) return one;
+      created += one.value.created;
+      skipped += one.value.skipped;
+      /*
+       * Le numéro de registre entre dans la clé signalée : sans lui, trois
+       * registres en échec sur la même période produiraient trois lignes
+       * identiques, et le rapport ne dirait pas lequel corriger.
+       */
+      failures.push(
+        ...one.value.failures.map((failure) => ({
+          periodKey: `${failure.periodKey} · ${register.rcNumber}`,
+          reason: failure.reason,
+        })),
+      );
+    }
+
+    return ok({ ...empty, created, skipped, failed: failures.length, failures });
+  }
+
+  return generateForScope(client, obligation, holidays, horizonMonths, now, null);
+}
+
+/**
+ * Génère pour UNE portée : l'entité entière, ou un registre donné.
+ *
+ * ⚠️ Découpée de `generateForObligation` pour que la boucle par registre ne
+ * duplique pas le calcul d'échéance. Le paramètre `register` est le SEUL écart
+ * entre les deux cas — tout le reste, fenêtre, périodes, report, est identique.
+ */
+async function generateForScope(
+  client: GenerationClient,
+  obligation: GeneratableObligation,
+  holidays: readonly Date[],
+  horizonMonths: number,
+  now: Date,
+  register: ActiveRegister | null,
+): Promise<Result<GenerationReport>> {
+  const empty: GenerationReport = {
+    obligationTypeId: obligation.id,
+    obligationCode: obligation.code,
+    created: 0,
+    skipped: 0,
+    failed: 0,
+    failures: [],
+  };
+
+  const rule = validateDueRule({
+    rule: obligation.dueRule,
+    periodicity: obligation.periodicity as Periodicity,
+  });
+  if (!rule.ok) {
+    return ok({
+      ...empty,
+      failed: 1,
+      failures: [{ periodKey: "*", reason: "INVALID_DUE_RULE" }],
+    });
+  }
+
+  /*
    * ⚠️ ANCRE PORTÉE PAR L'OCCURRENCE : rien à générer, et ce n'est PAS un échec.
    *
    * `EXPIRY_DATE` et `EVENT_DATE` se calculent depuis une date que porte
@@ -205,7 +307,23 @@ async function generateForObligation(
    * traite comme telle — zéro occurrence, zéro échec — quelle que soit la
    * périodicité déclarée.
    */
-  if (isEventDrivenAnchor(rule.value.anchor)) return ok(empty);
+  /*
+   * ⚠️ SAUF QUAND UN REGISTRE PORTE LA DATE.
+   *
+   * L'expiration d'un extrait de registre est connue à l'avance —
+   * `commercial_registers.expires_at` — alors que celle d'un titre attaché à
+   * l'occurrence ne l'est pas. Pour une obligation PER_REGISTER, l'ancre cesse
+   * donc d'être un obstacle : la date vient du registre, et le dossier de
+   * renouvellement peut être créé avant l'échéance plutôt qu'après.
+   *
+   * Un registre sans `expires_at` renseigné retombe dans le cas général : rien
+   * à générer, aucun échec. La date est simplement inconnue, et l'inventer
+   * produirait une échéance fausse — exactement ce que le reste du moteur refuse.
+   */
+  const anchorFromRegister =
+    register !== null && register.expiresAt !== null ? fromIsoDay(register.expiresAt) : null;
+
+  if (isEventDrivenAnchor(rule.value.anchor) && anchorFromRegister === null) return ok(empty);
 
   const window = generationWindow(
     obligation,
@@ -230,6 +348,7 @@ async function generateForObligation(
       period,
       holidays,
       internalLeadDays: leadDays,
+      ...(anchorFromRegister === null ? {} : { anchorDate: anchorFromRegister }),
     });
 
     if (!computed.ok) {
@@ -237,13 +356,19 @@ async function generateForObligation(
       continue;
     }
 
-    const inserted = await createOccurrenceIfAbsent(client, obligation.id, {
-      periodKey: period.key,
-      periodStart: isoDay(period.start),
-      periodEnd: isoDay(period.end),
-      legalDueDate: isoDay(computed.value.legalDueDate),
-      internalDueDate: isoDay(computed.value.internalDueDate),
-    });
+    const inserted = await createOccurrenceIfAbsent(
+      client,
+      obligation.id,
+      {
+        periodKey: period.key,
+        periodStart: isoDay(period.start),
+        periodEnd: isoDay(period.end),
+        legalDueDate: isoDay(computed.value.legalDueDate),
+        internalDueDate: isoDay(computed.value.internalDueDate),
+      },
+      "TODO",
+      register === null ? null : register.id,
+    );
 
     if (!inserted.ok) {
       failures.push({ periodKey: period.key, reason: inserted.error.code });

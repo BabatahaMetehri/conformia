@@ -71,8 +71,8 @@ async function seed(): Promise<boolean> {
 
   // ⚠️ COMPTA_MANAGER et COMPTA_AGENT n'exigent pas de second facteur : contrairement
   // aux specs qui jouent DIRECTION, aucun facteur MFA n'a besoin d'être posé ici.
-  const manager = await createUser(MANAGER, "COMPTA_MANAGER", "FISCAL");
-  const agent = await createUser(AGENT, "COMPTA_AGENT", "FISCAL");
+  const manager = await createUser(MANAGER, "SUPERVISEUR", "FISCAL");
+  const agent = await createUser(AGENT, "RESPONSABLE", "FISCAL");
   if (manager === null || agent === null) return false;
 
   await pool.query(

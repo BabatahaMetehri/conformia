@@ -65,9 +65,9 @@ from (values
 on conflict (id) do nothing;
 
 insert into public.user_roles (user_id, role_id, domain_id) values
-  ('${USER.compta}',   (select id from public.roles where code='COMPTA_MANAGER'),
+  ('${USER.compta}',   (select id from public.roles where code='SUPERVISEUR'),
                        (select id from public.domains where code='FISCAL')),
-  ('${USER.rh}',       (select id from public.roles where code='RH_MANAGER'),
+  ('${USER.rh}',       (select id from public.roles where code='SUPERVISEUR'),
                        (select id from public.domains where code='SOCIAL')),
   ('${USER.admin}',    (select id from public.roles where code='ADMIN'), null),
   ('${USER.direction}',(select id from public.roles where code='DIRECTION'), null)

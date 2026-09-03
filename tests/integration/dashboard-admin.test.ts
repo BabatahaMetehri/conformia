@@ -55,9 +55,9 @@ on conflict (id) do nothing;
 insert into public.user_roles (user_id, role_id, domain_id) values
   ('${USER.admin}',     (select id from public.roles where code='ADMIN'), null),
   ('${USER.direction}', (select id from public.roles where code='DIRECTION'), null),
-  ('${USER.manager}',   (select id from public.roles where code='COMPTA_MANAGER'),
+  ('${USER.manager}',   (select id from public.roles where code='SUPERVISEUR'),
                         (select id from public.domains where code='FISCAL')),
-  ('${USER.rh}',        (select id from public.roles where code='RH_AGENT'),
+  ('${USER.rh}',        (select id from public.roles where code='RESPONSABLE'),
                         (select id from public.domains where code='SOCIAL'));
 
 insert into public.obligation_types
@@ -182,7 +182,7 @@ describe("comptes et habilitations", () => {
     await asUser(USER.admin, async (client) => {
       const { rowCount } = await client.query(
         `insert into public.user_roles (user_id, role_id, granted_by)
-         values ($1, (select id from public.roles where code = 'COMPTA_AGENT'), $2)`,
+         values ($1, (select id from public.roles where code = 'RESPONSABLE'), $2)`,
         [USER.rh, USER.admin],
       );
       expect(rowCount).toBe(1);
@@ -371,7 +371,7 @@ describe("invitations", () => {
         `insert into public.user_invitations
            (email, full_name, role_id, invited_by)
          values ('nouveau@test.dz', 'Nouvelle Recrue',
-                 (select id from public.roles where code = 'COMPTA_AGENT'), $1)
+                 (select id from public.roles where code = 'RESPONSABLE'), $1)
          returning id, invited_by`,
         [USER.admin],
       );
@@ -387,7 +387,7 @@ describe("invitations", () => {
           client.query(
             `insert into public.user_invitations (email, full_name, role_id, invited_by)
              values ('usurpe@test.dz', 'Usurpé',
-                     (select id from public.roles where code = 'COMPTA_AGENT'), $1)`,
+                     (select id from public.roles where code = 'RESPONSABLE'), $1)`,
             [USER.direction],
           ),
         /row-level security/,
@@ -421,7 +421,7 @@ describe("invitations", () => {
           client.query(
             `insert into public.user_invitations (email, full_name, role_id, invited_by)
              values ('x@test.dz', 'X',
-                     (select id from public.roles where code = 'COMPTA_AGENT'), $1)`,
+                     (select id from public.roles where code = 'RESPONSABLE'), $1)`,
             [USER.manager],
           ),
         /row-level security/,
@@ -436,7 +436,7 @@ describe("matrice des rôles", () => {
       const { rowCount } = await client.query(
         `insert into public.role_permissions (role_id, permission_id)
          select r.id, p.id from public.roles r, public.permissions p
-          where r.code = 'COMPTA_AGENT' and p.code = 'export.generate'
+          where r.code = 'RESPONSABLE' and p.code = 'export.generate'
          on conflict do nothing`,
       );
       expect(rowCount).toBe(1);
@@ -449,7 +449,7 @@ describe("matrice des rôles", () => {
           client.query(
             `insert into public.role_permissions (role_id, permission_id)
              select r.id, p.id from public.roles r, public.permissions p
-              where r.code = 'COMPTA_AGENT' and p.code = 'settings.manage'`,
+              where r.code = 'RESPONSABLE' and p.code = 'settings.manage'`,
           ),
         /row-level security/,
       );
@@ -485,7 +485,7 @@ describe("matrice des rôles", () => {
     await asUser(USER.admin, async (client) => {
       const { rows } = await client.query<{ n: number }>(
         `select public.role_holder_count(
-           (select id from public.roles where code = 'COMPTA_MANAGER')) as n`,
+           (select id from public.roles where code = 'SUPERVISEUR')) as n`,
       );
       // Le manager du jeu d'essai, au moins : l'avertissement doit être chiffré.
       expect(rows[0]?.n).toBeGreaterThan(0);

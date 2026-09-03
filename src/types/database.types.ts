@@ -1734,6 +1734,108 @@ export type Database = {
           },
         ]
       }
+      commercial_registers: {
+        Row: {
+          activity_codes: string[] | null
+          activity_label: string | null
+          address: string | null
+          commune: string | null
+          created_at: string
+          created_by: string | null
+          deleted_at: string | null
+          entity_id: string
+          expires_at: string | null
+          id: string
+          issued_at: string | null
+          label: string
+          notes: string | null
+          rc_number: string
+          register_type: string
+          status: string
+          updated_at: string | null
+          updated_by: string | null
+          wilaya: string | null
+        }
+        Insert: {
+          activity_codes?: string[] | null
+          activity_label?: string | null
+          address?: string | null
+          commune?: string | null
+          created_at?: string
+          created_by?: string | null
+          deleted_at?: string | null
+          entity_id?: string
+          expires_at?: string | null
+          id?: string
+          issued_at?: string | null
+          label: string
+          notes?: string | null
+          rc_number: string
+          register_type: string
+          status?: string
+          updated_at?: string | null
+          updated_by?: string | null
+          wilaya?: string | null
+        }
+        Update: {
+          activity_codes?: string[] | null
+          activity_label?: string | null
+          address?: string | null
+          commune?: string | null
+          created_at?: string
+          created_by?: string | null
+          deleted_at?: string | null
+          entity_id?: string
+          expires_at?: string | null
+          id?: string
+          issued_at?: string | null
+          label?: string
+          notes?: string | null
+          rc_number?: string
+          register_type?: string
+          status?: string
+          updated_at?: string | null
+          updated_by?: string | null
+          wilaya?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "commercial_registers_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profile_directory"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "commercial_registers_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "commercial_registers_entity_id_fkey"
+            columns: ["entity_id"]
+            isOneToOne: false
+            referencedRelation: "entities"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "commercial_registers_updated_by_fkey"
+            columns: ["updated_by"]
+            isOneToOne: false
+            referencedRelation: "profile_directory"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "commercial_registers_updated_by_fkey"
+            columns: ["updated_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       departments: {
         Row: {
           code: string
@@ -3042,25 +3144,55 @@ export type Database = {
       }
       entities: {
         Row: {
+          article_imposition: string | null
+          capital_social: number | null
           code: string
           created_at: string
+          email: string | null
+          head_office_address: string | null
           id: string
           is_active: boolean
+          legal_form: string | null
           name: string
+          nif: string | null
+          nis: string | null
+          phone: string | null
+          website: string | null
+          wilaya: string | null
         }
         Insert: {
+          article_imposition?: string | null
+          capital_social?: number | null
           code: string
           created_at?: string
+          email?: string | null
+          head_office_address?: string | null
           id?: string
           is_active?: boolean
+          legal_form?: string | null
           name: string
+          nif?: string | null
+          nis?: string | null
+          phone?: string | null
+          website?: string | null
+          wilaya?: string | null
         }
         Update: {
+          article_imposition?: string | null
+          capital_social?: number | null
           code?: string
           created_at?: string
+          email?: string | null
+          head_office_address?: string | null
           id?: string
           is_active?: boolean
+          legal_form?: string | null
           name?: string
+          nif?: string | null
+          nis?: string | null
+          phone?: string | null
+          website?: string | null
+          wilaya?: string | null
         }
         Relationships: []
       }
@@ -3543,8 +3675,10 @@ export type Database = {
       }
       obligation_occurrences: {
         Row: {
+          commercial_register_id: string | null
           created_at: string
           deleted_at: string | null
+          deputy_id: string | null
           entity_id: string
           event_date: string | null
           expiry_date: string | null
@@ -3582,8 +3716,10 @@ export type Database = {
           version: number
         }
         Insert: {
+          commercial_register_id?: string | null
           created_at?: string
           deleted_at?: string | null
+          deputy_id?: string | null
           entity_id?: string
           event_date?: string | null
           expiry_date?: string | null
@@ -3621,8 +3757,10 @@ export type Database = {
           version?: number
         }
         Update: {
+          commercial_register_id?: string | null
           created_at?: string
           deleted_at?: string | null
+          deputy_id?: string | null
           entity_id?: string
           event_date?: string | null
           expiry_date?: string | null
@@ -3660,6 +3798,27 @@ export type Database = {
           version?: number
         }
         Relationships: [
+          {
+            foreignKeyName: "obligation_occurrences_commercial_register_id_fkey"
+            columns: ["commercial_register_id"]
+            isOneToOne: false
+            referencedRelation: "commercial_registers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "obligation_occurrences_deputy_id_fkey"
+            columns: ["deputy_id"]
+            isOneToOne: false
+            referencedRelation: "profile_directory"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "obligation_occurrences_deputy_id_fkey"
+            columns: ["deputy_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "obligation_occurrences_entity_id_fkey"
             columns: ["entity_id"]
@@ -3836,6 +3995,7 @@ export type Database = {
           created_at: string
           created_by: string | null
           criticality: Database["public"]["Enums"]["criticality"]
+          default_deputy_id: string | null
           default_owner_id: string | null
           default_validator_id: string | null
           deleted_at: string | null
@@ -3857,6 +4017,7 @@ export type Database = {
           requires_proof: boolean
           requires_validation: boolean
           retention_years: number
+          scope: string
           updated_at: string
           updated_by: string | null
           validation_levels: number
@@ -3868,6 +4029,7 @@ export type Database = {
           created_at?: string
           created_by?: string | null
           criticality?: Database["public"]["Enums"]["criticality"]
+          default_deputy_id?: string | null
           default_owner_id?: string | null
           default_validator_id?: string | null
           deleted_at?: string | null
@@ -3889,6 +4051,7 @@ export type Database = {
           requires_proof?: boolean
           requires_validation?: boolean
           retention_years?: number
+          scope?: string
           updated_at?: string
           updated_by?: string | null
           validation_levels?: number
@@ -3900,6 +4063,7 @@ export type Database = {
           created_at?: string
           created_by?: string | null
           criticality?: Database["public"]["Enums"]["criticality"]
+          default_deputy_id?: string | null
           default_owner_id?: string | null
           default_validator_id?: string | null
           deleted_at?: string | null
@@ -3921,6 +4085,7 @@ export type Database = {
           requires_proof?: boolean
           requires_validation?: boolean
           retention_years?: number
+          scope?: string
           updated_at?: string
           updated_by?: string | null
           validation_levels?: number
@@ -3950,6 +4115,20 @@ export type Database = {
           {
             foreignKeyName: "obligation_types_created_by_fkey"
             columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "obligation_types_default_deputy_id_fkey"
+            columns: ["default_deputy_id"]
+            isOneToOne: false
+            referencedRelation: "profile_directory"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "obligation_types_default_deputy_id_fkey"
+            columns: ["default_deputy_id"]
             isOneToOne: false
             referencedRelation: "profiles"
             referencedColumns: ["id"]
@@ -4189,6 +4368,7 @@ export type Database = {
       }
       occurrence_transitions: {
         Row: {
+          acted_as: string | null
           actor_id: string | null
           created_at: string
           from_status: Database["public"]["Enums"]["occurrence_status"] | null
@@ -4200,6 +4380,7 @@ export type Database = {
           to_status: Database["public"]["Enums"]["occurrence_status"]
         }
         Insert: {
+          acted_as?: string | null
           actor_id?: string | null
           created_at?: string
           from_status?: Database["public"]["Enums"]["occurrence_status"] | null
@@ -4211,6 +4392,7 @@ export type Database = {
           to_status: Database["public"]["Enums"]["occurrence_status"]
         }
         Update: {
+          acted_as?: string | null
           actor_id?: string | null
           created_at?: string
           from_status?: Database["public"]["Enums"]["occurrence_status"] | null
@@ -4488,6 +4670,7 @@ export type Database = {
           default_domain_code: string | null
           description: string | null
           id: string
+          is_active: boolean
           is_system: boolean
           label: string
           max_duration_days: number | null
@@ -4498,6 +4681,7 @@ export type Database = {
           default_domain_code?: string | null
           description?: string | null
           id?: string
+          is_active?: boolean
           is_system?: boolean
           label: string
           max_duration_days?: number | null
@@ -4508,6 +4692,7 @@ export type Database = {
           default_domain_code?: string | null
           description?: string | null
           id?: string
+          is_active?: boolean
           is_system?: boolean
           label?: string
           max_duration_days?: number | null
@@ -4570,6 +4755,95 @@ export type Database = {
           to_status?: Database["public"]["Enums"]["occurrence_status"]
         }
         Relationships: []
+      }
+      user_absences: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          ends_at: string
+          entity_id: string
+          id: string
+          reason: string
+          revoked_at: string | null
+          revoked_by: string | null
+          starts_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          ends_at: string
+          entity_id?: string
+          id?: string
+          reason: string
+          revoked_at?: string | null
+          revoked_by?: string | null
+          starts_at: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          ends_at?: string
+          entity_id?: string
+          id?: string
+          reason?: string
+          revoked_at?: string | null
+          revoked_by?: string | null
+          starts_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "user_absences_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profile_directory"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "user_absences_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "user_absences_entity_id_fkey"
+            columns: ["entity_id"]
+            isOneToOne: false
+            referencedRelation: "entities"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "user_absences_revoked_by_fkey"
+            columns: ["revoked_by"]
+            isOneToOne: false
+            referencedRelation: "profile_directory"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "user_absences_revoked_by_fkey"
+            columns: ["revoked_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "user_absences_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profile_directory"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "user_absences_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       user_invitations: {
         Row: {
@@ -5609,6 +5883,15 @@ export type Database = {
         Args: { p_check_id: number; p_note: string }
         Returns: boolean
       }
+      active_registers: {
+        Args: { p_entity_id: string }
+        Returns: {
+          expires_at: string
+          id: string
+          label: string
+          rc_number: string
+        }[]
+      }
       add_business_days: {
         Args: { day_count: number; from_date: string }
         Returns: string
@@ -5692,6 +5975,7 @@ export type Database = {
       }
       create_occurrence_if_absent: {
         Args: {
+          p_commercial_register_id?: string
           p_internal_due_date: string
           p_legal_due_date: string
           p_obligation_type_id: string
@@ -5955,6 +6239,10 @@ export type Database = {
       }
       has_verified_mfa: { Args: { p_user_id: string }; Returns: boolean }
       health_snapshot: { Args: never; Returns: Json }
+      is_absent_on: {
+        Args: { p_on?: string; p_user_id: string }
+        Returns: boolean
+      }
       is_active_user: { Args: never; Returns: boolean }
       is_active_user_for: { Args: { p_user: string }; Returns: boolean }
       is_admin: { Args: never; Returns: boolean }
@@ -6190,6 +6478,13 @@ export type Database = {
       reset_user_mfa: {
         Args: { p_reason: string; p_user_id: string }
         Returns: boolean
+      }
+      resolve_acted_as: {
+        Args: {
+          p_actor: string
+          p_occurrence: Database["public"]["Tables"]["obligation_occurrences"]["Row"]
+        }
+        Returns: string
       }
       resolve_escalation_policies: {
         Args: {

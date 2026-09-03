@@ -30,10 +30,16 @@ export interface GeneratableObligation {
   readonly internalLeadDays: number;
   readonly effectiveFrom: string;
   readonly effectiveTo: string | null;
+  /**
+   * `ENTITY` : une occurrence par periode pour toute l'entreprise.
+   * `PER_REGISTER` : une occurrence par periode ET par registre ACTIF.
+   */
+  readonly scope: string;
+  readonly entityId: string;
 }
 
 const OBLIGATION_COLUMNS =
-  "id, code, name, periodicity, criticality, due_rule, internal_lead_days, effective_from, effective_to";
+  "id, entity_id, code, name, periodicity, criticality, due_rule, internal_lead_days, effective_from, effective_to, scope";
 
 /** Une obligation, par identifiant. */
 export async function loadObligation(
@@ -75,6 +81,7 @@ export async function listGeneratableObligations(
 
 function toObligation(row: {
   id: string;
+  entity_id: string;
   code: string;
   name: string;
   periodicity: string;
@@ -83,9 +90,12 @@ function toObligation(row: {
   internal_lead_days: number;
   effective_from: string;
   effective_to: string | null;
+  scope: string;
 }): GeneratableObligation {
   return {
     id: row.id,
+    entityId: row.entity_id,
+    scope: row.scope,
     code: row.code,
     name: row.name,
     periodicity: row.periodicity,
@@ -125,6 +135,7 @@ export async function createOccurrenceIfAbsent(
   obligationTypeId: string,
   draft: OccurrenceDraft,
   status: "TODO" | "ARCHIVED" = "TODO",
+  commercialRegisterId: string | null = null,
 ): Promise<Result<string | null>> {
   const { data, error } = await client.rpc("create_occurrence_if_absent", {
     p_obligation_type_id: obligationTypeId,
@@ -134,6 +145,13 @@ export async function createOccurrenceIfAbsent(
     p_legal_due_date: draft.legalDueDate,
     p_internal_due_date: draft.internalDueDate,
     p_status: status,
+    /*
+     * ⚠️ La clé est OMISE quand il n'y a pas de registre, elle n'est pas mise à
+     * `undefined` : `exactOptionalPropertyTypes` distingue les deux, et le
+     * défaut SQL du paramètre — qui vaut précisément NULL — ne s'applique que
+     * si rien n'est envoyé. Même forme que `p_ip` dans le middleware.
+     */
+    ...(commercialRegisterId === null ? {} : { p_commercial_register_id: commercialRegisterId }),
   });
 
   if (error !== null) return err(mapPostgrestError(error));
@@ -252,4 +270,42 @@ export async function unlockJob(
   const { data, error } = await client.rpc("unlock_job", { p_job_name: jobName });
   if (error !== null) return err(mapPostgrestError(error));
   return ok(data);
+}
+
+// ─── Registres de commerce ───────────────────────────────────────────────────
+
+export interface ActiveRegister {
+  readonly id: string;
+  readonly rcNumber: string;
+  readonly label: string;
+  /** Échéance de validité — c'est ELLE qui ancre les obligations d'expiration. */
+  readonly expiresAt: string | null;
+}
+
+/**
+ * Registres ACTIFS d'une entité.
+ *
+ * ⚠️ Seul le statut ACTIF produit des occurrences. Un registre passé à SUSPENDU
+ * ou RADIE disparaît de cette liste et cesse d'en générer — sans que les
+ * dossiers déjà créés ne bougent : un registre radié laisse derrière lui des
+ * échéances qu'il faut encore clore.
+ */
+export async function listActiveRegisters(
+  client: GenerationClient,
+  entityId: string,
+): Promise<Result<readonly ActiveRegister[]>> {
+  const { data, error } = await client.rpc("active_registers", { p_entity_id: entityId });
+
+  if (error !== null) return err(mapPostgrestError(error));
+
+  // `data` est un tableau, jamais nul, quand l'appel a réussi : la fonction SQL
+  // rend un ensemble de lignes. Un `?? []` ici serait une garde morte.
+  return ok(
+    data.map((row) => ({
+      id: row.id,
+      rcNumber: row.rc_number,
+      label: row.label,
+      expiresAt: row.expires_at,
+    })),
+  );
 }

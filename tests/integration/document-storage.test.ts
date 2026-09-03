@@ -46,7 +46,7 @@ values ('${AGENT}'::uuid, '00000000-0000-0000-0000-000000000000', 'authenticated
 on conflict (id) do nothing;
 
 insert into public.user_roles (user_id, role_id, domain_id)
-values ('${AGENT}', (select id from public.roles where code='COMPTA_AGENT'),
+values ('${AGENT}', (select id from public.roles where code='RESPONSABLE'),
                     (select id from public.domains where code='FISCAL'));
 
 insert into public.obligation_types

@@ -128,10 +128,10 @@ async function seed(): Promise<boolean> {
       key === "admin"
         ? "ADMIN"
         : key === "manager"
-          ? "COMPTA_MANAGER"
+          ? "SUPERVISEUR"
           : key === "agent"
-            ? "COMPTA_AGENT"
-            : "RH_AGENT";
+            ? "RESPONSABLE"
+            : "RESPONSABLE";
     const domain = key === "admin" ? null : key === "rh" ? "SOCIAL" : "FISCAL";
     const id = await createUser(email, role, domain);
     if (id === null) return false;

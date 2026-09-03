@@ -114,12 +114,12 @@ update public.departments set head_id = '${USER.head}' where id = '${DEPARTMENT}
 update public.profiles set department_id = '${DEPARTMENT}' where id = '${USER.owner}';
 
 insert into public.user_roles (user_id, role_id, domain_id) values
-  ('${USER.owner}',     (select id from public.roles where code='COMPTA_AGENT'),
+  ('${USER.owner}',     (select id from public.roles where code='RESPONSABLE'),
                         (select id from public.domains where code='FISCAL')),
-  ('${USER.head}',      (select id from public.roles where code='COMPTA_MANAGER'),
+  ('${USER.head}',      (select id from public.roles where code='SUPERVISEUR'),
                         (select id from public.domains where code='FISCAL')),
   ('${USER.direction}', (select id from public.roles where code='DIRECTION'), null),
-  ('${USER.stranger}',  (select id from public.roles where code='RH_AGENT'),
+  ('${USER.stranger}',  (select id from public.roles where code='RESPONSABLE'),
                         (select id from public.domains where code='SOCIAL'))
 on conflict do nothing;
 

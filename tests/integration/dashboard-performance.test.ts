@@ -115,7 +115,7 @@ beforeAll(async () => {
   await pool.query(
     `insert into public.user_roles (user_id, role_id, domain_id)
      select $1, r.id, d.id from public.roles r, public.domains d
-      where r.code = 'COMPTA_MANAGER' and d.code = 'FISCAL'`,
+      where r.code = 'SUPERVISEUR' and d.code = 'FISCAL'`,
     [MANAGER],
   );
 

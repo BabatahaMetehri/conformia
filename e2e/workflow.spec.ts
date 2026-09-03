@@ -60,7 +60,7 @@ async function createUser(email: string, role: string, domain: string): Promise<
   );
   await pool.query("update public.profiles set full_name = $2 where id = $1", [
     id,
-    role === "COMPTA_MANAGER" ? "Responsable Circuit" : "Agent Circuit",
+    role === "SUPERVISEUR" ? "Responsable Circuit" : "Agent Circuit",
   ]);
   return id;
 }
@@ -68,8 +68,8 @@ async function createUser(email: string, role: string, domain: string): Promise<
 async function seed(): Promise<boolean> {
   if (SERVICE_KEY.length === 0) return false;
 
-  const manager = await createUser(MANAGER, "COMPTA_MANAGER", "FISCAL");
-  const agent = await createUser(AGENT, "COMPTA_AGENT", "FISCAL");
+  const manager = await createUser(MANAGER, "SUPERVISEUR", "FISCAL");
+  const agent = await createUser(AGENT, "RESPONSABLE", "FISCAL");
   if (manager === null || agent === null) return false;
   managerId = manager;
 

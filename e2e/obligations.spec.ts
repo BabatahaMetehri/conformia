@@ -21,7 +21,7 @@ const DB_URL =
 
 const PASSWORD = "conformia-referentiel-2026";
 
-const READER = { email: "obl.reader@e2e.test.dz", role: "REGLEMENTAIRE" } as const;
+const READER = { email: "obl.reader@e2e.test.dz", role: "SUPERVISEUR" } as const;
 const MANAGER = { email: "obl.manager@e2e.test.dz", role: "DIRECTION" } as const;
 
 const OBLIGATION_ID = "44444444-0000-0000-0000-0000000000e1";

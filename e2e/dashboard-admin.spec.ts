@@ -96,7 +96,7 @@ async function signIn(page: Page, email: string): Promise<void> {
 test.beforeAll(async () => {
   if (SERVICE_KEY.length === 0) return;
   const admin = await createUser(ADMIN, "ADMIN", null);
-  const manager = await createUser(MANAGER, "COMPTA_MANAGER", "FISCAL");
+  const manager = await createUser(MANAGER, "SUPERVISEUR", "FISCAL");
   ready = admin && manager;
   await pool.query("select public.refresh_dashboard_views()").catch(() => undefined);
 });

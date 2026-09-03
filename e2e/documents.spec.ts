@@ -66,7 +66,7 @@ async function createUser(email: string, role: string, domain: string): Promise<
   );
   await pool.query("update public.profiles set full_name = $2 where id = $1", [
     id,
-    role === "COMPTA_MANAGER" ? "Responsable Pieces" : "Agent Social",
+    role === "SUPERVISEUR" ? "Responsable Pieces" : "Agent Social",
   ]);
   return id;
 }
@@ -74,9 +74,9 @@ async function createUser(email: string, role: string, domain: string): Promise<
 async function seed(): Promise<boolean> {
   if (SERVICE_KEY.length === 0) return false;
 
-  const manager = await createUser(MANAGER, "COMPTA_MANAGER", "FISCAL");
+  const manager = await createUser(MANAGER, "SUPERVISEUR", "FISCAL");
   // Un compte d'un AUTRE domaine : il doit se voir refuser l'accès à la pièce.
-  const outsider = await createUser(OUTSIDER, "RH_AGENT", "SOCIAL");
+  const outsider = await createUser(OUTSIDER, "RESPONSABLE", "SOCIAL");
   if (manager === null || outsider === null) return false;
 
   await pool.query(

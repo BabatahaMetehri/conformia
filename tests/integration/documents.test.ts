@@ -56,11 +56,11 @@ from (values
 on conflict (id) do nothing;
 
 insert into public.user_roles (user_id, role_id, domain_id) values
-  ('${USER.manager}',   (select id from public.roles where code='COMPTA_MANAGER'),
+  ('${USER.manager}',   (select id from public.roles where code='SUPERVISEUR'),
                         (select id from public.domains where code='FISCAL')),
-  ('${USER.agent}',     (select id from public.roles where code='COMPTA_AGENT'),
+  ('${USER.agent}',     (select id from public.roles where code='RESPONSABLE'),
                         (select id from public.domains where code='FISCAL')),
-  ('${USER.rh}',        (select id from public.roles where code='RH_AGENT'),
+  ('${USER.rh}',        (select id from public.roles where code='RESPONSABLE'),
                         (select id from public.domains where code='SOCIAL')),
   ('${USER.direction}', (select id from public.roles where code='DIRECTION'), null);
 

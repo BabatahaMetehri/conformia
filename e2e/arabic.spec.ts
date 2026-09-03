@@ -95,7 +95,7 @@ test.beforeAll(async () => {
   await pool.query(
     `insert into public.user_roles (user_id, role_id, domain_id)
      select $1, r.id, d.id from public.roles r, public.domains d
-      where r.code = 'COMPTA_AGENT' and d.code = 'FISCAL' on conflict do nothing`,
+      where r.code = 'RESPONSABLE' and d.code = 'FISCAL' on conflict do nothing`,
     [id],
   );
   await pool.query("update public.profiles set full_name = $2 where id = $1", [id, EMAIL]);

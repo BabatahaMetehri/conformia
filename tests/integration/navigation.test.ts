@@ -67,9 +67,9 @@ on conflict (id) do nothing;
 -- production — le contourner reviendrait à tester une règle désactivée.
 insert into public.user_roles (user_id, role_id, domain_id, expires_at)
 values
-  ('${USER.rhAgent}',     (select id from public.roles where code='RH_AGENT'),
+  ('${USER.rhAgent}',     (select id from public.roles where code='RESPONSABLE'),
                           (select id from public.domains where code='SOCIAL'), null),
-  ('${USER.comptaAgent}', (select id from public.roles where code='COMPTA_AGENT'),
+  ('${USER.comptaAgent}', (select id from public.roles where code='RESPONSABLE'),
                           (select id from public.domains where code='FISCAL'), null),
   ('${USER.admin}',       (select id from public.roles where code='ADMIN'), null, null),
   ('${USER.direction}',   (select id from public.roles where code='DIRECTION'), null, null),
