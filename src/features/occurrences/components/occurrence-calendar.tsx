@@ -3,7 +3,7 @@
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { useSearchParams } from "next/navigation";
-import { useMemo, useState, useTransition } from "react";
+import { useMemo, useState } from "react";
 
 import { StatusBadge } from "@/components/shared/status-badge";
 import { Button } from "@/components/ui/button";
@@ -16,7 +16,8 @@ import {
 } from "@/components/ui/sheet";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import type { OccurrenceRowView } from "@/features/occurrences/components/types";
-import { Link, usePathname, useRouter } from "@/i18n/navigation";
+import { Link } from "@/i18n/navigation";
+import { useQueryNavigation } from "@/hooks/use-query-navigation";
 import { formatDateFr } from "@/lib/dates";
 import { cn } from "@/lib/utils";
 
@@ -59,10 +60,8 @@ export function OccurrenceCalendar({
   readonly items: readonly OccurrenceRowView[];
 }) {
   const t = useTranslations("occurrences.calendar");
-  const router = useRouter();
-  const pathname = usePathname();
   const params = useSearchParams();
-  const [pending, startTransition] = useTransition();
+  const { navigate, pending } = useQueryNavigation();
   const [openDay, setOpenDay] = useState<string | null>(null);
 
   const byDay = useMemo(() => {
@@ -82,17 +81,13 @@ export function OccurrenceCalendar({
     anchor.setUTCMonth(anchor.getUTCMonth() + offsetMonths);
     const next = new URLSearchParams(params.toString());
     next.set("anchor", anchor.toISOString().slice(0, 10));
-    startTransition(() => {
-      router.replace({ pathname, query: Object.fromEntries(next.entries()) });
-    });
+    navigate(next);
   }
 
   function setScale(value: CalendarScale): void {
     const next = new URLSearchParams(params.toString());
     next.set("scale", value);
-    startTransition(() => {
-      router.replace({ pathname, query: Object.fromEntries(next.entries()) });
-    });
+    navigate(next);
   }
 
   const step = scale === "year" ? 12 : scale === "quarter" ? 3 : 1;

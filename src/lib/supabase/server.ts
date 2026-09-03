@@ -12,12 +12,35 @@ import "server-only";
 
 import { createServerClient } from "@supabase/ssr";
 import type { SupabaseClient } from "@supabase/supabase-js";
-import { cookies } from "next/headers";
+import { cookies, headers } from "next/headers";
 
 import { env } from "@/config/env";
 import type { Database } from "@/types/database.types";
 
 export type SupabaseServerClient = SupabaseClient<Database>;
+
+/**
+ * Recopie l'identifiant de corrélation posé par le middleware.
+ *
+ * ⚠️ C'EST LA SEULE CHOSE QUI RELIE UNE LIGNE D'AUDIT À UNE REQUÊTE.
+ *
+ * `audit_log.request_id` existe depuis la première migration et restait vide :
+ * il lisait un réglage de SESSION, or l'application atteint la base par
+ * PostgREST, en HTTP, sans session. PostgREST expose en revanche les en-têtes
+ * reçus, et `public.current_request_id()` y lit `x-request-id`. Sans cet
+ * en-tête ici, la chaîne reste rompue et le champ reste NULL.
+ *
+ * L'absence d'en-tête n'est pas une erreur : un appel hors requête HTTP — un
+ * test, un script — n'en a pas. La trace est alors simplement moins précise.
+ */
+async function correlationHeaders(): Promise<Record<string, string>> {
+  try {
+    const requestId = (await headers()).get("x-request-id");
+    return requestId === null || requestId.length === 0 ? {} : { "x-request-id": requestId };
+  } catch {
+    return {};
+  }
+}
 
 /**
  * Client ANONYME, sans session ni cookie.
@@ -52,11 +75,13 @@ export function createSupabaseAnonClient(): SupabaseServerClient {
  */
 export async function createSupabaseServerClient(): Promise<SupabaseServerClient> {
   const cookieStore = await cookies();
+  const global = { headers: await correlationHeaders() };
 
   return createServerClient<Database>(
     env.NEXT_PUBLIC_SUPABASE_URL,
     env.NEXT_PUBLIC_SUPABASE_ANON_KEY,
     {
+      global,
       cookies: {
         getAll: () => cookieStore.getAll(),
         setAll: (cookiesToSet) => {

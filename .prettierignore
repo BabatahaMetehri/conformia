@@ -11,3 +11,6 @@ next-env.d.ts
 src/types/database.types.ts
 test-results/
 playwright-report/
+
+# Genere par `node scripts/query-plans.ts` : le contenu est un releve, pas une source.
+docs/query-plans.md

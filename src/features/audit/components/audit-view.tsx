@@ -12,7 +12,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { exportAuditAction } from "@/features/audit/actions/export";
 import { formatDateTimeFr } from "@/lib/dates";
-import { useRouter } from "@/i18n/navigation";
+import { useQueryNavigation } from "@/hooks/use-query-navigation";
 import type { AuditEntryRow } from "@/services/admin";
 
 interface Filters {
@@ -53,7 +53,7 @@ export function AuditView({
   readonly tables: readonly string[];
 }) {
   const t = useTranslations("audit");
-  const router = useRouter();
+  const { navigate } = useQueryNavigation();
 
   const [pending, startTransition] = useTransition();
   const [draft, setDraft] = useState<Filters>(filters);
@@ -66,7 +66,7 @@ export function AuditView({
     if (next.action !== "") params.set("action", next.action);
     if (next.entityTable !== "") params.set("entity", next.entityTable);
     if (next.ipAddress !== "") params.set("ip", next.ipAddress);
-    router.replace({ pathname: "/audit", query: Object.fromEntries(params) });
+    navigate(params);
   }
 
   function exportCsv(): void {
@@ -277,7 +277,7 @@ export function AuditView({
             variant="outline"
             disabled={page === 0}
             onClick={() => {
-              router.replace({ pathname: "/audit", query: { page: String(page - 1) } });
+              navigate(new URLSearchParams({ page: String(page - 1) }));
             }}
           >
             {t("previous")}
@@ -287,7 +287,7 @@ export function AuditView({
             variant="outline"
             disabled={page >= lastPage}
             onClick={() => {
-              router.replace({ pathname: "/audit", query: { page: String(page + 1) } });
+              navigate(new URLSearchParams({ page: String(page + 1) }));
             }}
           >
             {t("next")}

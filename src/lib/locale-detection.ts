@@ -11,6 +11,16 @@ import { DEFAULT_LOCALE, LOCALES, type Locale } from "@/config/constants";
 /** Nom du cookie posé par next-intl lorsqu'on change de langue. */
 export const LOCALE_COOKIE = "NEXT_LOCALE";
 
+/**
+ * En-tête par lequel le middleware transmet la locale de l'URL au rendu.
+ *
+ * ⚠️ Il existe parce que ce projet n'emploie PAS le middleware de next-intl —
+ * le sien porte la session, la CSP, la corrélation et la limitation de débit.
+ * Sans cet en-tête, `requestLocale` reste vide et toute l'application rend dans
+ * la langue par défaut, quelle que soit l'URL.
+ */
+export const APP_LOCALE_HEADER = "x-app-locale";
+
 function isSupported(value: string): value is Locale {
   return LOCALES.some((locale) => locale === value);
 }

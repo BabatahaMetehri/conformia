@@ -21,7 +21,9 @@
     "prepare": "husky",
     "backup": "node scripts/backup.ts",
     "restore": "node scripts/restore.ts",
-    "restore:test": "node scripts/restore-test.ts"
+    "restore:test": "node scripts/restore-test.ts",
+    "db:plans": "node scripts/query-plans.ts",
+    "load-test": "node scripts/load-test.ts"
   },
   "lint-staged": {
     "*.{ts,tsx}": [
@@ -82,6 +84,7 @@
     "eslint-config-next": "15.5.22",
     "eslint-import-resolver-typescript": "4.4.5",
     "eslint-plugin-import": "2.32.0",
+    "fast-check": "^4.9.0",
     "husky": "9.1.7",
     "jsdom": "29.1.1",
     "lint-staged": "17.3.0",

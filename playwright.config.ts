@@ -60,8 +60,33 @@ export default defineConfig({
   use: {
     baseURL: `http://127.0.0.1:${String(PORT)}`,
     trace: "off",
+    /*
+     * ⚠️ CAPTURE D'ÉCRAN À L'ÉCHEC, systématiquement. Un échec de bout en bout
+     * se lit mal dans une pile d'appels : la question est « qu'affichait la page
+     * à cet instant ». Sans image, on rejoue le scénario à la main pour la
+     * découvrir — et sur une machine différente, il ne se reproduit pas.
+     */
+    screenshot: "only-on-failure",
   },
-  projects: [{ name: "chromium", use: { ...devices["Desktop Chrome"] } }],
+  projects: [
+    { name: "chromium", use: { ...devices["Desktop Chrome"] } },
+    /*
+     * ⚠️ FIREFOX ne double pas la couverture : il éprouve ce que Chromium ne
+     * peut pas voir. Les deux moteurs divergent sur les propriétés logiques en
+     * RTL, la sérialisation des dates dans un `input[type=date]`, et le moment
+     * exact où l'hydratation attache un gestionnaire — précisément le défaut
+     * corrigé à la phase précédente.
+     *
+     * Seuls les PARCOURS CRITIQUES y tournent : y passer toute la suite
+     * doublerait le temps de vérification pour un gain marginal sur des écrans
+     * dont la mécanique est déjà couverte.
+     */
+    {
+      name: "firefox",
+      use: { ...devices["Desktop Firefox"] },
+      testMatch: /critical-journeys\.spec\.ts/,
+    },
+  ],
   webServer: {
     command: `npx next start --port ${String(PORT)}`,
     url: `http://127.0.0.1:${String(PORT)}/fr/login`,

@@ -4380,6 +4380,27 @@ export type Database = {
           },
         ]
       }
+      rate_limit_hits: {
+        Row: {
+          bucket: string
+          id: number
+          occurred_at: string
+          subject: string
+        }
+        Insert: {
+          bucket: string
+          id?: number
+          occurred_at?: string
+          subject: string
+        }
+        Update: {
+          bucket?: string
+          id?: number
+          occurred_at?: string
+          subject?: string
+        }
+        Relationships: []
+      }
       restore_tests: {
         Row: {
           backup_run_id: number | null
@@ -5291,6 +5312,20 @@ export type Database = {
           },
         ]
       }
+      job_health: {
+        Row: {
+          details: Json | null
+          error_count: number | null
+          finished_at: string | null
+          hours_since: number | null
+          job_name: string | null
+          max_age_hours: number | null
+          started_at: string | null
+          status: string | null
+          verdict: string | null
+        }
+        Relationships: []
+      }
       occurrence_list: {
         Row: {
           authority_id: string | null
@@ -5632,6 +5667,15 @@ export type Database = {
         }
         Returns: Json
       }
+      consume_rate_limit: {
+        Args: {
+          p_bucket: string
+          p_limit: number
+          p_subject: string
+          p_window_seconds: number
+        }
+        Returns: Json
+      }
       create_document_upload_ticket: {
         Args: {
           p_checklist_item_id?: string
@@ -5667,6 +5711,7 @@ export type Database = {
         Returns: undefined
       }
       current_profile_id: { Args: never; Returns: string }
+      current_request_id: { Args: never; Returns: string }
       dashboard_alerts: {
         Args: never
         Returns: {
@@ -5909,6 +5954,7 @@ export type Database = {
         Returns: boolean
       }
       has_verified_mfa: { Args: { p_user_id: string }; Returns: boolean }
+      health_snapshot: { Args: never; Returns: Json }
       is_active_user: { Args: never; Returns: boolean }
       is_active_user_for: { Args: { p_user: string }; Returns: boolean }
       is_admin: { Args: never; Returns: boolean }

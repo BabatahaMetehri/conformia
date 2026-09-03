@@ -36,6 +36,7 @@ export const NAV_ICON_NAMES = [
   "referentials",
   "notifications",
   "settings",
+  "jobs",
   "purge",
   "audit",
 ] as const;
@@ -223,6 +224,18 @@ export const NAVIGATION: readonly NavItem[] = [
         href: "/admin/settings",
         icon: "settings",
         labelKey: "adminSettings",
+        requires: { kind: "all", permissions: ["settings.manage"] },
+      },
+      {
+        id: "admin-jobs",
+        href: "/admin/jobs",
+        icon: "jobs",
+        labelKey: "adminJobs",
+        /*
+         * ⚠️ `settings.manage` et non `user.manage` : ce que cet écran montre
+         * n'est pas de l'administration de comptes mais de l'exploitation. Qui
+         * règle la plateforme est aussi qui doit voir qu'elle tourne encore.
+         */
         requires: { kind: "all", permissions: ["settings.manage"] },
       },
       {

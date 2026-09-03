@@ -23,7 +23,8 @@ import {
 } from "@/features/occurrences/actions";
 import { OccurrencesTable } from "@/features/occurrences/components/occurrences-table";
 import type { AssignableProfile, OccurrenceRowView } from "@/features/occurrences/components/types";
-import { usePathname, useRouter } from "@/i18n/navigation";
+import { useQueryNavigation } from "@/hooks/use-query-navigation";
+import { useRouter } from "@/i18n/navigation";
 
 /**
  * Enveloppe interactive de la liste : tri, pagination, sélection, export.
@@ -53,9 +54,9 @@ export function OccurrenceListView({
 }) {
   const t = useTranslations("occurrences");
   const tCriticality = useTranslations("obligations.criticality");
-  const router = useRouter();
-  const pathname = usePathname();
   const params = useSearchParams();
+  const router = useRouter();
+  const { navigate: replaceQuery } = useQueryNavigation();
 
   const [selection, setSelection] = useState<ReadonlySet<string>>(new Set());
   const [assignee, setAssignee] = useState<string>("");
@@ -100,9 +101,7 @@ export function OccurrenceListView({
       if (value === null) next.delete(key);
       else next.set(key, value);
     }
-    startTransition(() => {
-      router.replace({ pathname, query: Object.fromEntries(next.entries()) });
-    });
+    replaceQuery(next);
   }
 
   const sorting: SortingState = [{ id: sort, desc: direction === "desc" }];

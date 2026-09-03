@@ -62,15 +62,50 @@ export default defineConfig({
     coverage: {
       provider: "v8",
       reporter: ["text-summary", "html"],
-      include: ["src/lib/**/*.ts", "src/config/**/*.ts", "src/services/scheduling/**/*.ts"],
-      // Seuils par fichier : les deux modules dont tout le reste dépend.
+
+      /*
+       * ⚠️ CE QUE CETTE LISTE COUVRE, ET CE QU'ELLE NE COUVRE PAS.
+       *
+       * Elle réunit les modules PURS : calcul, validation, formatage, machine à
+       * états. Ce sont ceux dont un test unitaire mesure réellement le
+       * comportement, et ceux dont une régression ne se verrait nulle part
+       * ailleurs avant la production.
+       *
+       * Les services qui ORCHESTRENT la base (dépôt, export, notification,
+       * tableau de bord) en sont volontairement absents. Les couvrir ici
+       * supposerait de simuler le client Supabase : le test mesurerait alors la
+       * simulation, pas la règle — et la règle, ici, vit dans la RLS et dans les
+       * fonctions SQL. Ces modules sont éprouvés par `vitest.integration.mts`
+       * (base réelle) et par la suite Playwright (application réelle), dont la
+       * couverture ne se lit pas dans ce rapport. Voir `docs/testing.md`.
+       */
+      include: [
+        "src/lib/**/*.ts",
+        "src/config/**/*.ts",
+        "src/services/scheduling/**/*.ts",
+        "src/services/workflow/state-machine.ts",
+        "src/services/occurrences/completeness.ts",
+      ],
+      exclude: [
+        // Fabriques de clients : trois lignes de configuration, rien à éprouver.
+        "src/lib/supabase/client.ts",
+        "src/lib/supabase/server.ts",
+        "src/lib/supabase/admin.ts",
+        "src/lib/supabase/middleware.ts",
+        // Clés de cache et utilitaires de transport, sans logique décisionnelle.
+        "src/lib/query-keys.ts",
+        "src/lib/upload-transport.ts",
+        "src/lib/utils.ts",
+        // Le générateur est un job : sa vérification est `tests/integration/generation.test.ts`.
+        "src/services/scheduling/generator.ts",
+      ],
+
       thresholds: {
         /*
-         * ⚠️ 100 % DE BRANCHES sur le calcul d'échéance. Ce n'est pas un chiffre
-         * décoratif : une branche non couverte ici est un cas de calendrier que
-         * personne n'a éprouvé, et une échéance fausse produit un dépôt en
-         * retard, donc une pénalité réelle. C'est le seul module du projet à
-         * porter ce seuil.
+         * ⚠️ 100 % sur le calcul d'échéance. Ce n'est pas un chiffre décoratif :
+         * une branche non couverte ici est un cas de calendrier que personne n'a
+         * éprouvé, et une échéance fausse produit un dépôt en retard, donc une
+         * pénalité réelle.
          */
         "src/services/scheduling/due-dates.ts": {
           statements: 100,
@@ -78,18 +113,51 @@ export default defineConfig({
           functions: 100,
           lines: 100,
         },
-        "src/lib/dates.ts": {
-          statements: 90,
-          branches: 90,
-          functions: 90,
-          lines: 90,
+        /*
+         * ⚠️ 100 % sur la TRADUCTION des verdicts de transition. Chaque code de
+         * refus rendu par `evaluate_transition()` doit devenir l'erreur juste :
+         * un manque de permission présenté comme une pièce manquante envoie
+         * l'utilisateur chercher un document qui n'existe pas. La matrice des
+         * transitions elle-même est éprouvée en base, pas ici.
+         */
+        "src/services/workflow/state-machine.ts": {
+          statements: 100,
+          branches: 100,
+          functions: 100,
+          lines: 100,
         },
-        "src/lib/result.ts": {
-          statements: 90,
-          branches: 90,
-          functions: 90,
-          lines: 90,
+        /*
+         * Les trois modules dont TOUT le reste dépend : le fuseau d'Alger, le
+         * type Result, la hiérarchie d'erreurs. Une régression ici se propage
+         * partout à la fois.
+         */
+        "src/lib/dates.ts": { statements: 95, branches: 95, functions: 95, lines: 95 },
+        "src/lib/result.ts": { statements: 95, branches: 95, functions: 95, lines: 95 },
+        "src/lib/errors.ts": { statements: 95, branches: 95, functions: 95, lines: 95 },
+        // Validation des règles d'échéance : le portier du référentiel.
+        "src/services/scheduling/due-rule.ts": {
+          statements: 95,
+          branches: 95,
+          functions: 95,
+          lines: 95,
         },
+        // Complétude d'un dossier : décide ce que l'écran déclare manquant.
+        "src/services/occurrences/completeness.ts": {
+          statements: 100,
+          branches: 100,
+          functions: 100,
+          lines: 100,
+        },
+
+        /*
+         * Plancher GLOBAL sur l'ensemble ci-dessus. Il ne récompense rien : il
+         * empêche qu'un module pur arrive sans test et fasse glisser le total
+         * sans que personne ne le remarque.
+         */
+        statements: 92,
+        branches: 85,
+        functions: 90,
+        lines: 92,
       },
     },
   },

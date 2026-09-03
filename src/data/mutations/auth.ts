@@ -172,13 +172,27 @@ export async function listTotpFactors(): Promise<Result<readonly MfaFactorSummar
   const { data, error } = await supabase.auth.mfa.listFactors();
   if (error !== null) return err(AppError.internal({ cause: error }));
 
+  /*
+   * ⚠️ `data.all` ET NON `data.totp` : le second ne rend que les facteurs
+   * VÉRIFIÉS, ce qui rend les enrôlements inachevés invisibles. Or ce sont
+   * précisément eux qu'il faut voir — un enrôlement laissé en plan occupe le
+   * nom convivial et fait échouer toute tentative suivante.
+   */
   return ok(
-    data.totp.map((factor) => ({
-      id: factor.id,
-      friendlyName: factor.friendly_name ?? null,
-      // `listFactors()` ne rend que des facteurs vérifiés : le champ existe pour
-      // rester explicite si l'API se met un jour à exposer les enrôlements en cours.
-      verified: true,
-    })),
+    data.all
+      .filter((factor) => factor.factor_type === "totp")
+      .map((factor) => ({
+        id: factor.id,
+        friendlyName: factor.friendly_name ?? null,
+        verified: factor.status === "verified",
+      })),
   );
+}
+
+/** Retire un facteur. Sert à reprendre un enrôlement inachevé, jamais à en défaire un vérifié. */
+export async function unenrollFactor(factorId: string): Promise<Result<null>> {
+  const supabase = await createSupabaseServerClient();
+  const { error } = await supabase.auth.mfa.unenroll({ factorId });
+  if (error !== null) return err(AppError.internal({ cause: error }));
+  return ok(null);
 }

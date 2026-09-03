@@ -3,7 +3,7 @@
 import { Check, RefreshCw, Trash2 } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { useRouter } from "next/navigation";
-import { useMemo, useState, useTransition } from "react";
+import { useEffect, useMemo, useState, useTransition } from "react";
 import { toast } from "sonner";
 
 import { FileDropzone } from "@/components/shared/file-dropzone";
@@ -43,6 +43,25 @@ import type { OccurrenceDetailView } from "@/services/occurrences/detail";
 
 const MIN_REASON_LENGTH = 10;
 
+/**
+ * Rythme et plafond des relances de rafraîchissement après un dépôt.
+ *
+ * ⚠️ CE N'EST PAS UN DÉLAI DE CONFORT, C'EST LA CORRECTION D'UNE COURSE.
+ *
+ * `router.refresh()` demandé dans la foulée de la Server Action est ANNULÉ :
+ * la requête part, et le navigateur l'interrompt (`net::ERR_ABORTED`) avant que
+ * le résultat ne soit appliqué — mesuré, dans un build de production, sur une
+ * quinzaine d'exécutions. Selon la vitesse de la machine, l'écran se met à jour
+ * ou reste figé sur « Aucune pièce déposée » avec « Soumettre à validation »
+ * grisé : l'utilisateur croit son dépôt perdu et le recommence.
+ *
+ * On redemande donc la page jusqu'à ce qu'elle ait VU le dépôt, à intervalle
+ * court et en nombre borné. La condition d'arrêt n'est pas un délai mais un
+ * fait : la pièce est rattachée côté serveur.
+ */
+const REFRESH_RETRY_MS = 250;
+const MAX_REFRESH_ATTEMPTS = 8;
+
 export function OccurrenceChecklist({ detail }: { readonly detail: OccurrenceDetailView }) {
   const t = useTranslations("occurrences.detail");
   const router = useRouter();
@@ -60,17 +79,17 @@ export function OccurrenceChecklist({ detail }: { readonly detail: OccurrenceDet
     () => ({
       requestTicket: requestUploadAction,
       confirm: confirmUploadAction,
-      // Un dépôt abouti change la complétude, donc le bandeau, donc les boutons
-      // de la barre d'actions : on redemande la page au serveur.
+      /*
+       * Le dépôt part seul. Le rafraîchissement N'EST PAS déclenché ici : il
+       * l'est par l'effet ci-dessous, qui relance tant que la page n'a pas vu la
+       * pièce. Enchaîner un `router.refresh()` sur la fin de l'action, dans la
+       * même boucle, le fait annuler — voir `REFRESH_RETRY_MS`.
+       */
       runInTransition: (run: () => Promise<void>) => {
-        void run().then(() => {
-          startTransition(() => {
-            router.refresh();
-          });
-        });
+        void run();
       },
     }),
-    [router],
+    [],
   );
   const upload = useDirectUpload(detail.id, ports);
 
@@ -80,12 +99,9 @@ export function OccurrenceChecklist({ detail }: { readonly detail: OccurrenceDet
    *
    * ⚠️ Ce n'est pas de l'optimisme : on ne compte QUE des pièces dont
    * `confirm_document_upload` a rendu un identifiant, donc inscrites en base.
-   * L'ajout existe parce que `router.refresh()` ne rafraîchit PAS cette page
-   * après un dépôt — mesuré : le rendu serveur de la même URL contient bien
-   * « 1 sur 2 » pendant que le DOM affiche encore « 0 sur 2 », et toutes les
-   * variantes de rafraîchissement essayées donnent le même résultat. Sans cet
-   * ajustement, l'utilisateur voit son dossier rester incomplet après un dépôt
-   * réussi, et le recommence.
+   * L'ajout couvre l'intervalle — quelques centaines de millisecondes — entre la
+   * confirmation du dépôt et le moment où la page relit la base. Sans lui, le
+   * compteur reculerait visiblement pendant cet intervalle.
    *
    * ⚠️ Ceci ne relâche AUCUNE garantie : la soumission d'un dossier incomplet
    * est refusée par la base, jamais par ce compteur. Il informe, il n'autorise pas.
@@ -95,6 +111,39 @@ export function OccurrenceChecklist({ detail }: { readonly detail: OccurrenceDet
       .filter((entry) => entry.stage === "DONE" && entry.checklistItemId !== null)
       .map((entry) => entry.checklistItemId),
   );
+
+  /**
+   * Pièces confirmées par le serveur mais que CETTE page n'a pas encore relues.
+   * Tant qu'il en reste, la page est en retard sur la base.
+   */
+  const unseenDeposits = upload.entries.filter(
+    (entry) =>
+      entry.stage === "DONE" &&
+      entry.checklistItemId !== null &&
+      !detail.completeness.satisfiedItemIds.has(entry.checklistItemId),
+  ).length;
+
+  const [refreshAttempts, setRefreshAttempts] = useState(0);
+
+  useEffect(() => {
+    if (unseenDeposits === 0) {
+      // Le serveur a rattrapé : le compteur repart à zéro pour le dépôt suivant.
+      setRefreshAttempts((attempts) => (attempts === 0 ? attempts : 0));
+      return;
+    }
+    if (refreshAttempts >= MAX_REFRESH_ATTEMPTS) return;
+
+    const timer = window.setTimeout(() => {
+      router.refresh();
+      // Incrémenter RELANCE cet effet : c'est ce qui permet de réessayer même
+      // quand le rafraîchissement précédent a été annulé sans rien changer.
+      setRefreshAttempts((attempts) => attempts + 1);
+    }, REFRESH_RETRY_MS);
+
+    return () => {
+      window.clearTimeout(timer);
+    };
+  }, [unseenDeposits, refreshAttempts, router]);
 
   const required = detail.completeness.required;
   const provided = detail.checklist.filter(

@@ -300,3 +300,26 @@ export const BLOCKED_EXTENSIONS: readonly string[] = [
   "htm",
   "svg",
 ];
+
+// ─── Fraîcheur des travaux planifiés ─────────────────────────────────────────
+
+/**
+ * Âge maximal, en heures, de la dernière GÉNÉRATION réussie avant que la sonde
+ * de santé ne bascule en « dégradé ».
+ *
+ * ⚠️ 26 h et non 24 : la génération tourne à 02 h 00 heure d'Alger. Un seuil de
+ * 24 h alerterait chaque nuit, dans l'intervalle entre l'expiration du dernier
+ * relevé et l'exécution suivante — et une alerte qui crie tous les jours cesse
+ * d'être lue en une semaine. Deux heures de battement, c'est l'écart entre une
+ * alerte crédible et un bruit de fond.
+ */
+export const GENERATION_MAX_AGE_HOURS = 26;
+
+/**
+ * Âge maximal, en heures, de la dernière SAUVEGARDE réussie.
+ *
+ * ⚠️ 36 h, valeur alignée sur `notify_admins_of_stale_backup` (migration 0011).
+ * Les deux doivent rester égales : la sonde et l'alerte parleraient sinon de
+ * deux états différents, et l'une contredirait l'autre au pire moment.
+ */
+export const BACKUP_MAX_AGE_HOURS = 36;

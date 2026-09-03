@@ -64,29 +64,25 @@ export interface DirectUploadPorts {
     sha256: string;
   }) => Promise<ActionResult<{ documentId: string; normalizedFilename: string }>>;
   /**
-   * Exécute le dépôt DANS une transition React de l'appelant.
+   * Ordonnance le dépôt. Le hook ne décide pas COMMENT il est lancé.
    *
-   * ⚠️ Nécessaire, et constaté en exécutant : appelées hors transition, les
-   * Server Actions aboutissaient bien côté serveur — la pièce était enregistrée —
-   * mais le `router.refresh()` qui suit n'actualisait jamais l'écran. Le
-   * compteur de complétude restait à « 0 sur 2 » alors que la pièce existait, et
-   * seul un rechargement complet montrait la vérité. C'est le pire des états :
-   * l'utilisateur croit son dépôt perdu et le recommence.
+   * ⚠️ L'APPELANT NE DOIT PAS ENCHAÎNER UN `router.refresh()` SUR LA FIN DE
+   * `run()`. Mesuré dans un build de production, sur une quinzaine
+   * d'exécutions : demandé dans la même boucle que la fin de la Server Action,
+   * le rafraîchissement part et le navigateur l'interrompt
+   * (`net::ERR_ABORTED`) — la requête ne revient jamais jusqu'à React. Selon la
+   * vitesse de la machine, l'écran se met à jour ou reste figé sur les anciennes
+   * données pendant que la pièce, elle, est bien enregistrée. C'est le pire des
+   * états : l'utilisateur croit son dépôt perdu et le recommence.
    *
-   * ⚠️ La fonction reçue rend une PROMESSE. L'appelant doit l'attendre PUIS
-   * rafraîchir :
+   * Ces formes ont toutes été essayées et MESURÉES intermittentes :
+   *   • `void run().then(() => router.refresh())` ;
+   *   • `startTransition(async () => { await run(); router.refresh(); })` ;
+   *   • le même, décalé d'un `setTimeout(..., 0)`.
    *
-   *     startTransition(async () => { await run(); router.refresh(); });
-   *
-   * Les deux variantes plus simples ont été essayées et MESURÉES fausses :
-   *   • rafraîchir depuis un `useEffect` observant le nombre de dépôts terminés ;
-   *   • rafraîchir depuis un rappel émis à la fin du dépôt, donc encore À
-   *     L'INTÉRIEUR de la transition.
-   * Dans les deux cas la requête de rafraîchissement partait et revenait en 200
-   * — c'est vérifiable dans le trafic — mais son résultat était abandonné, et
-   * l'écran restait sur les anciennes données pendant que la pièce, elle, était
-   * bien enregistrée. C'est le pire des états : l'utilisateur croit son dépôt
-   * perdu et le recommence.
+   * La forme qui tient est ailleurs : l'appelant lance le dépôt seul, et
+   * REDEMANDE la page tant qu'elle n'a pas vu la pièce — condition d'arrêt
+   * factuelle, pas temporelle. Voir `occurrence-checklist.tsx`.
    */
   readonly runInTransition?: ((run: () => Promise<void>) => void) | undefined;
 }

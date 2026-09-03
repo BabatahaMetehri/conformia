@@ -3,7 +3,7 @@
 import { CalendarDays, Check, Languages, LogOut, Monitor, Moon, Sun, User } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { useTheme } from "next-themes";
-import { useEffect, useState } from "react";
+import { useEffect, useState, useTransition } from "react";
 
 import { UserAvatar } from "@/components/shared/user-avatar";
 import {
@@ -17,24 +17,33 @@ import {
   DropdownMenuSubTrigger,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { DEFAULT_LOCALE, LOCALES } from "@/config/constants";
+import { LOCALES } from "@/config/constants";
 import { logoutAction } from "@/features/auth/actions";
+import { setLocaleAction } from "@/features/auth/actions/locale";
 import { useRequiredCurrentUser } from "@/hooks/use-current-user";
-import { Link } from "@/i18n/navigation";
+import { Link, usePathname } from "@/i18n/navigation";
 
 /**
- * Menu utilisateur : profil, thème, flux calendrier, déconnexion.
+ * Menu utilisateur : profil, thème, langue, flux calendrier, déconnexion.
  *
- * Le sélecteur de langue reste PRÉSENT et ne propose que le français : les
- * catalogues `ar` sont tenus à jour clé pour clé, mais la relecture RTL de
- * l'application entière n'a pas eu lieu. Livrer un arabe non relu abîmerait la
- * confiance plus qu'une absence assumée. Le mécanisme, lui, est en place —
- * rouvrir la langue tiendra en une ligne.
+ * ⚠️ LE CHOIX DE LANGUE PASSE PAR UNE SERVER ACTION, jamais par un lien.
+ * Il doit poser un cookie pour survivre à la navigation suivante : sans lui,
+ * l'utilisateur repasserait en français dès la première URL saisie à la main ou
+ * dès le prochain lien reçu par courriel. Le chemin courant est conservé —
+ * changer de langue n'est pas changer d'écran.
  */
 export function UserMenu({ locale }: { readonly locale: string }) {
   const t = useTranslations();
   const user = useRequiredCurrentUser();
   const { theme, setTheme } = useTheme();
+  /*
+   * ⚠️ `usePathname` de `@/i18n/navigation` rend le chemin SANS son préfixe de
+   * locale. C'est exactement ce dont l'action a besoin : elle repréfixe avec la
+   * langue choisie. Celui de `next/navigation` rendrait « /fr/echeancier » et
+   * produirait « /ar/fr/echeancier ».
+   */
+  const pathname = usePathname();
+  const [, startTransition] = useTransition();
 
   // Le thème résolu vit dans le navigateur : l'afficher au rendu serveur
   // produirait une coche placée au hasard, corrigée à l'hydratation.
@@ -119,15 +128,30 @@ export function UserMenu({ locale }: { readonly locale: string }) {
             {t("layout.language")}
           </DropdownMenuSubTrigger>
           <DropdownMenuSubContent>
-            {LOCALES.filter((candidate) => candidate === DEFAULT_LOCALE).map((candidate) => (
-              <DropdownMenuItem key={candidate} disabled>
+            {LOCALES.map((candidate) => (
+              <DropdownMenuItem
+                key={candidate}
+                /*
+                 * ⚠️ `lang` sur l'élément lui-même : « العربية » doit être
+                 * annoncé en arabe par le lecteur d'écran, même lorsque la page
+                 * entière est en français. Sans cet attribut, la synthèse vocale
+                 * lit des caractères arabes avec des règles françaises.
+                 */
+                lang={candidate}
+                disabled={candidate === locale}
+                onSelect={() => {
+                  if (candidate === locale) return;
+                  startTransition(async () => {
+                    await setLocaleAction(candidate, pathname);
+                  });
+                }}
+              >
                 {t(`layout.locales.${candidate}`)}
-                <Check aria-hidden="true" className="ms-auto size-4" />
+                {candidate === locale ? (
+                  <Check aria-hidden="true" className="ms-auto size-4" />
+                ) : null}
               </DropdownMenuItem>
             ))}
-            <DropdownMenuLabel className="max-w-56 text-xs font-normal whitespace-normal text-text-secondary">
-              {t("layout.languageOnlyFrench")}
-            </DropdownMenuLabel>
           </DropdownMenuSubContent>
         </DropdownMenuSub>
 

@@ -281,7 +281,17 @@ describe("tenue en charge du tableau de bord", () => {
 
     expect(badge).toBeLessThan(BUDGET_MS);
     expect(queue).toBeLessThan(KNOWN_RLS_CEILING_MS);
-  });
+    /*
+     * ⚠️ TROIS MINUTES DE DÉLAI, ET CE N'EST PAS UN RELÂCHEMENT.
+     *
+     * Ce test MESURE une requête volontairement lente, trois fois, pour en
+     * prendre la médiane. À 8,4 s la requête, le délai par défaut de 30 s ne
+     * suffit pas à terminer la mesure : le test échouait sur le chronomètre du
+     * lanceur AVANT d'avoir pu vérifier son plafond, si bien que le garde-fou de
+     * régression ne gardait plus rien. Le seuil qui compte reste
+     * `KNOWN_RLS_CEILING_MS` ; celui-ci ne fait que laisser la mesure aboutir.
+     */
+  }, 180_000);
 
   it("le rafraîchissement des vues reste compatible avec un pas de 15 minutes", () => {
     // Il tourne hors requête ; il doit seulement tenir dans son intervalle avec

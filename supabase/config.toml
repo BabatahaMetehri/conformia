@@ -331,9 +331,21 @@ auth_token = "env(SUPABASE_AUTH_SMS_TWILIO_AUTH_TOKEN)"
 max_enrolled_factors = 10
 
 # Control MFA via App Authenticator (TOTP)
+#
+# ⚠️ CES DEUX DRAPEAUX NE SONT PAS OPTIONNELS.
+#
+# `mfa_required_for()` EXIGE un second facteur pour ADMIN et DIRECTION, et le
+# middleware enferme ces comptes sur l'écran d'enrôlement tant qu'ils n'en ont
+# pas. Laissés à `false`, GoTrue refuse tout enrôlement TOTP
+# (`mfa_totp_enroll_not_enabled`) : l'écran affiche une erreur, aucun facteur ne
+# peut naître, et TOUT compte administrateur ou de direction est définitivement
+# verrouillé hors de l'application. Mesuré sur la pile locale.
+#
+# Le réglage doit être posé à l'identique sur le projet hébergé
+# (Authentication → Multi-Factor Authentication).
 [auth.mfa.totp]
-enroll_enabled = false
-verify_enabled = false
+enroll_enabled = true
+verify_enabled = true
 
 # Configure MFA via Phone Messaging
 [auth.mfa.phone]

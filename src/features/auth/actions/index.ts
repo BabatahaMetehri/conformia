@@ -91,10 +91,21 @@ export async function loginAction(
     };
   }
 
+  /*
+   * ⚠️ LA DESTINATION EST DÉCIDÉE ICI, PAS PAR LE MIDDLEWARE.
+   *
+   * `redirect()` dans une Server Action ne déclenche aucune requête : Next rend
+   * la destination dans la réponse de l'action même. Le middleware — qui porte
+   * la garde du second facteur — n'est donc pas traversé, et un compte à qui le
+   * second facteur est exigé atteignait le tableau de bord une fois avant que la
+   * garde ne se referme au clic suivant.
+   */
   redirect(
     result.value.requiresMfaChallenge
       ? `/${parsed.data.locale}/mfa`
-      : `/${parsed.data.locale}/dashboard`,
+      : result.value.requiresMfaEnrollment
+        ? `/${parsed.data.locale}/mfa/enroll`
+        : `/${parsed.data.locale}/dashboard`,
   );
 }
 

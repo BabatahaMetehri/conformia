@@ -73,13 +73,24 @@ test.describe("accessibilité", () => {
     ).toEqual([]);
   });
 
-  test("le système de design ne présente aucune violation axe, en clair et en sombre", async ({
-    page,
-  }) => {
+  test("le profil ne présente aucune violation axe, en clair et en sombre", async ({ page }) => {
+    /*
+     * ⚠️ CE TEST VISAIT LA PAGE DE DÉMONSTRATION DU SYSTÈME DE DESIGN, qui a été
+     * SUPPRIMÉE : une route non protégée exposant chaque composant n'a rien à
+     * faire dans une application de conformité mise en production, et l'oubli de
+     * la retirer était un point ouvert depuis plusieurs phases.
+     *
+     * ⚠️ IL VISE « MON PROFIL », ET LE CHOIX EST CONTRAINT. Ce compte d'essai ne
+     * porte AUCUN rôle — c'est ce qui rend la vérification de la page de
+     * connexion honnête. Les écrans métier lui rendent donc « introuvable », sans
+     * titre de niveau 1 à inspecter. « Mon profil » n'exige aucune permission et
+     * reste dense : liste de définitions, pastilles, encart d'alerte, boutons.
+     * C'est exactement ce qu'il faut pour éprouver les jetons des deux thèmes.
+     */
     const connected = await signIn(page);
     test.skip(!connected, "SUPABASE_SERVICE_ROLE_KEY absent : session impossible.");
 
-    await page.goto("/fr/_design-system");
+    await page.goto("/fr/profile");
     await expect(page.getByRole("heading", { level: 1 })).toBeVisible();
 
     const light = await analyse(page);

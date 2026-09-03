@@ -3,7 +3,6 @@
 import { CalendarDays, List, X } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { useSearchParams } from "next/navigation";
-import { useTransition } from "react";
 
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -17,8 +16,8 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { CRITICALITIES, OCCURRENCE_STATUSES } from "@/config/constants";
-import { Link, usePathname, useRouter } from "@/i18n/navigation";
-import { useHydrated } from "@/hooks/use-hydrated";
+import { Link } from "@/i18n/navigation";
+import { useQueryNavigation } from "@/hooks/use-query-navigation";
 import { cn } from "@/lib/utils";
 
 /**
@@ -50,16 +49,13 @@ export function OccurrenceFilterBar({
   const t = useTranslations("occurrences.filters");
   const tOcc = useTranslations("occurrences");
   const tCriticality = useTranslations("obligations.criticality");
-  const router = useRouter();
-  const pathname = usePathname();
   const params = useSearchParams();
-  const [pending, startTransition] = useTransition();
   /*
-   * ⚠️ Avant l'hydratation, ces contrôles ne répondent pas : leur gestionnaire
-   * n'est pas encore attaché. On les rend inertes plutôt que trompeurs.
+   * ⚠️ `busy` couvre aussi l'avant-hydratation : ces contrôles ne répondent pas
+   * encore, leur gestionnaire n'étant pas attaché. On les rend inertes plutôt
+   * que trompeurs.
    */
-  const hydrated = useHydrated();
-  const busy = pending || !hydrated;
+  const { navigate, pending, busy } = useQueryNavigation();
 
   function apply(changes: Record<string, string | null>): void {
     const next = new URLSearchParams(params.toString());
@@ -71,16 +67,8 @@ export function OccurrenceFilterBar({
     // une position dans un jeu de résultats qui n'existe plus.
     next.delete("cursor");
 
-    /*
-     * ⚠️ Forme OBJET et TRANSITION. Le routeur de next-intl traite son argument
-     * comme un chemin : une chaîne « /echeancier?x=1 » n'y transporte aucune
-     * requête. Et une navigation douce ne valide l'URL qu'une fois la charge
-     * serveur reçue — sans transition, un changement émis pendant qu'un autre
-     * est en vol est abandonné en silence.
-     */
-    startTransition(() => {
-      router.replace({ pathname, query: Object.fromEntries(next.entries()) });
-    });
+    // Forme objet, transition et relance : voir `useQueryNavigation`.
+    navigate(next);
   }
 
   const statuses = (params.get("status") ?? "").split(",").filter((s) => s.length > 0);
@@ -253,9 +241,7 @@ export function OccurrenceFilterBar({
             size="sm"
             className="ms-auto"
             onClick={() => {
-              startTransition(() => {
-                router.replace({ pathname, query: {} });
-              });
+              navigate(new URLSearchParams());
             }}
           >
             <X aria-hidden="true" className="size-4" />

@@ -9,7 +9,8 @@ import { EmptyState } from "@/components/shared/states";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { formatDateTimeFr } from "@/lib/dates";
-import { Link, usePathname, useRouter } from "@/i18n/navigation";
+import { Link } from "@/i18n/navigation";
+import { useQueryNavigation } from "@/hooks/use-query-navigation";
 import type { DocumentSearchRow } from "@/services/documents/search";
 
 /**
@@ -37,9 +38,8 @@ export function DocumentsTable({
 }) {
   const t = useTranslations("documents");
   const tSearch = useTranslations("documents.search");
-  const router = useRouter();
-  const pathname = usePathname();
   const params = useSearchParams();
+  const { navigate } = useQueryNavigation();
 
   if (rows.length === 0) {
     return <EmptyState title={tSearch("empty")} />;
@@ -50,7 +50,7 @@ export function DocumentsTable({
   function goTo(next: number): void {
     const query = new URLSearchParams(params.toString());
     query.set("page", String(next));
-    router.replace({ pathname, query: Object.fromEntries(query.entries()) });
+    navigate(query);
   }
 
   return (

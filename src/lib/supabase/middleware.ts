@@ -13,7 +13,7 @@
  */
 
 import { createServerClient } from "@supabase/ssr";
-import type { User } from "@supabase/supabase-js";
+import type { SupabaseClient, User } from "@supabase/supabase-js";
 import { NextResponse, type NextRequest } from "next/server";
 
 import type { Database } from "@/types/database.types";
@@ -40,6 +40,8 @@ export interface SessionRefresh {
   readonly user: User | null;
   /** `null` en l'absence de session, ou si le verdict n'a pas pu être obtenu. */
   readonly gates: SessionGates | null;
+  /** Client de la requête, réemployé pour la limitation de débit. */
+  readonly supabase?: SupabaseClient<Database>;
 }
 
 function readGates(value: unknown): SessionGates | null {
@@ -98,14 +100,60 @@ export async function updateSession(
   const { data } = await supabase.auth.getUser();
 
   if (data.user === null) {
-    return { response, user: null, gates: null };
+    return { response, user: null, gates: null, supabase };
   }
 
   const { data: gates } = await supabase.rpc("session_gates", {
     ...(clientIp === null ? {} : { p_ip: clientIp }),
   });
 
-  return { response, user: data.user, gates: readGates(gates) };
+  return { response, user: data.user, gates: readGates(gates), supabase };
+}
+
+export interface RateVerdict {
+  readonly allowed: boolean;
+  readonly retryAfterSeconds: number;
+}
+
+/**
+ * Consomme un jeton de débit pour une ÉCRITURE.
+ *
+ * ⚠️ Le compteur vit en base : un compteur en mémoire de processus repart à
+ * zéro à chaque déploiement et ne voit rien des autres instances. Voir la
+ * migration 0017.
+ *
+ * ⚠️ Un échec de la base rend « autorisé ». Une limitation de débit protège
+ * contre l'excès, pas contre l'intrusion : la faire échouer fermé
+ * transformerait un incident de base en indisponibilité totale des écritures,
+ * alors que la RLS, elle, continue de protéger la donnée.
+ */
+export async function consumeMutationBudget(
+  client: SupabaseClient<Database>,
+  subject: string,
+  bucket: string,
+  limit: number,
+  windowSeconds: number,
+): Promise<RateVerdict> {
+  const { data, error } = await client.rpc("consume_rate_limit", {
+    p_subject: subject,
+    p_bucket: bucket,
+    p_limit: limit,
+    p_window_seconds: windowSeconds,
+  });
+
+  // Le verdict est un objet JSON ; un tableau serait une réponse inattendue et
+  // ne doit pas être interprété comme un refus.
+  if (error !== null || typeof data !== "object" || data === null || Array.isArray(data)) {
+    return { allowed: true, retryAfterSeconds: 0 };
+  }
+
+  const raw = data as Record<string, unknown>;
+  const retry = raw["retry_after_seconds"];
+
+  return {
+    allowed: raw["allowed"] !== false,
+    retryAfterSeconds: typeof retry === "number" ? retry : 0,
+  };
 }
 
 /** Recopie les cookies de session sur une réponse de redirection. */

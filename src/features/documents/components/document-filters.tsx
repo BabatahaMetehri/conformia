@@ -3,7 +3,7 @@
 import { Search, X } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { useSearchParams } from "next/navigation";
-import { useEffect, useState, useTransition } from "react";
+import { useEffect, useState } from "react";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -18,7 +18,7 @@ import {
 import { DOCUMENT_KINDS } from "@/config/constants";
 import { SEARCH_DEBOUNCE_MS } from "@/config/ui";
 import { useDebouncedValue } from "@/hooks/use-debounced-value";
-import { usePathname, useRouter } from "@/i18n/navigation";
+import { useQueryNavigation } from "@/hooks/use-query-navigation";
 
 /**
  * Filtres de la recherche transverse.
@@ -43,11 +43,9 @@ export function DocumentFilters({
 }) {
   const t = useTranslations("documents.search");
   const tKind = useTranslations("documents.kind");
-  const router = useRouter();
-  const pathname = usePathname();
   const params = useSearchParams();
 
-  const [pending, startTransition] = useTransition();
+  const { navigate, pending } = useQueryNavigation();
   const [term, setTerm] = useState(params.get("q") ?? "");
   const debounced = useDebouncedValue(term, SEARCH_DEBOUNCE_MS);
 
@@ -61,9 +59,7 @@ export function DocumentFilters({
     // résultat qui n'en compte plus qu'une affiche une liste vide trompeuse.
     next.delete("page");
 
-    startTransition(() => {
-      router.replace({ pathname, query: Object.fromEntries(next.entries()) });
-    });
+    navigate(next);
   }
 
   useEffect(() => {
@@ -165,9 +161,7 @@ export function DocumentFilters({
             disabled={pending}
             onClick={() => {
               setTerm("");
-              startTransition(() => {
-                router.replace({ pathname, query: {} });
-              });
+              navigate(new URLSearchParams());
             }}
           >
             <X aria-hidden="true" className="size-4" />

@@ -15,6 +15,7 @@ import {
   listTotpFactors,
   logAuthEvent,
   requestPasswordReset,
+  unenrollFactor,
   updatePassword,
   verifyTotpFactor,
   type MfaFactorSummary,
@@ -44,8 +45,33 @@ export async function choosePassword(password: string): Promise<Result<null>> {
   return updatePassword(password);
 }
 
+/** Nom convivial du facteur. Unique par compte côté Supabase — d'où la reprise ci-dessous. */
+const FACTOR_NAME = "CONFORMIA";
+
+/**
+ * Ouvre un enrôlement TOTP, en reprenant celui laissé en plan s'il y en a un.
+ *
+ * ⚠️ CE N'EST PAS UNE PRÉCAUTION DÉCORATIVE. Supabase refuse un second facteur
+ * portant un nom convivial déjà pris, y compris par un enrôlement JAMAIS
+ * TERMINÉ. Or l'écran d'enrôlement en ouvre un à chaque affichage : un simple
+ * rafraîchissement, un retour arrière, une seconde visite suffisaient à rendre
+ * l'écran définitivement inutilisable — et pour un ADMIN, que le middleware
+ * enferme sur cet écran, à verrouiller le compte hors de l'application.
+ *
+ * ⚠️ Seuls les facteurs NON VÉRIFIÉS sont retirés. Retirer un facteur vérifié
+ * priverait l'utilisateur de son second facteur en activité au seul motif qu'il
+ * a ouvert l'écran d'enrôlement.
+ */
 export async function beginTotpEnrollment(): Promise<Result<TotpEnrollment>> {
-  return enrollTotpFactor("CONFORMIA");
+  const factors = await listTotpFactors();
+  if (factors.ok) {
+    for (const factor of factors.value) {
+      if (factor.verified || factor.friendlyName !== FACTOR_NAME) continue;
+      await unenrollFactor(factor.id);
+    }
+  }
+
+  return enrollTotpFactor(FACTOR_NAME);
 }
 
 /**

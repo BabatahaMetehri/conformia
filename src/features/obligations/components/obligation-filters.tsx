@@ -3,9 +3,9 @@
 import { Search, X } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { useSearchParams } from "next/navigation";
-import { useEffect, useState, useTransition } from "react";
+import { useEffect, useState } from "react";
 
-import { useHydrated } from "@/hooks/use-hydrated";
+import { useQueryNavigation } from "@/hooks/use-query-navigation";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -46,15 +46,14 @@ export function ObligationFilters({
   const pathname = usePathname();
   const params = useSearchParams();
 
-  const [pending, startTransition] = useTransition();
   /*
-   * ⚠️ Avant l'hydratation, la saisie de recherche est rendue mais son
-   * gestionnaire `onChange` n'existe pas : ce qu'on tape n'atteint personne. Le
-   * champ est donc inerte tant que React n'a pas repris la main — quelques
-   * centaines de millisecondes, visibles, plutôt qu'une frappe avalée.
+   * ⚠️ `busy` couvre AUSSI l'avant-hydratation : la saisie de recherche est
+   * rendue mais son gestionnaire `onChange` n'existe pas encore, et ce qu'on y
+   * tape n'atteint personne. Le champ est donc inerte tant que React n'a pas
+   * repris la main — quelques centaines de millisecondes, visibles, plutôt
+   * qu'une frappe avalée.
    */
-  const hydrated = useHydrated();
-  const busy = pending || !hydrated;
+  const { navigate, busy } = useQueryNavigation();
   const [term, setTerm] = useState(params.get("q") ?? "");
   const debounced = useDebouncedValue(term, SEARCH_DEBOUNCE_MS);
 
@@ -64,23 +63,9 @@ export function ObligationFilters({
       if (value === null || value.length === 0) next.delete(key);
       else next.set(key, value);
     }
-    /*
-     * Deux pièges franchis ici, tous deux constatés en exécutant :
-     *
-     * 1. FORME OBJET, jamais une chaîne concaténée. Le routeur de next-intl doit
-     *    préfixer la locale : il traite son argument comme un CHEMIN, et
-     *    « /referentiel?q=x » lui arrivait comme un chemin littéral contenant un
-     *    point d'interrogation. L'URL ne changeait pas du tout, et aucun filtre
-     *    n'atteignait jamais le serveur.
-     *
-     * 2. TRANSITION. Une navigation douce ne valide l'URL qu'une fois la charge
-     *    serveur reçue. Sans transition, un `replace` émis pendant qu'un autre
-     *    est en vol était purement abandonné : une frappe sur deux disparaissait,
-     *    et la liste restait sur le filtre précédent sans rien signaler.
-     */
-    startTransition(() => {
-      router.replace({ pathname, query: Object.fromEntries(next.entries()) });
-    });
+    // La forme objet, la transition et la RELANCE tant que l'URL n'a pas pris
+    // vivent dans `useQueryNavigation` — les trois pièges y sont documentés.
+    navigate(next);
   }
 
   // La frappe ne navigue qu'après le silence : une navigation par touche
@@ -118,14 +103,14 @@ export function ObligationFilters({
                 setTerm(event.target.value);
               }}
               aria-busy={busy}
-              disabled={!hydrated}
+              disabled={busy}
             />
           </div>
           <p className="text-xs text-text-muted">{t("searchHint")}</p>
         </div>
 
         <FilterSelect
-          disabled={!hydrated}
+          disabled={busy}
           id="filter-domain"
           label={tObligations("domain")}
           allLabel={t("all")}
@@ -137,7 +122,7 @@ export function ObligationFilters({
         />
 
         <FilterSelect
-          disabled={!hydrated}
+          disabled={busy}
           id="filter-authority"
           label={tObligations("authority")}
           allLabel={t("all")}
@@ -152,7 +137,7 @@ export function ObligationFilters({
         />
 
         <FilterSelect
-          disabled={!hydrated}
+          disabled={busy}
           id="filter-periodicity"
           label={tObligations("periodicityColumn")}
           allLabel={t("all")}
@@ -167,7 +152,7 @@ export function ObligationFilters({
         />
 
         <FilterSelect
-          disabled={!hydrated}
+          disabled={busy}
           id="filter-criticality"
           label={tObligations("criticalityColumn")}
           allLabel={t("all")}
@@ -182,7 +167,7 @@ export function ObligationFilters({
         />
 
         <FilterSelect
-          disabled={!hydrated}
+          disabled={busy}
           id="filter-active"
           label={tObligations("status")}
           allLabel={t("all")}

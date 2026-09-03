@@ -116,6 +116,86 @@
       "domains": "Domaines",
       "departments": "Services",
       "readOnly": "Lecture seule : un renommage traverse tout le référentiel."
+    },
+    "jobs": {
+      "alertTitle": "Des travaux n'ont pas tourné comme prévu",
+      "expectedTitle": "Travaux attendus",
+      "expectedHint": "Un travail absent de la liste des exécutions est signalé ici : l'arrêt d'une tâche ne produit aucune erreur, seulement du silence.",
+      "recentTitle": "Dernières exécutions",
+      "noRuns": "Aucune exécution enregistrée",
+      "noRunsHint": "Aucune tâche planifiée n'a encore laissé de trace sur cette installation.",
+      "loadFailed": "L'état des travaux n'a pas pu être chargé.",
+      "hours": "{value} h",
+      "columns": {
+        "job": "Travail",
+        "verdict": "Verdict",
+        "age": "Ancienneté",
+        "threshold": "Seuil",
+        "lastRun": "Dernière réussite",
+        "status": "Statut",
+        "startedAt": "Démarré",
+        "processed": "Traités",
+        "errors": "Erreurs"
+      },
+      "verdict": {
+        "OK": "À jour",
+        "STALE": "Périmé",
+        "FAILED": "En échec",
+        "PARTIAL": "Partiel",
+        "NEVER_RAN": "Jamais exécuté"
+      }
+    },
+    "hub": {
+      "intro": "Chaque section ci-dessous vous est accessible avec vos droits actuels. Celles qui n'y figurent pas ne vous sont pas ouvertes.",
+      "emptyTitle": "Aucune section d'administration ne vous est ouverte",
+      "emptyDescription": "Vos droits ne couvrent aucune section d'administration. Si vous pensez que c'est une erreur, contactez la Direction.",
+      "loadFailed": "Le sommaire n'a pas pu être chargé."
+    },
+    "notificationRules": {
+      "intro": "Ces règles décident QUI est alerté et QUAND. Elles sont présentées en lecture : une règle éteinte par mégarde ne casse rien de visible, elle supprime des rappels — et cela ne se découvre qu'à la première échéance manquée. Toute modification passe par une migration versionnée.",
+      "rulesTitle": "Rappels et relances",
+      "rulesHint": "Décalages comptés sur l'échéance INTERNE, pas sur l'échéance légale : alerter à la date de l'administration, c'est alerter trop tard.",
+      "escalationTitle": "Escalade",
+      "escalationHint": "Après l'échéance, l'alerte remonte : le responsable, puis le chef de service, puis la Direction. Les obligations critiques suivent une chaîne plus courte.",
+      "noRules": "Aucune règle de notification",
+      "noRulesHint": "Sans règle, aucun rappel ne part. C'est une anomalie de configuration.",
+      "noPolicies": "Aucune politique d'escalade",
+      "noPoliciesHint": "Un retard ne remontera à personne au-dessus du responsable.",
+      "loadFailed": "Les règles n'ont pas pu être chargées.",
+      "beforeDue": "{days} j avant échéance",
+      "afterDue": "{days} j après échéance",
+      "sameDay": "Le jour même",
+      "allCriticalities": "Toutes criticités",
+      "active": "Active",
+      "inactive": "Inactive",
+      "columns": {
+        "when": "Quand",
+        "channel": "Canal",
+        "audience": "Destinataire",
+        "criticality": "Criticité",
+        "state": "État",
+        "delay": "Délai",
+        "notified": "Alerté"
+      },
+      "channel": {
+        "EMAIL": "Courriel",
+        "IN_APP": "Dans l'application",
+        "SMS": "SMS"
+      },
+      "audience": {
+        "OWNER": "Responsable du dossier",
+        "VALIDATOR": "Valideur",
+        "DEPARTMENT_HEAD": "Chef de service",
+        "DIRECTION": "Direction",
+        "ROLE": "Rôle désigné",
+        "USER": "Personne désignée"
+      },
+      "criticality": {
+        "LOW": "Faible",
+        "MEDIUM": "Moyenne",
+        "HIGH": "Élevée",
+        "CRITICAL": "Critique"
+      }
     }
   },
   "audit": {
@@ -507,7 +587,6 @@
     "userMenu": "Menu utilisateur",
     "signOut": "Se déconnecter",
     "language": "Langue",
-    "languageOnlyFrench": "L'arabe arrivera dans une version ultérieure.",
     "locales": {
       "fr": "Français",
       "ar": "العربية"
@@ -542,7 +621,8 @@
       "myTasks": "{count, plural, =0 {aucune tâche} one {# tâche} other {# tâches}}"
     },
     "obligationCreate": "Nouvelle obligation",
-    "occurrencesCalendar": "Calendrier"
+    "occurrencesCalendar": "Calendrier",
+    "adminJobs": "Travaux planifiés"
   },
   "notifications": {
     "title": "Notifications",
@@ -1206,6 +1286,10 @@
     "notifications": {
       "title": "Notifications",
       "description": "Vos messages et vos préférences d'alerte."
+    },
+    "adminJobs": {
+      "title": "Travaux planifiés",
+      "description": "Génération, notifications et sauvegardes : ce qui a tourné, et ce qui ne tourne plus."
     }
   },
   "validation": {
@@ -1655,5 +1739,38 @@
       "title": "Une erreur inattendue s'est produite",
       "description": "L'incident a été enregistré. Réessayez ; si le problème persiste, communiquez l'identifiant ci-dessous au support."
     }
+  },
+  "profile": {
+    "identityTitle": "Identité",
+    "identityHint": "Ces informations sont tenues par l'administration. Signalez toute erreur plutôt que de la contourner.",
+    "notProvided": "Non renseigné",
+    "loadFailed": "Votre profil n'a pas pu être chargé.",
+    "fields": {
+      "fullName": "Nom complet",
+      "email": "Adresse professionnelle",
+      "jobTitle": "Fonction",
+      "department": "Service"
+    },
+    "rolesTitle": "Rôles et portée",
+    "noRoles": "Aucun rôle actif. Sans rôle, aucun dossier n'est visible — contactez votre administrateur.",
+    "allDomains": "Tous les domaines",
+    "expiresOn": "Expire le {date}",
+    "permissionCount": "{count, plural, =0 {Aucune permission} one {# permission} other {# permissions}} au total.",
+    "delegationsTitle": "Délégations reçues",
+    "delegationRange": "Du {from} au {to}",
+    "delegationsHint": "Pendant cette période, vous validez au nom de la personne qui vous a délégué ses droits. Chaque action reste tracée aux deux noms.",
+    "securityTitle": "Sécurité",
+    "mfa": {
+      "enrolled": "Vérification en deux étapes active",
+      "enrolledHint": "Votre compte demande un code à six chiffres à chaque connexion.",
+      "notEnrolled": "Vérification en deux étapes inactive",
+      "requiredHint": "Votre rôle l'exige : l'accès à l'application restera bloqué tant qu'elle n'est pas activée.",
+      "suggestedHint": "Elle n'est pas obligatoire pour votre rôle, mais elle protège les documents auxquels vous accédez.",
+      "enrol": "Activer",
+      "resetHint": "Téléphone perdu ou remplacé ? Un administrateur peut réinitialiser votre second facteur ; l'opération est tracée et exige un motif."
+    },
+    "calendarTitle": "Agenda",
+    "calendarHint": "Abonnez votre agenda à vos échéances : elles s'y mettent à jour toutes seules.",
+    "calendarOpen": "Voir mon abonnement"
   }
 }

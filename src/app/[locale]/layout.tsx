@@ -3,6 +3,7 @@ import { hasLocale, NextIntlClientProvider } from "next-intl";
 import { Inter } from "next/font/google";
 import { headers } from "next/headers";
 import { notFound } from "next/navigation";
+import { setRequestLocale } from "next-intl/server";
 import type { ReactNode } from "react";
 
 import { AppProviders } from "@/app/providers";
@@ -46,6 +47,33 @@ export default async function LocaleLayout({ children, params }: LocaleLayoutPro
   if (!hasLocale(routing.locales, locale)) {
     notFound();
   }
+
+  /*
+   * ⚠️ SANS CET APPEL, TOUTE L'APPLICATION REND EN FRANÇAIS, quelle que soit
+   * l'URL — et c'est ce qui s'est passé.
+   *
+   * `getRequestConfig` lit la locale via `requestLocale`, que next-intl alimente
+   * normalement depuis SON PROPRE middleware. Ce projet a le sien, qui porte la
+   * session, la CSP et les redirections d'accès : celui de next-intl n'est donc
+   * jamais monté, `requestLocale` restait vide, et `resolveLocale(undefined)`
+   * retombait sur le français.
+   *
+   * Le défaut était invisible : `lang` et `dir` viennent de `params` et
+   * basculaient correctement en `ar`/`rtl`, si bien que la page avait TOUT
+   * L'AIR d'être en arabe — sauf le texte. Les 1416 clés du catalogue `ar`
+   * n'ont jamais été lues jusqu'ici.
+   *
+   * `setRequestLocale` pose la locale dans le cache de requête de next-intl :
+   * `getTranslations`, `getFormatter` et le fournisseur client la trouvent tous.
+   *
+   * ⚠️ L'API est marquée dépréciée au profit de `next/root-params`, qui repose
+   * sur une fonctionnalité Next encore EXPÉRIMENTALE. Même arbitrage que pour
+   * `requestLocale` dans `src/i18n/request.ts` : migrer aujourd'hui échangerait
+   * un avertissement contre une instabilité de routage. La dispense porte sur
+   * cette ligne seule, et tombera avec la stabilisation de `next/root-params`.
+   */
+  // eslint-disable-next-line @typescript-eslint/no-deprecated -- cf. ci-dessus
+  setRequestLocale(locale);
 
   const headerBag = await headers();
   const nonce = headerBag.get("x-nonce") ?? undefined;

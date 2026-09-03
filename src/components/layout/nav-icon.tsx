@@ -12,6 +12,7 @@ import {
   Settings,
   ShieldCheck,
   SlidersHorizontal,
+  Timer,
   Trash2,
   Users,
   KeyRound,
@@ -44,6 +45,7 @@ const ICONS: Readonly<Record<NavIconName, LucideIcon>> = {
   referentials: BookMarked,
   notifications: Bell,
   settings: Settings,
+  jobs: Timer,
   purge: Trash2,
   audit: ScrollText,
 };
