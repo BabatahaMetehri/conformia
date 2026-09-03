@@ -13,7 +13,7 @@ import { err, ok, type Result } from "@/lib/result";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 
 /** Les trois familles d'objets atteignables par la palette. */
-export const SEARCH_KINDS = ["OBLIGATION", "OCCURRENCE", "DOCUMENT"] as const;
+export const SEARCH_KINDS = ["OBLIGATION", "OCCURRENCE", "DOCUMENT", "REGISTER"] as const;
 
 export type SearchKind = (typeof SEARCH_KINDS)[number];
 

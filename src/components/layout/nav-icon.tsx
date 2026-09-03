@@ -3,6 +3,8 @@
 import {
   ArrowLeftRight,
   BookMarked,
+  Building2,
+  CalendarOff,
   CalendarClock,
   FileChartColumn,
   FolderClosed,
@@ -48,6 +50,8 @@ const ICONS: Readonly<Record<NavIconName, LucideIcon>> = {
   jobs: Timer,
   purge: Trash2,
   audit: ScrollText,
+  registers: Building2,
+  absences: CalendarOff,
 };
 
 export function NavIcon({

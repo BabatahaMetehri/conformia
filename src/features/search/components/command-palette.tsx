@@ -1,7 +1,14 @@
 "use client";
 
 import { useQuery } from "@tanstack/react-query";
-import { BookMarked, CalendarClock, FolderClosed, Search, type LucideIcon } from "lucide-react";
+import {
+  BookMarked,
+  Building2,
+  CalendarClock,
+  FolderClosed,
+  Search,
+  type LucideIcon,
+} from "lucide-react";
 import { useTranslations } from "next-intl";
 import { useEffect, useState } from "react";
 
@@ -45,12 +52,14 @@ const ICONS: Readonly<Record<SearchKind, LucideIcon>> = {
   OBLIGATION: BookMarked,
   OCCURRENCE: CalendarClock,
   DOCUMENT: FolderClosed,
+  REGISTER: Building2,
 };
 
 const PATH_PREFIX: Readonly<Record<SearchKind, string>> = {
   OBLIGATION: "/referentiel",
   OCCURRENCE: "/echeancier",
   DOCUMENT: "/documents",
+  REGISTER: "/registres",
 };
 
 export function CommandPalette() {

@@ -44,6 +44,7 @@ export function OccurrencesTable({
   readonly canAssign: boolean;
 }) {
   const t = useTranslations("occurrences");
+  const tRegisters = useTranslations("registers");
 
   const allSelected = rows.length > 0 && rows.every((row) => selection.has(row.id));
   const someSelected = rows.some((row) => selection.has(row.id));
@@ -92,6 +93,20 @@ export function OccurrencesTable({
             </Link>
             <span className="text-2xs text-text-muted" data-numeric>
               {row.original.obligationCode}
+              {/*
+               * ⚠️ « toute l'entreprise » N'EST PAS DÉCORATIF. Sous un filtre par
+               * registre, les obligations d'entreprise restent affichées — la TVA
+               * ne cesse pas d'être due parce qu'on regarde une annexe — et sans
+               * cette mention on les croirait rattachées à l'établissement
+               * sélectionné. La lecture serait fausse dans les deux sens : on
+               * imputerait à un établissement ce qui vaut pour tous, et on
+               * chercherait ailleurs ce qu'on a sous les yeux.
+               */}
+              {row.original.obligationScope === "ENTITY" ? (
+                <span className="ms-1.5 text-text-muted">· {tRegisters("entityWide")}</span>
+              ) : row.original.registerNumber === null ? null : (
+                <span className="ms-1.5 text-text-muted">· {row.original.registerNumber}</span>
+              )}
             </span>
           </div>
         ),
@@ -164,7 +179,7 @@ export function OccurrencesTable({
     ];
 
     return canAssign ? [selectColumn, ...dataColumns] : dataColumns;
-  }, [t, rows, selection, allSelected, someSelected, onSelectionChange, canAssign]);
+  }, [t, tRegisters, rows, selection, allSelected, someSelected, onSelectionChange, canAssign]);
 
   return (
     <DataTable

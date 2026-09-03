@@ -48,6 +48,19 @@ export const OccurrenceFiltersSchema = z.object({
   domain: uuidSchema.optional(),
   authority: uuidSchema.optional(),
   owner: uuidSchema.optional(),
+  /**
+   * Registre de commerce.
+   *
+   * ⚠️ CE FILTRE N'EXCLUT PAS LES OBLIGATIONS D'ENTREPRISE. Sélectionner un
+   * établissement doit montrer SES dossiers PLUS ceux qui valent pour toute
+   * l'entreprise — la TVA ne cesse pas d'être due parce qu'on regarde une
+   * annexe. Les masquer donnerait d'un établissement une image faussement
+   * dégagée, et c'est le genre d'erreur qui se paie au moment du contrôle.
+   * Voir `applyFilters`, où la règle est appliquée.
+   */
+  register: uuidSchema.optional(),
+  /** Obligation précise — sert l'historique d'un registre. */
+  obligationType: uuidSchema.optional(),
   criticality: z.enum(Criticality).optional(),
   /** Retard LÉGAL. L'alerte précoce a son propre filtre. */
   overdue: z.coerce.boolean().optional(),
@@ -85,6 +98,8 @@ export function parseOccurrenceFilters(
     domain: single("domain"),
     authority: single("authority"),
     owner: single("owner"),
+    register: single("register"),
+    obligationType: single("obligationType"),
     criticality: single("criticality"),
     overdue: single("overdue"),
     internallyLate: single("internallyLate"),
@@ -136,6 +151,8 @@ export function hasActiveFilters(filters: OccurrenceFilters): boolean {
     filters.domain !== undefined ||
     filters.authority !== undefined ||
     filters.owner !== undefined ||
+    filters.register !== undefined ||
+    filters.obligationType !== undefined ||
     filters.criticality !== undefined ||
     filters.overdue === true ||
     filters.internallyLate === true ||

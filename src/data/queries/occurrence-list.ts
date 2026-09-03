@@ -25,7 +25,7 @@ import type { CursorPage, ProfileId } from "@/types/domain";
  * produit le type `string` et tout le retour s'effondre en `GenericStringError`.
  */
 const LIST_COLUMNS =
-  "id, obligation_type_id, obligation_code, obligation_name, period_key, period_start, period_end, internal_due_date, legal_due_date, status, owner_id, owner_name, validator_id, validator_name, documents_provided, documents_required, is_overdue, is_internally_late, days_to_internal, days_to_legal, criticality, periodicity, domain_id, domain_code, domain_label, authority_id, authority_name, rectification_index, rectifies_occurrence_id, reference_number, is_locked";
+  "id, obligation_type_id, obligation_code, obligation_name, obligation_scope, period_key, period_start, period_end, internal_due_date, legal_due_date, status, owner_id, owner_name, deputy_id, deputy_name, validator_id, validator_name, commercial_register_id, register_number, register_label, register_status, documents_provided, documents_required, is_overdue, is_internally_late, days_to_internal, days_to_legal, criticality, periodicity, domain_id, domain_code, domain_label, authority_id, authority_name, rectification_index, rectifies_occurrence_id, reference_number, is_locked";
 
 export interface OccurrenceListRow {
   readonly id: string;
@@ -40,8 +40,16 @@ export interface OccurrenceListRow {
   readonly status: string;
   readonly ownerId: string | null;
   readonly ownerName: string | null;
+  readonly deputyId: string | null;
+  readonly deputyName: string | null;
   readonly validatorId: string | null;
   readonly validatorName: string | null;
+  /** `ENTITY` ou `PER_REGISTER` : ce qui distingue « toute l'entreprise » d'un établissement. */
+  readonly obligationScope: string;
+  readonly registerId: string | null;
+  readonly registerNumber: string | null;
+  readonly registerLabel: string | null;
+  readonly registerStatus: string | null;
   readonly documentsProvided: number;
   readonly documentsRequired: number;
   readonly isOverdue: boolean;
@@ -72,6 +80,13 @@ interface RawRow {
   status: string | null;
   owner_id: string | null;
   owner_name: string | null;
+  deputy_id: string | null;
+  deputy_name: string | null;
+  obligation_scope: string | null;
+  commercial_register_id: string | null;
+  register_number: string | null;
+  register_label: string | null;
+  register_status: string | null;
   validator_id: string | null;
   validator_name: string | null;
   documents_provided: number | null;
@@ -113,6 +128,13 @@ function toRow(raw: RawRow): OccurrenceListRow {
     status: raw.status ?? "TODO",
     ownerId: raw.owner_id,
     ownerName: raw.owner_name,
+    deputyId: raw.deputy_id,
+    deputyName: raw.deputy_name,
+    obligationScope: raw.obligation_scope ?? "ENTITY",
+    registerId: raw.commercial_register_id,
+    registerNumber: raw.register_number,
+    registerLabel: raw.register_label,
+    registerStatus: raw.register_status,
     validatorId: raw.validator_id,
     validatorName: raw.validator_name,
     documentsProvided: raw.documents_provided ?? 0,
@@ -214,6 +236,23 @@ function applyFilters(
   if (filters.domain !== undefined) next = next.eq("domain_id", filters.domain);
   if (filters.authority !== undefined) next = next.eq("authority_id", filters.authority);
   if (filters.owner !== undefined) next = next.eq("owner_id", filters.owner);
+  if (filters.obligationType !== undefined) {
+    next = next.eq("obligation_type_id", filters.obligationType);
+  }
+
+  if (filters.register !== undefined) {
+    /*
+     * ⚠️ « CE REGISTRE, OU TOUTE L'ENTREPRISE » — et non « ce registre ».
+     *
+     * Une obligation de portée ENTITY ne porte aucun registre : filtrer par
+     * égalité la ferait DISPARAÎTRE dès qu'on sélectionne un établissement.
+     * L'utilisateur verrait alors une liste courte et rassurante, amputée de la
+     * TVA et des déclarations sociales, sans que rien ne le signale. C'est
+     * l'interdiction explicite du cahier des charges, et c'est surtout la faute
+     * la plus coûteuse : elle ne se découvre qu'au contrôle.
+     */
+    next = next.or(`commercial_register_id.eq.${filters.register},obligation_scope.eq.ENTITY`);
+  }
   if (filters.criticality !== undefined) next = next.eq("criticality", filters.criticality);
   if (filters.overdue === true) next = next.eq("is_overdue", true);
   if (filters.internallyLate === true) next = next.eq("is_internally_late", true);
@@ -273,6 +312,50 @@ export async function listOccurrencePage(
     nextCursor:
       hasMore && last !== undefined ? encodeCursor(sortValueOf(last, filters.sort), last.id) : null,
   });
+}
+
+/**
+ * Historique d'un registre : SES occurrences, et elles seules.
+ *
+ * ⚠️ SÉMANTIQUE INVERSE DE CELLE DU FILTRE `register`, et il faut le savoir.
+ *
+ * Le filtre de l'échéancier est INCLUSIF — « ce registre OU toute l'entreprise »
+ * — parce qu'un utilisateur qui regarde un établissement doit continuer de voir
+ * la TVA. La FICHE d'un registre est EXCLUSIVE : elle décrit cet établissement,
+ * et y mêler les obligations d'entreprise fausserait son taux de conformité en
+ * lui attribuant des dossiers qui ne sont pas les siens.
+ *
+ * Les deux formes sont justes ; c'est la question posée qui diffère.
+ */
+export async function listRegisterOccurrences(
+  registerId: string,
+  filters: OccurrenceFilters,
+  currentUserId: ProfileId | null,
+): Promise<Result<CursorPage<OccurrenceListRow>>> {
+  const supabase = await createSupabaseServerClient();
+
+  /*
+   * Le filtre INCLUSIF est neutralisé — `applyFilters` y ajouterait les
+   * obligations d'entreprise — et l'égalité stricte est imposée à la place.
+   */
+  const exclusif: OccurrenceFilters = { ...filters, register: undefined };
+  const scoped = applyFilters(
+    buildQuery(supabase).eq("commercial_register_id", registerId),
+    exclusif,
+    currentUserId,
+  );
+
+  const { data, error } = await scoped
+    .order(filters.sort, { ascending: filters.direction === "asc" })
+    .order("id", { ascending: filters.direction === "asc" })
+    // Un historique se lit en entier ; la borne protège d'un registre au volume
+    // inattendu sans imposer une pagination là où l'on veut tout voir.
+    .limit(500);
+
+  if (error !== null) return err(mapPostgrestError(error));
+
+  const rows = data.map((row) => toRow(row as unknown as RawRow));
+  return ok({ items: rows, nextCursor: null });
 }
 
 /**

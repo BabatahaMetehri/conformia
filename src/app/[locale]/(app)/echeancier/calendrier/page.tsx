@@ -8,6 +8,7 @@ import { OccurrenceFilterBar } from "@/features/occurrences/components/occurrenc
 import { listAssignableProfiles } from "@/data/queries/profiles-directory";
 import { getFormOptions } from "@/services/obligations";
 import { requireSectionAccess } from "@/services/navigation/guard";
+import { listCommercialRegisters } from "@/services/registers";
 import { getCalendar, parseOccurrenceFilters, type CalendarScale } from "@/services/occurrences";
 
 /**
@@ -37,10 +38,13 @@ export default async function Page({
 
   const filters = parseOccurrenceFilters(params);
 
-  const [calendar, options, assignees] = await Promise.all([
+  const [calendar, options, assignees, registers] = await Promise.all([
     getCalendar(single("anchor"), scale, filters),
     getFormOptions(),
     listAssignableProfiles(),
+    // Le calendrier porte le même filtre que la liste : il doit proposer les
+    // mêmes registres, sans quoi passer d'une vue à l'autre perdrait le filtre.
+    listCommercialRegisters(),
   ]);
 
   if (!calendar.ok) {
@@ -70,6 +74,11 @@ export default async function Page({
           options.ok ? options.value.authorities.map((a) => ({ id: a.id, name: a.name })) : []
         }
         owners={assignees.ok ? assignees.value : []}
+        registers={
+          registers.ok
+            ? registers.value.map((r) => ({ id: r.id, label: `${r.rcNumber} — ${r.label}` }))
+            : []
+        }
         calendarHref={`/echeancier?${listQuery.toString()}`}
       />
 
@@ -96,6 +105,8 @@ export default async function Page({
           rectificationIndex: row.rectificationIndex,
           isLocked: row.isLocked,
           domainLabel: row.domainLabel,
+          obligationScope: row.obligationScope,
+          registerNumber: row.registerNumber,
         }))}
       />
     </>

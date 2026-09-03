@@ -8,6 +8,7 @@ import { OccurrenceListView } from "@/features/occurrences/components/occurrence
 import { getFormOptions } from "@/services/obligations";
 import { requireAuthContext } from "@/services/auth/context";
 import { requireSectionAccess } from "@/services/navigation/guard";
+import { listCommercialRegisters } from "@/services/registers";
 import { getSummary, listOccurrences, parseOccurrenceFilters } from "@/services/occurrences";
 import { listAssignableProfiles } from "@/data/queries/profiles-directory";
 
@@ -33,12 +34,15 @@ export default async function Page({
   // son destinataire ce que son auteur voyait.
   const urlHadFilters = Object.keys(params).length > 0;
 
-  const [list, summary, options, context, assignees] = await Promise.all([
+  const [list, summary, options, context, assignees, registers] = await Promise.all([
     listOccurrences(filters, { urlHadFilters }),
     getSummary(),
     getFormOptions(),
     requireAuthContext(),
     listAssignableProfiles(),
+    // Le filtre par registre a besoin de la liste ; elle est courte et cachée
+    // par Next entre deux rendus.
+    listCommercialRegisters(),
   ]);
 
   if (!list.ok) {
@@ -86,6 +90,11 @@ export default async function Page({
           options.ok ? options.value.authorities.map((a) => ({ id: a.id, name: a.name })) : []
         }
         owners={assignees.ok ? assignees.value : []}
+        registers={
+          registers.ok
+            ? registers.value.map((r) => ({ id: r.id, label: `${r.rcNumber} — ${r.label}` }))
+            : []
+        }
         calendarHref={`/echeancier/calendrier?${calendarQuery.toString()}`}
       />
 
@@ -109,6 +118,8 @@ export default async function Page({
           rectificationIndex: row.rectificationIndex,
           isLocked: row.isLocked,
           domainLabel: row.domainLabel,
+          obligationScope: row.obligationScope,
+          registerNumber: row.registerNumber,
         }))}
         nextCursor={list.value.page.nextCursor}
         hasPreviousPage={filters.cursor !== undefined}

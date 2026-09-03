@@ -27,6 +27,17 @@ export interface OccurrenceRowView {
   readonly rectificationIndex: number;
   readonly isLocked: boolean;
   readonly domainLabel: string | null;
+  /**
+   * Portée de l'obligation : `ENTITY` ou `PER_REGISTER`.
+   *
+   * ⚠️ SERT À SIGNALER « toute l'entreprise » quand un registre est filtré. Les
+   * obligations d'entreprise RESTENT visibles sous un filtre par registre — la
+   * TVA ne cesse pas d'être due parce qu'on regarde une annexe — et sans mention
+   * la liste se lirait de travers : on croirait ces lignes rattachées à
+   * l'établissement sélectionné.
+   */
+  readonly obligationScope: string;
+  readonly registerNumber: string | null;
 }
 
 export interface AssignableProfile {

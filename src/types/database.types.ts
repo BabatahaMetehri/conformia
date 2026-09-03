@@ -3805,6 +3805,13 @@ export type Database = {
             foreignKeyName: "obligation_occurrences_commercial_register_id_fkey"
             columns: ["commercial_register_id"]
             isOneToOne: false
+            referencedRelation: "commercial_register_list"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "obligation_occurrences_commercial_register_id_fkey"
+            columns: ["commercial_register_id"]
+            isOneToOne: false
             referencedRelation: "commercial_registers"
             referencedColumns: ["id"]
           },
@@ -5259,6 +5266,145 @@ export type Database = {
       }
     }
     Views: {
+      commercial_register_list: {
+        Row: {
+          activity_codes: string[] | null
+          activity_label: string | null
+          address: string | null
+          commune: string | null
+          created_at: string | null
+          days_to_expiry: number | null
+          deleted_at: string | null
+          entity_id: string | null
+          expired: boolean | null
+          expires_at: string | null
+          expires_soon: boolean | null
+          id: string | null
+          issued_at: string | null
+          label: string | null
+          notes: string | null
+          obligation_count: number | null
+          occurrence_count: number | null
+          overdue_count: number | null
+          rc_number: string | null
+          register_type: string | null
+          status: string | null
+          updated_at: string | null
+          wilaya: string | null
+        }
+        Insert: {
+          activity_codes?: string[] | null
+          activity_label?: string | null
+          address?: string | null
+          commune?: string | null
+          created_at?: string | null
+          days_to_expiry?: never
+          deleted_at?: string | null
+          entity_id?: string | null
+          expired?: never
+          expires_at?: string | null
+          expires_soon?: never
+          id?: string | null
+          issued_at?: string | null
+          label?: string | null
+          notes?: string | null
+          obligation_count?: never
+          occurrence_count?: never
+          overdue_count?: never
+          rc_number?: string | null
+          register_type?: string | null
+          status?: string | null
+          updated_at?: string | null
+          wilaya?: string | null
+        }
+        Update: {
+          activity_codes?: string[] | null
+          activity_label?: string | null
+          address?: string | null
+          commune?: string | null
+          created_at?: string | null
+          days_to_expiry?: never
+          deleted_at?: string | null
+          entity_id?: string | null
+          expired?: never
+          expires_at?: string | null
+          expires_soon?: never
+          id?: string | null
+          issued_at?: string | null
+          label?: string | null
+          notes?: string | null
+          obligation_count?: never
+          occurrence_count?: never
+          overdue_count?: never
+          rc_number?: string | null
+          register_type?: string | null
+          status?: string | null
+          updated_at?: string | null
+          wilaya?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "commercial_registers_entity_id_fkey"
+            columns: ["entity_id"]
+            isOneToOne: false
+            referencedRelation: "entities"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      current_absences: {
+        Row: {
+          created_at: string | null
+          created_by: string | null
+          days_remaining: number | null
+          ends_at: string | null
+          entity_id: string | null
+          id: string | null
+          is_current: boolean | null
+          reason: string | null
+          revoked_at: string | null
+          starts_at: string | null
+          user_id: string | null
+          user_name: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "user_absences_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profile_directory"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "user_absences_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "user_absences_entity_id_fkey"
+            columns: ["entity_id"]
+            isOneToOne: false
+            referencedRelation: "entities"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "user_absences_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profile_directory"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "user_absences_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       dashboard_compliance_monthly: {
         Row: {
           domain_id: string | null
@@ -5621,10 +5767,13 @@ export type Database = {
         Row: {
           authority_id: string | null
           authority_name: string | null
+          commercial_register_id: string | null
           created_at: string | null
           criticality: Database["public"]["Enums"]["criticality"] | null
           days_to_internal: number | null
           days_to_legal: number | null
+          deputy_id: string | null
+          deputy_name: string | null
           documents_provided: number | null
           documents_required: number | null
           domain_code: string | null
@@ -5641,6 +5790,7 @@ export type Database = {
           legal_due_date: string | null
           obligation_code: string | null
           obligation_name: string | null
+          obligation_scope: string | null
           obligation_type_id: string | null
           owner_id: string | null
           owner_name: string | null
@@ -5652,6 +5802,9 @@ export type Database = {
           rectification_index: number | null
           rectifies_occurrence_id: string | null
           reference_number: string | null
+          register_label: string | null
+          register_number: string | null
+          register_status: string | null
           requires_proof: boolean | null
           status: Database["public"]["Enums"]["occurrence_status"] | null
           updated_at: string | null
@@ -5659,6 +5812,48 @@ export type Database = {
           validator_name: string | null
         }
         Relationships: [
+          {
+            foreignKeyName: "obligation_occurrences_commercial_register_id_fkey"
+            columns: ["commercial_register_id"]
+            isOneToOne: false
+            referencedRelation: "commercial_register_list"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "obligation_occurrences_commercial_register_id_fkey"
+            columns: ["commercial_register_id"]
+            isOneToOne: false
+            referencedRelation: "commercial_registers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "obligation_occurrences_deputy_id_fkey"
+            columns: ["deputy_id"]
+            isOneToOne: false
+            referencedRelation: "profile_directory"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "obligation_occurrences_deputy_id_fkey"
+            columns: ["deputy_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "obligation_occurrences_domain_id_fkey"
+            columns: ["domain_id"]
+            isOneToOne: false
+            referencedRelation: "documents_search"
+            referencedColumns: ["domain_id"]
+          },
+          {
+            foreignKeyName: "obligation_occurrences_domain_id_fkey"
+            columns: ["domain_id"]
+            isOneToOne: false
+            referencedRelation: "domains"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "obligation_occurrences_entity_id_fkey"
             columns: ["entity_id"]
@@ -5742,20 +5937,6 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "documents_search"
             referencedColumns: ["authority_id"]
-          },
-          {
-            foreignKeyName: "obligation_types_domain_id_fkey"
-            columns: ["domain_id"]
-            isOneToOne: false
-            referencedRelation: "documents_search"
-            referencedColumns: ["domain_id"]
-          },
-          {
-            foreignKeyName: "obligation_types_domain_id_fkey"
-            columns: ["domain_id"]
-            isOneToOne: false
-            referencedRelation: "domains"
-            referencedColumns: ["id"]
           },
         ]
       }
@@ -5962,6 +6143,15 @@ export type Database = {
         Args: { occurrence_id: string }
         Returns: boolean
       }
+      commercial_register_search_vector: {
+        Args: {
+          p_activity_label: string
+          p_label: string
+          p_rc_number: string
+          p_wilaya: string
+        }
+        Returns: unknown
+      }
       confirm_document_upload: {
         Args: {
           p_actual_size: number
@@ -5979,6 +6169,10 @@ export type Database = {
           p_window_seconds: number
         }
         Returns: Json
+      }
+      count_propagable_occurrences: {
+        Args: { p_obligation_type_id: string }
+        Returns: number
       }
       create_document_upload_ticket: {
         Args: {
@@ -6457,6 +6651,15 @@ export type Database = {
         }[]
       }
       pending_validation_count: { Args: never; Returns: number }
+      propagate_default_assignment: {
+        Args: {
+          p_deputy_id: string
+          p_obligation_type_id: string
+          p_owner_id: string
+          p_validator_id: string
+        }
+        Returns: number
+      }
       purge_auth_attempts: { Args: never; Returns: undefined }
       reassign_occurrences: {
         Args: { p_occurrence_ids: string[]; p_owner_id: string }
@@ -6492,6 +6695,31 @@ export type Database = {
       refresh_dashboard_views: { Args: never; Returns: undefined }
       refresh_occurrence_stats: { Args: never; Returns: undefined }
       regenerate_ics_token: { Args: never; Returns: string }
+      register_compliance: {
+        Args: never
+        Returns: {
+          compliance_rate: number
+          label: string
+          overdue: number
+          rc_number: string
+          register_id: string
+          status: string
+          submitted: number
+          total: number
+          wilaya: string
+        }[]
+      }
+      register_timeline: {
+        Args: { p_register_id: string }
+        Returns: {
+          action: string
+          actor_name: string
+          after: Json
+          before: Json
+          changed_fields: string[]
+          occurred_at: string
+        }[]
+      }
       reject_document_upload_ticket: {
         Args: { p_reason: string; p_ticket_id: string }
         Returns: boolean
@@ -6594,6 +6822,7 @@ export type Database = {
       start_job_run: { Args: { p_job_name: string }; Returns: number }
       start_restore_test: { Args: { p_backup_run: number }; Returns: number }
       storage_path_segment: { Args: { p_value: string }; Returns: string }
+      temoin_refus: { Args: { n: number }; Returns: number }
       try_lock_job: { Args: { p_job_name: string }; Returns: boolean }
       unlock_job: { Args: { p_job_name: string }; Returns: boolean }
       validation_levels_required: {

@@ -29,9 +29,21 @@ function idsOf(granted: ReadonlySet<Permission>): string[] {
 describe("filterNavigation", () => {
   it("ne rend RIEN de plus que ce que les permissions autorisent", () => {
     const ids = idsOf(permissionsOf());
-    // Sans aucune permission, seule « Mes tâches » subsiste : elle est déclarée
-    // toujours visible.
-    expect(ids).toEqual(["my-tasks"]);
+    /*
+     * Sans aucune permission, il reste les DEUX entrées déclarées toujours
+     * visibles, et elles le sont pour la même raison de fond :
+     *
+     *   • « Mes tâches » — chacun a le droit de constater qu'on ne lui a rien
+     *     confié ; la RLS borne le contenu à ses propres dossiers ;
+     *   • « Absences » — chacun déclare les SIENNES, sans permission
+     *     particulière (politique `user_absences_insert`), et savoir qui est
+     *     absent n'est pas confidentiel : c'est ce qui permet de comprendre
+     *     pourquoi un dossier n'avance pas.
+     *
+     * ⚠️ La liste est ARRÊTÉE. Une troisième entrée qui apparaîtrait ici sans
+     * décision est une section ouverte à tous par inadvertance.
+     */
+    expect(ids).toEqual(["my-tasks", "absences"]);
   });
 
   it("ouvre le tableau de bord sur dashboard.view_all OU occurrence.read", () => {

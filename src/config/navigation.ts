@@ -39,6 +39,8 @@ export const NAV_ICON_NAMES = [
   "jobs",
   "purge",
   "audit",
+  "registers",
+  "absences",
 ] as const;
 
 export type NavIconName = (typeof NAV_ICON_NAMES)[number];
@@ -141,6 +143,34 @@ export const NAVIGATION: readonly NavItem[] = [
     icon: "obligations",
     labelKey: "obligations",
     requires: { kind: "all", permissions: ["obligation.read"] },
+  },
+  {
+    id: "registers",
+    href: "/registres",
+    icon: "registers",
+    labelKey: "registers",
+    /*
+     * ⚠️ LECTURE OUVERTE À `obligation.read`, ÉCRITURE À `register.manage`.
+     *
+     * Les registres décrivent l'ENTREPRISE, pas un dossier : quiconque suit des
+     * échéances doit pouvoir savoir de quel établissement elles relèvent. En
+     * réserver la consultation à qui les administre obligerait un responsable à
+     * demander à un tiers de quel établissement dépend le dossier qu'il traite.
+     */
+    requires: { kind: "all", permissions: ["obligation.read"] },
+  },
+  {
+    id: "absences",
+    href: "/absences",
+    icon: "absences",
+    labelKey: "absences",
+    /*
+     * ⚠️ TOUJOURS VISIBLE. Chacun déclare ses propres absences — la politique
+     * `user_absences_insert` autorise l'intéressé pour lui-même — et savoir qui
+     * est absent n'est pas confidentiel : c'est ce qui permet de comprendre
+     * pourquoi un dossier n'avance pas.
+     */
+    requires: { kind: "always" },
   },
   {
     id: "documents",

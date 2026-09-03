@@ -3,6 +3,7 @@ import { getTranslations } from "next-intl/server";
 
 import { SectionHeader } from "@/components/layout/section";
 import { ErrorState } from "@/components/shared/states";
+import { AbsenceIndicator } from "@/features/absences/components/absence-indicator";
 import { DashboardCharts } from "@/features/dashboard/components/dashboard-charts";
 import {
   DashboardAlerts,
@@ -11,6 +12,7 @@ import {
   WorkloadPanel,
 } from "@/features/dashboard/components/dashboard-summary";
 import { requireAuthContext } from "@/services/auth/context";
+import { getCurrentAbsences } from "@/services/absences";
 import { getDashboard } from "@/services/dashboard";
 import { canAccessPath, firstAccessiblePath } from "@/services/navigation";
 
@@ -45,7 +47,12 @@ export default async function Page({ params }: { params: Promise<{ locale: strin
   }
 
   const t = await getTranslations("dashboard");
-  const view = await getDashboard();
+  /*
+   * Les deux lectures partent ENSEMBLE. Enchaînées, elles ajouteraient leurs
+   * latences pour un écran qui ne s'affiche de toute façon qu'une fois les deux
+   * arrivées.
+   */
+  const [view, absences] = await Promise.all([getDashboard(), getCurrentAbsences()]);
 
   if (!view.ok) {
     return (
@@ -59,6 +66,13 @@ export default async function Page({ params }: { params: Promise<{ locale: strin
   return (
     <>
       <SectionHeader titleKey="dashboard" descriptionKey="dashboard" />
+
+      {/*
+       * ⚠️ EN TÊTE, avant les agrégats. « Untel est absent » explique pourquoi
+       * un dossier n'avance pas ; placé sous les graphiques, il serait lu
+       * après qu'on a cherché ailleurs.
+       */}
+      {absences.ok ? <AbsenceIndicator absences={absences.value} /> : null}
 
       <div className="space-y-4">
         <DashboardAlerts view={view.value} />

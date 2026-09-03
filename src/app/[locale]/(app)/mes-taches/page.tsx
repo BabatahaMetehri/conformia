@@ -54,6 +54,8 @@ export default async function Page() {
             rectificationIndex: row.rectificationIndex,
             isLocked: row.isLocked,
             domainLabel: row.domainLabel,
+            obligationScope: row.obligationScope,
+            registerNumber: row.registerNumber,
           })),
         }))}
       />

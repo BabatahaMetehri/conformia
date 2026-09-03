@@ -622,7 +622,9 @@
     },
     "obligationCreate": "Nouvelle obligation",
     "occurrencesCalendar": "Calendrier",
-    "adminJobs": "Travaux planifiés"
+    "adminJobs": "Travaux planifiés",
+    "registers": "Registres de commerce",
+    "absences": "Absences"
   },
   "notifications": {
     "title": "Notifications",
@@ -1185,7 +1187,7 @@
   "search": {
     "title": "Recherche globale",
     "open": "Rechercher",
-    "placeholder": "Rechercher une obligation, une échéance, une pièce…",
+    "placeholder": "Rechercher une obligation, une échéance, une pièce, un registre…",
     "description": "Saisissez au moins {min} caractères. Les résultats se limitent à ce que vos droits vous autorisent à consulter.",
     "tooShort": "Saisissez au moins {min} caractères.",
     "empty": "Aucun résultat",
@@ -1195,7 +1197,8 @@
     "groups": {
       "OBLIGATION": "Obligations",
       "OCCURRENCE": "Échéances",
-      "DOCUMENT": "Documents"
+      "DOCUMENT": "Documents",
+      "REGISTER": "Registres de commerce"
     }
   },
   "sections": {
@@ -1290,6 +1293,14 @@
     "adminJobs": {
       "title": "Travaux planifiés",
       "description": "Génération, notifications et sauvegardes : ce qui a tourné, et ce qui ne tourne plus."
+    },
+    "registers": {
+      "title": "Registres de commerce",
+      "description": "Les établissements de l'entreprise et leurs obligations."
+    },
+    "absences": {
+      "title": "Absences",
+      "description": "Déclarations d'absence et acheminement des rappels."
     }
   },
   "validation": {
@@ -1772,5 +1783,170 @@
     "calendarTitle": "Agenda",
     "calendarHint": "Abonnez votre agenda à vos échéances : elles s'y mettent à jour toutes seules.",
     "calendarOpen": "Voir mon abonnement"
+  },
+  "registers": {
+    "title": "Registres de commerce",
+    "new": "Nouveau registre",
+    "edit": "Modifier",
+    "loadFailed": "Les registres n'ont pas pu être chargés.",
+    "notFound": "Ce registre est introuvable.",
+    "empty": "Aucun registre ne correspond à cette recherche.",
+    "emptyAll": "Aucun registre n'est encore enregistré.",
+    "columns": {
+      "rcNumber": "Numéro RC",
+      "type": "Type",
+      "label": "Désignation",
+      "activity": "Activité",
+      "wilaya": "Wilaya",
+      "issuedAt": "Délivré le",
+      "expiresAt": "Expire le",
+      "status": "Statut",
+      "obligations": "Obligations"
+    },
+    "type": {
+      "PRINCIPAL": "Principal",
+      "SECONDAIRE": "Secondaire",
+      "ANNEXE": "Annexe"
+    },
+    "status": {
+      "ACTIF": "Actif",
+      "SUSPENDU": "Suspendu",
+      "RADIE": "Radié"
+    },
+    "filters": {
+      "search": "Rechercher un registre",
+      "searchPlaceholder": "Numéro RC, désignation, activité",
+      "type": "Type",
+      "status": "Statut",
+      "wilaya": "Wilaya",
+      "all": "Tous"
+    },
+    "expiry": {
+      "never": "Sans échéance",
+      "inDays": "dans {days} jours",
+      "today": "aujourd'hui",
+      "expired": "expiré depuis {days} jours",
+      "soon": "Expire bientôt",
+      "warning": "{count, plural, =1 {# registre expire} other {# registres expirent}} dans moins de 90 jours."
+    },
+    "tabs": {
+      "general": "Général",
+      "obligations": "Obligations",
+      "history": "Historique complet",
+      "documents": "Documents",
+      "timeline": "Chronologie"
+    },
+    "general": {
+      "identity": "Identité",
+      "activity": "Activité",
+      "location": "Implantation",
+      "validity": "Validité",
+      "notes": "Notes",
+      "address": "Adresse",
+      "commune": "Commune",
+      "activityCodes": "Codes d'activité",
+      "none": "—"
+    },
+    "obligations": {
+      "title": "Obligations rattachées",
+      "description": "Les obligations de portée « par registre » produisent un dossier pour chaque établissement actif.",
+      "empty": "Aucune obligation par registre n'est définie."
+    },
+    "history": {
+      "title": "Historique complet",
+      "description": "Tous les dossiers de cet établissement, toutes périodes confondues, du plus récent au plus ancien.",
+      "empty": "Aucun dossier n'a encore été produit pour ce registre.",
+      "filterObligation": "Obligation",
+      "filterStatus": "Statut",
+      "filterPeriod": "Période",
+      "count": "{count, plural, =0 {aucun dossier} =1 {# dossier} other {# dossiers}}",
+      "owner": "Responsable",
+      "documents": "Pièces"
+    },
+    "documents": {
+      "title": "Documents",
+      "description": "Les justificatifs déposés sur les dossiers de cet établissement.",
+      "empty": "Aucune pièce n'a encore été déposée pour ce registre."
+    },
+    "timeline": {
+      "title": "Chronologie du registre",
+      "description": "Les modifications du registre lui-même : renouvellements, changements d'activité, suspension.",
+      "empty": "Aucune modification enregistrée.",
+      "created": "Registre créé",
+      "updated": "Registre modifié",
+      "fields": "Champs modifiés :"
+    },
+    "radiated": {
+      "title": "Registre radié",
+      "body": "Ce registre ne produit plus de nouveaux dossiers. Son historique reste intégralement consultable."
+    },
+    "form": {
+      "rcNumber": "Numéro RC",
+      "rcNumberHint": "Tel qu'il figure sur l'extrait, sans reformatage.",
+      "type": "Type",
+      "label": "Désignation",
+      "activityLabel": "Activité",
+      "activityCodes": "Codes d'activité",
+      "activityCodesHint": "Séparés par des virgules.",
+      "address": "Adresse",
+      "wilaya": "Wilaya",
+      "commune": "Commune",
+      "issuedAt": "Date de délivrance",
+      "expiresAt": "Date d'expiration",
+      "status": "Statut",
+      "notes": "Notes",
+      "save": "Enregistrer",
+      "cancel": "Annuler",
+      "created": "Registre créé.",
+      "updated": "Registre mis à jour.",
+      "noDelete": "Un registre ne se supprime pas : il se radie. Son historique doit rester consultable."
+    },
+    "filterLabel": "Registre de commerce",
+    "filterAll": "Tous les registres",
+    "entityWide": "Toute l'entreprise",
+    "entityWideHint": "Cette obligation vaut pour l'ensemble de l'entreprise, quel que soit le registre sélectionné."
+  },
+  "absences": {
+    "title": "Absences",
+    "declare": "Déclarer une absence",
+    "loadFailed": "Les absences n'ont pas pu être chargées.",
+    "empty": "Aucune absence déclarée.",
+    "notice": {
+      "title": "Une absence n'accorde et ne retire aucun droit",
+      "body": "Elle change l'acheminement des rappels — à qui l'on écrit quand une échéance approche — et rien d'autre. Le suppléant tient ses permissions de son rôle : il peut agir en permanence, qu'une absence soit déclarée ou non."
+    },
+    "columns": {
+      "person": "Personne",
+      "period": "Période",
+      "reason": "Motif",
+      "state": "État",
+      "actions": "Actions"
+    },
+    "state": {
+      "current": "En cours",
+      "upcoming": "À venir",
+      "past": "Passée",
+      "revoked": "Révoquée"
+    },
+    "form": {
+      "person": "Personne",
+      "startsAt": "Du",
+      "endsAt": "Au",
+      "reason": "Motif",
+      "submit": "Déclarer",
+      "cancel": "Annuler",
+      "created": "Absence déclarée.",
+      "selfOnly": "Vous ne pouvez déclarer que vos propres absences."
+    },
+    "revoke": {
+      "action": "Révoquer",
+      "confirmTitle": "Révoquer cette absence ?",
+      "confirmBody": "L'absence cessera d'orienter les rappels. Elle reste consignée : elle explique des décisions passées.",
+      "done": "Absence révoquée."
+    },
+    "dashboard": {
+      "title": "Absences en cours",
+      "entry": "{name} est absent jusqu'au {date}"
+    }
   }
 }

@@ -124,6 +124,16 @@ const GUARDED_BY_SERVICE: Readonly<Record<string, string>> = {
   createDelegationAction: "createDelegation",
   revokeDelegationAction: "revoke",
   loadReviewAction: "getOccurrenceDetail",
+  /*
+   * ⚠️ LES ABSENCES ONT UNE RÈGLE DOUBLE, et c'est pourquoi la garde vit dans le
+   * service : `absence.manage` pour déclarer l'absence d'AUTRUI, une simple
+   * session active pour la SIENNE. Une garde uniforme dans l'action interdirait
+   * à chacun de déclarer sa propre absence, ou ouvrirait celle des autres à
+   * tous. Le service tranche, et la politique `user_absences_insert` refait la
+   * même distinction en dernier ressort.
+   */
+  declareAbsenceAction: "declareAbsence",
+  revokeAbsenceAction: "revokeAbsenceEarly",
 };
 
 // ─── Balayage des sources ────────────────────────────────────────────────────

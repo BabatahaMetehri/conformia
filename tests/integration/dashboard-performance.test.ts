@@ -115,6 +115,23 @@ let refreshMs = 0;
 beforeAll(async () => {
   await pool.query(CLEANUP).catch(() => undefined);
 
+  /*
+   * ⚠️ UN VACUUM AVANT LE CHARGEMENT, ET UN APRÈS. Il en faut DEUX, et l'ordre
+   * explique pourquoi.
+   *
+   * Le nettoyage ci-dessus supprime les 50 000 lignes du passage précédent,
+   * mais un DELETE ne rend pas l'espace : il laisse des versions mortes. Le
+   * chargement qui suit ÉTEND alors le tas au lieu de réutiliser cet espace, et
+   * la mesure porte sur une table deux fois trop grande. Le vacuum d'après ne
+   * peut plus rien y faire — les lignes vivantes sont déjà écrites au-delà.
+   *
+   * Constaté, sur un code IDENTIQUE : 22 015 accès tampon au premier passage,
+   * 1 295 au second. Un test dont le verdict dépend du nombre de fois qu'on l'a
+   * lancé n'apprend rien à personne, et ce n'est pas au budget de s'élargir
+   * pour l'absorber.
+   */
+  await pool.query("vacuum analyze public.obligation_occurrences");
+
   await pool.query(
     `insert into auth.users (id, instance_id, aud, role, email, encrypted_password,
                              email_confirmed_at, created_at, updated_at)

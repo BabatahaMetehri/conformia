@@ -37,17 +37,20 @@ export function OccurrenceFilterBar({
   domains,
   authorities,
   owners,
+  registers,
   calendarHref,
   isCalendar = false,
 }: {
   readonly domains: readonly { readonly id: string; readonly label: string }[];
   readonly authorities: readonly { readonly id: string; readonly name: string }[];
   readonly owners: readonly { readonly id: string; readonly fullName: string }[];
+  readonly registers: readonly { readonly id: string; readonly label: string }[];
   readonly calendarHref: string;
   readonly isCalendar?: boolean;
 }) {
   const t = useTranslations("occurrences.filters");
   const tOcc = useTranslations("occurrences");
+  const tRegisters = useTranslations("registers");
   const tCriticality = useTranslations("obligations.criticality");
   const params = useSearchParams();
   /*
@@ -86,6 +89,7 @@ export function OccurrenceFilterBar({
     "domain",
     "authority",
     "owner",
+    "register",
     "criticality",
     "overdue",
     "internallyLate",
@@ -135,6 +139,28 @@ export function OccurrenceFilterBar({
             apply({ authority: value });
           }}
         />
+
+        {registers.length > 0 ? (
+          /*
+           * ⚠️ CE FILTRE N'EXCLUT PAS LES OBLIGATIONS D'ENTREPRISE. Sélectionner
+           * un établissement montre SES dossiers PLUS ceux qui valent pour toute
+           * l'entreprise : la TVA ne cesse pas d'être due parce qu'on regarde une
+           * annexe. La règle est appliquée côté requête (`applyFilters`), et le
+           * tableau signale les lignes « toute l'entreprise » pour que la liste
+           * ne se lise pas de travers.
+           */
+          <FilterSelect
+            disabled={busy}
+            id="filter-register"
+            label={tRegisters("filterLabel")}
+            allLabel={tRegisters("filterAll")}
+            value={params.get("register")}
+            items={registers.map((r) => ({ value: r.id, label: r.label }))}
+            onChange={(value) => {
+              apply({ register: value });
+            }}
+          />
+        ) : null}
 
         <FilterSelect
           disabled={busy}
