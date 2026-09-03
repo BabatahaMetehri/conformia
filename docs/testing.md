@@ -98,6 +98,154 @@ et non par sondage : c'est l'octroi _en trop_ qui est dangereux, et lui seul
 d'habilitation sans l'envelopper, et que les quinze fonctions d'habilitation
 restent `STABLE PARALLEL SAFE`.
 
+### L'isolation par entité — la règle qui rend la suite utilisable
+
+⚠️ **La suite s'exécute sur une base AVEC le référentiel AGROESPACE chargé.**
+C'est l'état de production ; tester sur une base vide, c'est éprouver une
+situation qui n'existera jamais.
+
+Cela n'a pas toujours été le cas, et le prix en était lourd : plusieurs tests
+affirmaient sur des **comptages globaux** — `select count(*) from
+obligation_occurrences` — c'est-à-dire sur l'état de la base plutôt que sur leur
+propre comportement. Ils passaient sur une base vide, échouaient au chargement
+des 23 obligations réelles, et **disposer d'une application utilisable et d'une
+suite verte étaient deux états incompatibles**. La seule façon de les concilier
+était de retirer le référentiel, donc de ne plus rien éprouver de réaliste.
+
+#### Le mécanisme
+
+`entity_id` existe sur toutes les tables métier depuis la migration 0001, avec
+un défaut pointant l'entité AGROESPACE. La colonne avait été prévue pour un
+cloisonnement multi-sites à venir ; elle donne l'isolation des tests **sans une
+ligne de schéma en plus**.
+
+Chaque fichier crée sa **propre entité**, y range tout ce qu'il fabrique, et
+n'affirme que sur elle. Trois formes sont admises, et une seule idée — _rien de
+ce qu'un fichier affirme ne doit dépendre de ce qu'il n'a pas produit_ :
+
+| Forme                                  | Quand                                             | Comment                                                 |
+| -------------------------------------- | ------------------------------------------------- | ------------------------------------------------------- |
+| `createTestScope()`                    | **tout nouveau fichier**                          | `tests/helpers/test-scope.ts`                           |
+| constante `ENTITY` dans le jeu d'essai | fichiers antérieurs au helper                     | entité créée en tête du `SEED`, rattachement en queue   |
+| état de référence                      | fichiers dont le SUJET est le référentiel partagé | relever l'état AVANT d'agir, n'affirmer que sur l'écart |
+
+#### Écrire un nouveau test
+
+```ts
+import { createTestScope, destroyTestScope, type TestScope } from "../helpers/test-scope";
+
+let scope: TestScope;
+beforeAll(async () => {
+  scope = await createTestScope();
+}, 120_000);
+afterAll(async () => {
+  await destroyTestScope(scope);
+}, 120_000);
+
+it("…", async () => {
+  const superviseur = await scope.createUserWithRole("SUPERVISEUR");
+  const obligation = await scope.createObligation({ domain: "FISCAL" });
+  const dossier = await scope.createOccurrence({ obligationId: obligation, periodKey: "2026-04" });
+
+  await scope.asUser(superviseur, async (client) => {
+    // …sous session utilisateur, RLS appliquée, transaction annulée à la fin.
+  });
+});
+```
+
+Les fabriques couvrent le modèle complet : obligation (portée `ENTITY` ou
+`PER_REGISTER`), registre de commerce, occurrence, document, profil, rôle,
+absence, délégation. `scope.asRole("SUPERVISEUR")` rend un client Supabase
+**réellement authentifié** — il passe par `signInWithPassword`, donc par le vrai
+jeton et la vraie chaîne PostgREST, là où un client `service_role` contournerait
+les politiques.
+
+`createTestScope()` **balaie au passage** les entités de test qu'une exécution
+interrompue aurait laissées — plus vieilles de dix minutes, pour ne jamais
+toucher à une exécution en cours. Sans cela, un `afterAll` qui n'aboutit pas
+abandonnait son entité, et la seule façon de s'en défaire redevenait la
+réinitialisation de la base — ce que ce mécanisme existe pour éviter.
+
+#### Ce qui est interdit, et pourquoi
+
+`tests/integration/suite-hygiene.test.ts` le fait respecter **mécaniquement**,
+en nommant le fichier et la ligne. Il n'existe volontairement **aucune liste
+d'exemption** : un fichier qui ne peut pas satisfaire ces règles est un fichier
+dont les assertions dépendent de l'état initial de la base.
+
+- ❌ **Compter une table métier entière.** `select count(*) from
+obligation_occurrences` mesure la vacuité de la base, pas le cloisonnement.
+- ❌ **Lire une table métier sans le moindre filtre.** Elle ramène ce que les
+  autres ont créé.
+- ❌ **Un fichier qui ne borne ses données à aucune entité.**
+
+Deux choses restent **permises**, et le sont pour de bonnes raisons :
+
+- ✅ **Un comptage global attendu à ZÉRO.** « cet administrateur ne voit aucun
+  dossier, dans la base entière » est _plus fort_ qu'un comptage borné : cela ne
+  peut devenir faux que si le cloisonnement cède — précisément ce qu'on veut
+  apprendre.
+- ✅ **Les tables de RÉFÉRENCE** — `roles`, `permissions`, `domains`,
+  `status_transition_rules`. Leur nombre est une décision, pas un état ; c'est
+  même ce que vérifie la matrice des rôles.
+
+La garde se vérifie elle-même : un de ses tests lui soumet une entorse
+fabriquée et exige qu'elle la nomme. Une garde qu'on n'a jamais vue échouer
+n'est pas une garde — une expression rationnelle trop stricte ou un chemin qui
+ne trouve aucun fichier en font un vert permanent qui ne protège rien.
+
+#### ⚠️ Un défaut d'ENVIRONNEMENT à connaître : « the database system is in recovery mode »
+
+Si la suite se met à échouer par grappes, sur des fichiers différents à chaque
+exécution, avec l'erreur **« the database system is in recovery mode »**, le
+coupable n'est pas le code : **le conteneur PostgreSQL local plante**.
+
+Symptôme dans le journal du conteneur :
+
+```
+LOG: server process (PID …) was terminated by signal 11: Segmentation fault
+DETAIL: Failed process was running: select * from public.exportable_occurrences($1::uuid)
+LOG: all server processes terminated; reinitializing
+```
+
+Le défaut a été **isolé** : une fonction TÉMOIN créée pour l'occasion — un
+`select n` de trois mots, sans droit d'exécution pour `authenticated` — fait
+tomber le serveur dès qu'on l'appelle sous ce rôle. Autrement dit, **tout refus
+de droit sur un appel de fonction** peut faire planter ce PostgreSQL, quel que
+soit le contenu de la fonction. Aucune migration du projet n'y est pour quelque
+chose, et plusieurs tests ATTENDENT légitimement un « permission denied » — ils
+en sont les victimes désignées.
+
+L'état n'apparaît qu'après un certain temps d'usage du conteneur ; il survit à
+`supabase db reset`, qui recrée la base sans redémarrer le processus.
+
+**Remède** — redémarrer la pile, pas seulement la base :
+
+```bash
+npx supabase stop && npx supabase start
+```
+
+Pour vérifier après coup qu'aucun plantage n'a eu lieu pendant une exécution :
+
+```bash
+docker logs supabase_db_conformia 2>&1 | grep -c "Segmentation fault"
+```
+
+Zéro est la seule réponse acceptable. Un résultat non nul invalide l'exécution
+ENTIÈRE : les échecs qu'elle rapporte sont des dommages collatéraux, et les
+succès n'ont pas plus de valeur.
+
+#### Lancer la suite
+
+```bash
+npm run test:integration          # sur la base telle qu'elle est
+npm run test:integration:fresh    # db reset + db:seed + tests — l'état de référence
+npm run test:integration:slow     # les seuls tests @slow
+```
+
+La suite doit passer **deux fois de suite sans réinitialisation** : c'est la
+preuve que chaque fichier nettoie derrière lui.
+
 ### Les tests marqués `@slow`
 
 Un test dont le nom porte `@slow` construit un volume réaliste avant de mesurer :

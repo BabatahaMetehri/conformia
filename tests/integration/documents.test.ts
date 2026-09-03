@@ -42,7 +42,25 @@ const IDS = Object.values(USER)
 
 const PREFIX = "DOC-";
 
+/**
+ * ⚠️ ENTITÉ DÉDIÉE : le périmètre de tout ce que ce fichier fabrique.
+ *
+ * Sans elle, les assertions de ce fichier porteraient sur la base ENTIÈRE et
+ * changeraient de verdict au seul chargement du référentiel AGROESPACE. Tout ce
+ * que le jeu d'essai crée est rattaché ici, et rien de ce qu'il affirme ne
+ * regarde au-delà. Voir tests/helpers/test-scope.ts pour la version outillée,
+ * à préférer pour tout NOUVEAU fichier.
+ */
+const ENTITY = "c0c0c0c0-0000-0000-0000-0000000000e5";
+/** Code de l'entité : le premier segment du chemin de stockage en dérive. */
+const ENTITY_CODE = "TEST-DOCUMENTS";
+
 const SEED = `
+-- Entité du test : tout ce qui suit lui appartient.
+insert into public.entities (id, code, name)
+values ('${ENTITY}', '${ENTITY_CODE}', 'Entité de test')
+on conflict (id) do nothing;
+
 insert into auth.users (id, instance_id, aud, role, email, encrypted_password,
                         email_confirmed_at, created_at, updated_at)
 select u.id, '00000000-0000-0000-0000-000000000000', 'authenticated', 'authenticated',
@@ -121,6 +139,18 @@ set is_locked = true, locked_at = now()
 from public.obligation_types ot
 where ot.id = oc.obligation_type_id and ot.code = '${PREFIX}MAIN'
   and oc.period_key = '2026-05';
+
+-- ── Rattachement à l'entité du test ─────────────────────────────────────
+-- ⚠️ Les triggers sont coupés le temps du rattachement : la colonne est un
+-- rangement, pas un acte métier, et le laisser produire une entrée d'audit
+-- et une montée de version fausserait les tests qui les observent.
+alter table public.obligation_occurrences disable trigger user;
+update public.obligation_types set entity_id = '${ENTITY}'
+ where code like '${PREFIX}%';
+update public.obligation_occurrences set entity_id = '${ENTITY}'
+ where obligation_type_id in
+       (select id from public.obligation_types where entity_id = '${ENTITY}');
+alter table public.obligation_occurrences enable trigger user;
 `;
 
 const CLEANUP = `
@@ -156,6 +186,8 @@ delete from public.obligation_types where code like '${PREFIX}%';
 delete from public.user_roles where user_id in (${IDS});
 delete from public.profiles where id in (${IDS});
 delete from auth.users where id in (${IDS});
+-- L'entité en dernier : elle est le parent de tout ce qui précède.
+delete from public.entities where id = '${ENTITY}';
 `;
 
 async function asUser<T>(userId: string, run: (client: PoolClient) => Promise<T>): Promise<T> {
@@ -321,9 +353,19 @@ describe("billet de dépôt", () => {
       const ticket = await issueTicket(client);
 
       expect(ticket.status).toBe("ISSUED");
-      // Le préfixe est déduit de l'entité, du domaine, du code d'obligation et
-      // de la période — aucune de ces valeurs ne vient du navigateur.
-      expect(ticket.storage_path).toMatch(/^agroespace\/fiscal\/doc-main\/2026-03\//);
+      /*
+       * Le préfixe est déduit de l'ENTITÉ, du domaine, du code d'obligation et
+       * de la période — aucune de ces valeurs ne vient du navigateur.
+       *
+       * ⚠️ Le segment d'entité est LU, pas écrit en dur. L'assertion nommait
+       * « agroespace », ce qui liait le test à l'entité par défaut de la base :
+       * elle passait tant que le fichier travaillait dans l'entité commune, et
+       * la moindre isolation la faisait échouer sur un chemin pourtant correct.
+       * Lue, elle vérifie ce qui compte : que le chemin est bâti sur l'entité du
+       * dossier, quelle qu'elle soit.
+       */
+      const segment = ENTITY_CODE.toLowerCase();
+      expect(ticket.storage_path).toMatch(new RegExp(`^${segment}/fiscal/doc-main/2026-03/`));
       // La feuille est préfixée par l'identifiant du billet : deux billets ne
       // peuvent pas viser le même objet.
       expect(ticket.storage_path).toContain(ticket.ticket_id);

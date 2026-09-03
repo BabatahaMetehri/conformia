@@ -85,7 +85,27 @@ async function countRows(client: PoolClient, sql: string, params: unknown[] = []
 
 // ─── Jeu d'essai ─────────────────────────────────────────────────────────────
 
+/**
+ * ⚠️ ENTITÉ DÉDIÉE : le périmètre de tout ce que ce fichier fabrique.
+ *
+ * Sans elle, les comptages de ce fichier portaient sur la base ENTIÈRE et
+ * changeaient de verdict au seul chargement du référentiel AGROESPACE — 22
+ * dossiers visibles là où le test en attendait 1. Le test ne mesurait pas le
+ * cloisonnement, il mesurait la vacuité de la base.
+ */
+const ENTITY = "c0c0c0c0-0000-0000-0000-0000000000e1";
+
+const IDS_SQL = Object.values(USER)
+  .map((id) => `'${id}'`)
+  .join(", ");
+
 const SEED = `
+-- Entité du test : tout ce qui suit lui appartient, et aucune assertion ne
+-- regarde au-delà.
+insert into public.entities (id, code, name)
+values ('${ENTITY}', 'TEST-RLS', 'Entité du test RLS')
+on conflict (id) do nothing;
+
 -- Comptes
 insert into auth.users (id, instance_id, aud, role, email, encrypted_password,
                         email_confirmed_at, created_at, updated_at)
@@ -103,6 +123,8 @@ from (values
 ) as u(id, email)
 on conflict (id) do nothing;
 
+update public.profiles set entity_id = '${ENTITY}'
+ where id in (${IDS_SQL});
 update public.profiles set is_active = false where id = '${USER.disabled}';
 
 -- Attributions (posées hors session : le trigger anti-auto-attribution ne vise
@@ -124,25 +146,25 @@ values
                             now() - interval '1 day');
 
 -- Référentiel
-insert into public.obligation_types (id, code, name, periodicity, due_rule, effective_from, domain_id)
+insert into public.obligation_types (id, entity_id, code, name, periodicity, due_rule, effective_from, domain_id)
 values
-  ('${OBLIGATION.fiscal}', 'TEST-TVA', 'TVA mensuelle', 'MONTHLY',
+  ('${OBLIGATION.fiscal}', '${ENTITY}', 'TEST-TVA', 'TVA mensuelle', 'MONTHLY',
    '{"anchor":"PERIOD_END","offset_days":20}'::jsonb, '2026-01-01',
    (select id from public.domains where code='FISCAL')),
-  ('${OBLIGATION.social}', 'TEST-CNAS', 'Déclaration CNAS', 'QUARTERLY',
+  ('${OBLIGATION.social}', '${ENTITY}', 'TEST-CNAS', 'Déclaration CNAS', 'QUARTERLY',
    '{"anchor":"PERIOD_END","offset_days":30}'::jsonb, '2026-01-01',
    (select id from public.domains where code='SOCIAL'));
 
 -- Occurrences
 insert into public.obligation_occurrences
-  (id, obligation_type_id, period_key, period_start, period_end,
+  (id, entity_id, obligation_type_id, period_key, period_start, period_end,
    legal_due_date, internal_due_date, owner_id, validator_id, status)
 values
-  ('${OCCURRENCE.fiscal}', '${OBLIGATION.fiscal}', '2026-01', '2026-01-01', '2026-01-31',
+  ('${OCCURRENCE.fiscal}', '${ENTITY}', '${OBLIGATION.fiscal}', '2026-01', '2026-01-01', '2026-01-31',
    '2026-02-20', '2026-02-17', null, null, 'TODO'),
-  ('${OCCURRENCE.social}', '${OBLIGATION.social}', '2026-Q1', '2026-01-01', '2026-03-31',
+  ('${OCCURRENCE.social}', '${ENTITY}', '${OBLIGATION.social}', '2026-Q1', '2026-01-01', '2026-03-31',
    '2026-04-30', '2026-04-27', null, null, 'TODO'),
-  ('${OCCURRENCE.ownedByAgent}', '${OBLIGATION.fiscal}', '2026-02', '2026-02-01', '2026-02-28',
+  ('${OCCURRENCE.ownedByAgent}', '${ENTITY}', '${OBLIGATION.fiscal}', '2026-02', '2026-02-01', '2026-02-28',
    '2026-03-20', '2026-03-17', '${USER.comptaManager}', null, 'PENDING_VALIDATION');
 
 update public.obligation_occurrences
@@ -168,6 +190,8 @@ delete from public.profiles where id in (${Object.values(USER)
 delete from auth.users where id in (${Object.values(USER)
   .map((id) => `'${id}'`)
   .join(", ")});
+-- L'entité en dernier : elle est le parent de tout ce qui précède.
+delete from public.entities where id = '${ENTITY}';
 `;
 
 beforeAll(async () => {
@@ -210,16 +234,39 @@ describe("cloisonnement entre domaines", () => {
     expect(visible).toBe(0);
   });
 
-  it("RH_AGENT lit bien ses propres occurrences SOCIAL", async () => {
+  it("le RESPONSABLE du SOCIAL lit bien SES occurrences sociales", async () => {
+    /*
+     * ⚠️ LE COMPTAGE EST BORNÉ À L'ENTITÉ DU TEST, et c'est tout l'enjeu.
+     *
+     * Écrit sans ce filtre — `select count(*) from obligation_occurrences` — ce
+     * test affirmait « il y a exactement un dossier ». C'était vrai sur une base
+     * vide, faux dès qu'on y chargeait les 23 obligations AGROESPACE, et cela
+     * n'a jamais rien dit du cloisonnement : il mesurait la vacuité de la base.
+     *
+     * Filtré, il dit ce qu'il doit dire : DES TROIS dossiers de cette entité,
+     * ce compte n'en voit QUE le social.
+     */
     const visible = await asUser(USER.rhAgent, (client) =>
-      countRows(client, `select count(*) from public.obligation_occurrences`),
+      countRows(client, "select count(*) from public.obligation_occurrences where entity_id = $1", [
+        ENTITY,
+      ]),
     );
     expect(visible).toBe(1);
+
+    // Contrepartie indispensable : l'entité en porte bien plus d'un, sans quoi
+    // « il en voit un » ne prouverait aucun filtrage.
+    const total = await pool.query<{ count: string }>(
+      "select count(*) from public.obligation_occurrences where entity_id = $1",
+      [ENTITY],
+    );
+    expect(Number(total.rows[0]?.count ?? 0)).toBe(3);
   });
 
   it("le cloisonnement résiste au comptage : COUNT(*) ne révèle rien", async () => {
     const total = await asUser(USER.rhAgent, (client) =>
-      countRows(client, "select count(*) from public.obligation_occurrences"),
+      countRows(client, "select count(*) from public.obligation_occurrences where entity_id = $1", [
+        ENTITY,
+      ]),
     );
     const fiscalExists = await asUser(USER.rhAgent, (client) =>
       countRows(
@@ -227,6 +274,9 @@ describe("cloisonnement entre domaines", () => {
         `select count(*) from public.obligation_occurrences where id = '${OCCURRENCE.fiscal}'`,
       ),
     );
+    // Un COUNT ne révèle pas plus l'existence d'un dossier qu'un SELECT n'en
+    // révèle le contenu : sur trois dossiers de l'entité, un seul est compté, et
+    // le dossier fiscal nommément désigné reste introuvable.
     expect(total).toBe(1);
     expect(fiscalExists).toBe(0);
   });

@@ -39,7 +39,23 @@ const IDS = Object.values(USER)
 
 const PREFIX = "ADM-";
 
+/**
+ * ⚠️ ENTITÉ DÉDIÉE : le périmètre de tout ce que ce fichier fabrique.
+ *
+ * Sans elle, les assertions de ce fichier porteraient sur la base ENTIÈRE et
+ * changeraient de verdict au seul chargement du référentiel AGROESPACE. Tout ce
+ * que le jeu d'essai crée est rattaché ici, et rien de ce qu'il affirme ne
+ * regarde au-delà. Voir tests/helpers/test-scope.ts pour la version outillée,
+ * à préférer pour tout NOUVEAU fichier.
+ */
+const ENTITY = "c0c0c0c0-0000-0000-0000-0000000000e3";
+
 const SEED = `
+-- Entité du test : tout ce qui suit lui appartient.
+insert into public.entities (id, code, name)
+values ('${ENTITY}', 'TEST-DASHBOARD_ADMI', 'Entité de test')
+on conflict (id) do nothing;
+
 insert into auth.users (id, instance_id, aud, role, email, encrypted_password,
                         email_confirmed_at, created_at, updated_at)
 select u.id, '00000000-0000-0000-0000-000000000000', 'authenticated', 'authenticated',
@@ -78,6 +94,18 @@ select ot.id, '2026-03', '2026-03-01', '2026-03-31',
        (now() at time zone 'Africa/Algiers')::date - 10,
        'TODO', '${USER.manager}'
 from public.obligation_types ot where ot.code like '${PREFIX}%';
+
+-- ── Rattachement à l'entité du test ─────────────────────────────────────
+-- ⚠️ Les triggers sont coupés le temps du rattachement : la colonne est un
+-- rangement, pas un acte métier, et le laisser produire une entrée d'audit
+-- et une montée de version fausserait les tests qui les observent.
+alter table public.obligation_occurrences disable trigger user;
+update public.obligation_types set entity_id = '${ENTITY}'
+ where code like '${PREFIX}%';
+update public.obligation_occurrences set entity_id = '${ENTITY}'
+ where obligation_type_id in
+       (select id from public.obligation_types where entity_id = '${ENTITY}');
+alter table public.obligation_occurrences enable trigger user;
 `;
 
 const CLEANUP = `
@@ -101,6 +129,8 @@ delete from public.user_roles where user_id in (${IDS});
 delete from public.profiles where id in (${IDS});
 delete from auth.users where id in (${IDS});
 delete from public.backup_runs;
+-- L'entité en dernier : elle est le parent de tout ce qui précède.
+delete from public.entities where id = '${ENTITY}';
 `;
 
 async function asUser<T>(userId: string, run: (client: PoolClient) => Promise<T>): Promise<T> {
@@ -696,14 +726,87 @@ describe("bandeau d'alertes", () => {
       expect(critical?.total).toBeGreaterThan(0);
     });
 
-    await asUser(USER.rh, async (client) => {
-      const { rows } = await client.query<{ code: string }>(
-        "select code from public.dashboard_alerts()",
+    /*
+     * ⚠️ ASSERTION DIFFÉRENTIELLE, ET NON ABSOLUE. La forme précédente exigeait
+     * que le responsable social ne voie AUCUN `CRITICAL_OVERDUE` — ce qui
+     * revenait à exiger qu'il n'existe, dans la base entière, aucun dossier
+     * social critique en retard. Vrai sur une base vide ; faux dès que le
+     * référentiel AGROESPACE est chargé, et sans que le cloisonnement soit en
+     * cause.
+     *
+     * Ce que le test doit établir est un ÉCART : ajouter un dossier FISCAL
+     * critique en retard ne doit RIEN changer au compteur du responsable social.
+     * C'est exactement le cloisonnement, et cela reste vrai quel que soit le
+     * contenu initial de la base.
+     */
+    const compteurSocial = async (): Promise<number> =>
+      asUser(USER.rh, async (client) => {
+        const { rows } = await client.query<{ code: string; total: number }>(
+          "select code, total from public.dashboard_alerts()",
+        );
+        return rows.find((row) => row.code === "CRITICAL_OVERDUE")?.total ?? 0;
+      });
+
+    const avant = await compteurSocial();
+
+    const ajoute = await pool.query<{ id: string }>(
+      `insert into public.obligation_occurrences
+         (obligation_type_id, period_key, period_start, period_end,
+          legal_due_date, internal_due_date, status)
+       select ot.id, 'CLOISON-1', current_date - 120, current_date - 100,
+              current_date - 90, current_date - 95, 'IN_PROGRESS'
+         from public.obligation_types ot where ot.code = $1
+       returning id`,
+      [`${PREFIX}FISC`],
+    );
+    const ajouteId = ajoute.rows[0]?.id ?? "";
+
+    try {
+      const apres = await compteurSocial();
+      expect(apres).toBe(avant);
+
+      // Contrepartie : le dossier existe bel et bien, et QUELQU'UN le voit —
+      // sans quoi « le compteur n'a pas bougé » ne prouverait rien.
+      const vuParLeFiscal = await asUser(USER.manager, async (client) => {
+        const { rows } = await client.query<{ n: string }>(
+          "select count(*) as n from public.obligation_occurrences where id = $1",
+          [ajouteId],
+        );
+        return Number(rows[0]?.n ?? 0);
+      });
+      expect(vuParLeFiscal).toBe(1);
+    } finally {
+      /*
+       * ⚠️ LA TRACE D'ABORD, LE DOSSIER ENSUITE. L'insertion a produit une
+       * transition, et la clé étrangère interdit de supprimer le dossier tant
+       * qu'elle subsiste. Le journal des transitions étant APPEND-ONLY, son
+       * trigger refuse le DELETE : on le lève le temps du nettoyage, comme
+       * ailleurs dans la suite.
+       */
+      await pool.query(
+        "alter table public.occurrence_transitions disable trigger trg_occurrence_transitions_append_only",
       );
-      // Le dossier critique est fiscal : l'agent social ne doit pas en déduire
-      // l'existence par un compteur.
-      expect(rows.map((row) => row.code)).not.toContain("CRITICAL_OVERDUE");
-    });
+      await pool.query("alter table public.obligation_occurrences disable trigger user");
+      try {
+        await pool.query("delete from public.occurrence_transitions where occurrence_id = $1", [
+          ajouteId,
+        ]);
+        await pool.query("delete from public.obligation_occurrences where id = $1", [ajouteId]);
+      } finally {
+        /*
+         * ⚠️ LE RÉTABLISSEMENT EST DANS SON PROPRE `finally`, et il a fallu s'y
+         * brûler. Une suppression qui échoue laissait les triggers DÉSACTIVÉS
+         * pour le reste de la session — et le fichier suivant échouait à son
+         * `beforeAll` sur « null value in column domain_id », une erreur qui ne
+         * dit rien du vrai coupable. Couper un trigger sans garantir sa remise
+         * est une dette qu'un autre fichier finit par payer.
+         */
+        await pool.query("alter table public.obligation_occurrences enable trigger user");
+        await pool.query(
+          "alter table public.occurrence_transitions enable trigger trg_occurrence_transitions_append_only",
+        );
+      }
+    }
   });
 });
 

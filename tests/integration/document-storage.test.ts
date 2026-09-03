@@ -38,7 +38,23 @@ const BUCKET = "compliance-documents";
 const PDF_BYTES = new TextEncoder().encode("%PDF-1.7\n% test conformia\n");
 const EXE_BYTES = new Uint8Array([0x4d, 0x5a, 0x90, 0x00, 0x03, 0x00, 0x00, 0x00, 0x04, 0x00]);
 
+/**
+ * ⚠️ ENTITÉ DÉDIÉE : le périmètre de tout ce que ce fichier fabrique.
+ *
+ * Sans elle, les assertions de ce fichier porteraient sur la base ENTIÈRE et
+ * changeraient de verdict au seul chargement du référentiel AGROESPACE. Tout ce
+ * que le jeu d'essai crée est rattaché ici, et rien de ce qu'il affirme ne
+ * regarde au-delà. Voir tests/helpers/test-scope.ts pour la version outillée,
+ * à préférer pour tout NOUVEAU fichier.
+ */
+const ENTITY = "c0c0c0c0-0000-0000-0000-0000000000e4";
+
 const SEED = `
+-- Entité du test : tout ce qui suit lui appartient.
+insert into public.entities (id, code, name)
+values ('${ENTITY}', 'TEST-DOCUMENT_STORA', 'Entité de test')
+on conflict (id) do nothing;
+
 insert into auth.users (id, instance_id, aud, role, email, encrypted_password,
                         email_confirmed_at, created_at, updated_at)
 values ('${AGENT}'::uuid, '00000000-0000-0000-0000-000000000000', 'authenticated',
@@ -60,6 +76,18 @@ insert into public.obligation_occurrences
    legal_due_date, internal_due_date, status)
 select id, '2026-03', '2026-03-01', '2026-03-31', '2026-04-20', '2026-04-15', 'IN_PROGRESS'
 from public.obligation_types where code = '${PREFIX}MAIN';
+
+-- ── Rattachement à l'entité du test ─────────────────────────────────────
+-- ⚠️ Les triggers sont coupés le temps du rattachement : la colonne est un
+-- rangement, pas un acte métier, et le laisser produire une entrée d'audit
+-- et une montée de version fausserait les tests qui les observent.
+alter table public.obligation_occurrences disable trigger user;
+update public.obligation_types set entity_id = '${ENTITY}'
+ where code like '${PREFIX}%';
+update public.obligation_occurrences set entity_id = '${ENTITY}'
+ where obligation_type_id in
+       (select id from public.obligation_types where entity_id = '${ENTITY}');
+alter table public.obligation_occurrences enable trigger user;
 `;
 
 const CLEANUP = `
@@ -83,6 +111,8 @@ delete from public.obligation_types where code like '${PREFIX}%';
 delete from public.user_roles where user_id = '${AGENT}';
 delete from public.profiles where id = '${AGENT}';
 delete from auth.users where id = '${AGENT}';
+-- L'entité en dernier : elle est le parent de tout ce qui précède.
+delete from public.entities where id = '${ENTITY}';
 `;
 
 let occurrenceId = "";

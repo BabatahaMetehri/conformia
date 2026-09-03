@@ -30,6 +30,15 @@ const MANAGER = "7f7f7f7f-0000-0000-0000-000000000001";
 const PREFIX = "PERF-";
 const OCCURRENCE_COUNT = 50_000;
 
+/**
+ * ⚠️ ENTITÉ DÉDIÉE : le périmètre de tout ce que ce fichier fabrique.
+ *
+ * 50 000 dossiers déversés dans l'entité commune rendraient tout autre fichier
+ * dépendant de l'ordre d'exécution — et ce fichier COMMITTE, donc ils seraient
+ * bien visibles. Voir tests/helpers/test-scope.ts.
+ */
+const ENTITY = "c0c0c0c0-0000-0000-0000-0000000000f6";
+
 /** Budget du critère d'acceptation, en millisecondes. */
 const BUDGET_MS = 800;
 
@@ -60,6 +69,8 @@ delete from public.obligation_types where code like '${PREFIX}%';
 delete from public.user_roles where user_id = '${MANAGER}';
 delete from public.profiles where id = '${MANAGER}';
 delete from auth.users where id = '${MANAGER}';
+-- L'entité en dernier : elle est le parent de tout ce qui précède.
+delete from public.entities where id = '${ENTITY}';
 `;
 
 async function asManager<T>(run: (client: import("pg").PoolClient) => Promise<T>): Promise<T> {
@@ -121,9 +132,15 @@ beforeAll(async () => {
 
   // Vingt obligations, pour que les agrégats aient de quoi grouper.
   await pool.query(
+    `insert into public.entities (id, code, name)
+     values ('${ENTITY}', 'TEST-PERF', 'Entité de test')
+     on conflict (id) do nothing`,
+  );
+
+  await pool.query(
     `insert into public.obligation_types
-       (code, name, periodicity, due_rule, effective_from, domain_id, criticality)
-     select '${PREFIX}' || n, 'Obligation de charge ' || n, 'MONTHLY',
+       (entity_id, code, name, periodicity, due_rule, effective_from, domain_id, criticality)
+     select '${ENTITY}', '${PREFIX}' || n, 'Obligation de charge ' || n, 'MONTHLY',
             '{"anchor":"PERIOD_END","offset_days":20}'::jsonb, '2000-01-01',
             (select id from public.domains where code = 'FISCAL'),
             (array['LOW','MEDIUM','HIGH','CRITICAL'])[1 + (n % 4)]::public.criticality
@@ -149,10 +166,11 @@ beforeAll(async () => {
      * COMPLET : la colonne est NOT NULL, et l'insertion échoue sinon.
      */
     `insert into public.obligation_occurrences
-       (obligation_type_id, domain_id, period_key, period_start, period_end,
+       (obligation_type_id, entity_id, domain_id, period_key, period_start, period_end,
         legal_due_date, internal_due_date, status, owner_id, submitted_at,
         late_reason_code)
      select ot.id,
+            ot.entity_id,
             ot.domain_id,
             -- ⚠️ Clé de période UNIQUE par ligne : (obligation, période) porte une
             -- contrainte d'unicité, et un jeu d'essai qui la viole ne mesure rien.
@@ -171,7 +189,7 @@ beforeAll(async () => {
                  else null end
      from generate_series(1, $1::int) as n
      join lateral (
-       select id, domain_id from public.obligation_types
+       select id, entity_id, domain_id from public.obligation_types
         where code like '${PREFIX}%' order by code offset (n % 20) limit 1
      ) ot on true`,
     [OCCURRENCE_COUNT, MANAGER],

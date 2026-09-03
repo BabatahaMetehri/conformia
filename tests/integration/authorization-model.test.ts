@@ -514,11 +514,20 @@ describe("une absence n'accorde ni ne retire aucun droit", () => {
   });
 
   it("savoir qui est absent n'est pas confidentiel", async () => {
-    // Un responsable doit pouvoir comprendre pourquoi un dossier n'avance pas.
+    /*
+     * Un responsable doit pouvoir comprendre pourquoi un dossier n'avance pas.
+     *
+     * ⚠️ Le comptage vise les absences de CE fichier. Compter toutes celles de
+     * la base rendrait le test complaisant : il passerait grâce à l'absence
+     * déclarée par un autre, et cesserait de vérifier que celle-ci est visible.
+     */
     await asUser(USER.responsable, async (client) => {
-      expect(await count(client, "select count(*) as n from public.user_absences")).toBeGreaterThan(
-        0,
+      const visibles = await count(
+        client,
+        "select count(*) as n from public.user_absences where user_id = any($1::uuid[])",
+        [Object.values(USER)],
       );
+      expect(visibles).toBeGreaterThan(0);
     });
   });
 });

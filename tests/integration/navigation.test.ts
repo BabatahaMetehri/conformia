@@ -48,7 +48,23 @@ const OCCURRENCE = {
   social: "ffffffff-0000-0000-0000-00000000f002",
 } as const;
 
+/**
+ * ⚠️ ENTITÉ DÉDIÉE : le périmètre de tout ce que ce fichier fabrique.
+ *
+ * Sans elle, les assertions de ce fichier porteraient sur la base ENTIÈRE et
+ * changeraient de verdict au seul chargement du référentiel AGROESPACE. Tout ce
+ * que le jeu d'essai crée est rattaché ici, et rien de ce qu'il affirme ne
+ * regarde au-delà. Voir tests/helpers/test-scope.ts pour la version outillée,
+ * à préférer pour tout NOUVEAU fichier.
+ */
+const ENTITY = "c0c0c0c0-0000-0000-0000-0000000000f2";
+
 const SEED = `
+-- Entité du test : tout ce qui suit lui appartient.
+insert into public.entities (id, code, name)
+values ('${ENTITY}', 'TEST-NAV', 'Entité de test')
+on conflict (id) do nothing;
+
 insert into auth.users (id, instance_id, aud, role, email, encrypted_password,
                         email_confirmed_at, created_at, updated_at)
 select u.id, '00000000-0000-0000-0000-000000000000', 'authenticated', 'authenticated',
@@ -78,10 +94,10 @@ values
 
 insert into public.obligation_types (id, code, name, periodicity, due_rule, effective_from, domain_id)
 values
-  ('${OBLIGATION.fiscal}', 'NAV-G50', 'Déclaration G50 mensuelle', 'MONTHLY',
+  ('${OBLIGATION.fiscal}', 'NAV-G50', 'Déclaration NAVTEST G50 mensuelle', 'MONTHLY',
    '{"anchor":"PERIOD_END","offset_days":20}'::jsonb, '2026-01-01',
    (select id from public.domains where code='FISCAL')),
-  ('${OBLIGATION.social}', 'NAV-CNAS', 'Déclaration CNAS trimestrielle', 'QUARTERLY',
+  ('${OBLIGATION.social}', 'NAV-CNAS', 'Déclaration NAVTEST CNAS trimestrielle', 'QUARTERLY',
    '{"anchor":"PERIOD_END","offset_days":30}'::jsonb, '2026-01-01',
    (select id from public.domains where code='SOCIAL'));
 
@@ -93,6 +109,18 @@ values
    '2026-02-20', '2026-02-17', '${USER.comptaAgent}', 'TODO'),
   ('${OCCURRENCE.social}', '${OBLIGATION.social}', '2026-Q1', '2026-01-01', '2026-03-31',
    '2026-04-30', '2026-04-27', '${USER.rhAgent}', 'TODO');
+
+-- ── Rattachement à l'entité du test ─────────────────────────────────────
+-- ⚠️ Les triggers sont coupés le temps du rattachement : la colonne est un
+-- rangement, pas un acte métier, et le laisser produire une entrée d'audit
+-- et une montée de version fausserait les tests qui les observent.
+alter table public.obligation_occurrences disable trigger user;
+update public.obligation_types set entity_id = '${ENTITY}'
+ where code like 'NAV-%';
+update public.obligation_occurrences set entity_id = '${ENTITY}'
+ where obligation_type_id in
+       (select id from public.obligation_types where entity_id = '${ENTITY}');
+alter table public.obligation_occurrences enable trigger user;
 `;
 
 const IDS = Object.values(USER)
@@ -108,6 +136,8 @@ delete from public.obligation_types where id in ('${OBLIGATION.fiscal}', '${OBLI
 delete from public.user_roles where user_id in (${IDS});
 delete from public.profiles where id in (${IDS});
 delete from auth.users where id in (${IDS});
+-- L'entité en dernier : elle est le parent de tout ce qui précède.
+delete from public.entities where id = '${ENTITY}';
 `;
 
 async function asUser<T>(userId: string, run: (client: PoolClient) => Promise<T>): Promise<T> {
@@ -248,21 +278,44 @@ describe("navigation visible par rôle", () => {
 // ═════════════════════════════════════════════════════════════════════════════
 
 describe("recherche globale sous RLS", () => {
-  it("RH_AGENT ne trouve AUCUN objet du domaine fiscal", async () => {
-    const hits = await searchAs(USER.rhAgent, "G50");
+  /*
+   * ⚠️ « NAVTEST G50 » plutôt que « G50 » : le référentiel AGROESPACE porte lui
+   * aussi une déclaration G50, parfaitement légitime. Chercher « G50 » mesurait
+   * donc en partie le contenu du référentiel ; le jeton ajouté aux libellés du
+   * jeu d'essai borne la recherche à ce que ce fichier a créé, sans rien changer
+   * à la propriété éprouvée — le cloisonnement par domaine.
+   */
+  it("le RESPONSABLE du SOCIAL ne trouve AUCUN objet du domaine fiscal", async () => {
+    const hits = await searchAs(USER.rhAgent, "navtest g50");
     expect(hits).toEqual([]);
   });
 
-  it("COMPTA_AGENT trouve la même chose que le RH ne trouve pas", async () => {
-    const hits = await searchAs(USER.comptaAgent, "G50");
-    expect(hits).toContain("OBLIGATION:Déclaration G50 mensuelle");
-    expect(hits).toContain("OCCURRENCE:Déclaration G50 mensuelle");
+  it("le RESPONSABLE du FISCAL trouve ce que l'autre ne trouve pas", async () => {
+    const hits = await searchAs(USER.comptaAgent, "navtest g50");
+    expect(hits).toContain("OBLIGATION:Déclaration NAVTEST G50 mensuelle");
+    expect(hits).toContain("OCCURRENCE:Déclaration NAVTEST G50 mensuelle");
   });
 
   it("une frappe commune ne fait apparaître que le domaine de chacun", async () => {
-    const rh = await searchAs(USER.rhAgent, "declaration");
-    const compta = await searchAs(USER.comptaAgent, "declaration");
+    /*
+     * ⚠️ LA FRAPPE EST COMMUNE AUX DEUX OBLIGATIONS DU TEST, ET UNIQUE AU TEST.
+     *
+     * Elle était « declaration », qui est aussi le premier mot d'une dizaine
+     * d'obligations du référentiel AGROESPACE. La recherche rend ses résultats
+     * par pertinence et par tranche : dès le référentiel chargé, les deux
+     * obligations du test sortaient du lot et l'assertion « tout ce que voit le
+     * RH contient CNAS » devenait fausse — sans que rien du cloisonnement soit
+     * en cause.
+     *
+     * `NAVTEST` est présent dans les DEUX libellés du jeu d'essai et dans aucun
+     * autre : la frappe reste commune, et ce qu'elle ramène n'appartient qu'à ce
+     * fichier.
+     */
+    const rh = await searchAs(USER.rhAgent, "navtest");
+    const compta = await searchAs(USER.comptaAgent, "navtest");
 
+    expect(rh.length).toBeGreaterThan(0);
+    expect(compta.length).toBeGreaterThan(0);
     expect(rh.every((hit) => hit.includes("CNAS"))).toBe(true);
     expect(compta.every((hit) => hit.includes("G50"))).toBe(true);
   });
@@ -283,13 +336,37 @@ describe("recherche globale sous RLS", () => {
 
   it("retrouve une occurrence par sa clé de période", async () => {
     const hits = await searchAs(USER.comptaAgent, "2026-01");
-    expect(hits).toContain("OCCURRENCE:Déclaration G50 mensuelle");
+    expect(hits).toContain("OCCURRENCE:Déclaration NAVTEST G50 mensuelle");
   });
 
   it("ne se laisse pas injecter d'opérateur tsquery", async () => {
-    // Les caractères d'opérateur sont réduits à des séparateurs avant assemblage.
-    await expect(searchAs(USER.comptaAgent, "' | 'a':* & !(")).resolves.toEqual([]);
-    await expect(searchAs(USER.comptaAgent, "g50 | cnas")).resolves.toEqual([]);
+    /*
+     * ⚠️ CE TEST ÉTAIT VERT PAR ACCIDENT, et l'accident valait la peine d'être
+     * compris.
+     *
+     * Il affirmait qu'une saisie truffée d'opérateurs rend une liste VIDE. C'est
+     * ce qu'on observait — sur une base vide. En réalité l'injection est bien
+     * neutralisée : les opérateurs sont réduits à des séparateurs, et
+     * `' | 'a':* & !(` devient une recherche du terme `a`. Sur une base
+     * contenant le référentiel, ce terme rapporte des dizaines de résultats
+     * parfaitement légitimes. Attendre le vide, c'était affirmer que la base est
+     * vide, pas que l'injection est neutralisée.
+     *
+     * La bonne formulation compare la saisie hostile à sa forme INOFFENSIVE
+     * ÉQUIVALENTE : si les deux rendent exactement la même chose, aucun
+     * opérateur n'a été honoré. Et c'est vrai quel que soit le contenu de la
+     * base.
+     */
+    const injecte = await searchAs(USER.comptaAgent, "' | 'a':* & !(");
+    const inoffensif = await searchAs(USER.comptaAgent, "a");
+    expect(injecte).toEqual(inoffensif);
+
+    // Deuxième forme : un `|` entre deux termes ne doit pas valoir « OU ». Les
+    // deux termes restent conjoints, et aucun libellé ne porte les deux.
+    const avecBarre = await searchAs(USER.comptaAgent, "g50 | cnas");
+    const sansBarre = await searchAs(USER.comptaAgent, "g50 cnas");
+    expect(avecBarre).toEqual(sansBarre);
+    expect(avecBarre).toEqual([]);
   });
 
   it("rend le vide sur une saisie vide plutôt que tout le contenu", async () => {

@@ -37,7 +37,23 @@ const TOTAL = OBLIGATION_COUNT * PERIODS_PER_OBLIGATION;
 /** Objectif du critère d'acceptation, en millisecondes. */
 const FIRST_RENDER_BUDGET_MS = 500;
 
+/**
+ * ⚠️ ENTITÉ DÉDIÉE : le périmètre de tout ce que ce fichier fabrique.
+ *
+ * Sans elle, les assertions de ce fichier porteraient sur la base ENTIÈRE et
+ * changeraient de verdict au seul chargement du référentiel AGROESPACE. Tout ce
+ * que le jeu d'essai crée est rattaché ici, et rien de ce qu'il affirme ne
+ * regarde au-delà. Voir tests/helpers/test-scope.ts pour la version outillée,
+ * à préférer pour tout NOUVEAU fichier.
+ */
+const ENTITY = "c0c0c0c0-0000-0000-0000-0000000000f5";
+
 const SEED = `
+-- Entité du test : tout ce qui suit lui appartient.
+insert into public.entities (id, code, name)
+values ('${ENTITY}', 'TEST-PERF', 'Entité de test')
+on conflict (id) do nothing;
+
 insert into auth.users (id, instance_id, aud, role, email, encrypted_password,
                         email_confirmed_at, created_at, updated_at)
 select u.id, '00000000-0000-0000-0000-000000000000', 'authenticated', 'authenticated',
@@ -84,6 +100,18 @@ select
 from (select id, row_number() over (order by code) as ord
       from public.obligation_types where code like 'PERF-%') ot
 cross join generate_series(0, ${String(PERIODS_PER_OBLIGATION - 1)}) p;
+
+-- ── Rattachement à l'entité du test ─────────────────────────────────────
+-- ⚠️ Les triggers sont coupés le temps du rattachement : la colonne est un
+-- rangement, pas un acte métier, et le laisser produire une entrée d'audit
+-- et une montée de version fausserait les tests qui les observent.
+alter table public.obligation_occurrences disable trigger user;
+update public.obligation_types set entity_id = '${ENTITY}'
+ where code like 'PERF-%';
+update public.obligation_occurrences set entity_id = '${ENTITY}'
+ where obligation_type_id in
+       (select id from public.obligation_types where entity_id = '${ENTITY}');
+alter table public.obligation_occurrences enable trigger user;
 `;
 
 const IDS = Object.values(USER)
@@ -101,6 +129,8 @@ delete from public.obligation_types where code like 'PERF-%';
 delete from public.user_roles where user_id in (${IDS});
 delete from public.profiles where id in (${IDS});
 delete from auth.users where id in (${IDS});
+-- L'entité en dernier : elle est le parent de tout ce qui précède.
+delete from public.entities where id = '${ENTITY}';
 `;
 
 async function asUser<T>(userId: string, run: (client: PoolClient) => Promise<T>): Promise<T> {
