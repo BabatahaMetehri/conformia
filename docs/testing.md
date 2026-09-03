@@ -91,6 +91,40 @@ notifications, exports, sauvegardes, tableau de bord.
 `rls.test.ts` échoue si **une seule** table apparaît sans RLS — c'est ce qui rend
 tenable la promesse « 91 tables, 91 protégées ».
 
+`authorization-model.test.ts` compare la **matrice rôle → permissions en entier**,
+et non par sondage : c'est l'octroi _en trop_ qui est dangereux, et lui seul
+échappe à un test par échantillon. Il vérifie aussi **structurellement** — sur
+`pg_policies` et `pg_proc` — qu'aucune politique n'appelle une fonction
+d'habilitation sans l'envelopper, et que les quinze fonctions d'habilitation
+restent `STABLE PARALLEL SAFE`.
+
+### Les tests marqués `@slow`
+
+Un test dont le nom porte `@slow` construit un volume réaliste avant de mesurer :
+`dashboard-performance.test.ts` charge **50 000 dossiers** puis chronomètre les
+écrans. Il fait partie de `npm run test:rls` et n'en est pas séparé — un budget
+de performance qu'on ne lance pas est un budget qu'on ne tient pas.
+
+Le marqueur sert à les **choisir** quand on ne veut qu'eux, ou à les écarter
+d'une boucle de développement serrée :
+
+```bash
+npx vitest run --config vitest.integration.mts -t "@slow"     # ceux-là seuls
+npx vitest run --config vitest.integration.mts -t "^(?!.*@slow)"  # tous les autres
+```
+
+⚠️ **Le budget porte sur DEUX grandeurs, et la seconde compte plus.** La file de
+validation doit tenir sous **200 ms** _et_ sous **10 000 accès tampon**. Le temps
+dépend de la machine ; les accès tampon, non. Une politique dont un appel cesse
+d'être enveloppé dans `(select ...)` refait exploser le nombre de blocs lus bien
+avant que le chronomètre ne s'en émeuve sur une machine rapide.
+
+⚠️ Le chargement se termine par un `VACUUM ANALYZE`. Ce n'est pas un confort : le
+nettoyage de fin de fichier laisse 50 000 versions mortes derrière lui, et un
+second lancement mesurait alors le ballonnement au lieu du coût de la requête —
+18 535 accès au deuxième passage contre moins de 10 000 au premier, sur un code
+identique.
+
 ## Bout en bout — les écrans, enchaînés
 
 `e2e/`, Playwright, contre un **build de production**.

@@ -16,6 +16,15 @@ export const PERMISSIONS = [
   // Référentiel
   "obligation.read",
   "referential.manage",
+  /**
+   * Créer, modifier et radier un registre de commerce.
+   *
+   * DISTINCTE de `referential.manage` : le référentiel décrit des obligations,
+   * les registres décrivent l'entreprise. Radier un registre éteint la
+   * génération de tous les dossiers qui en dépendent — ce n'est pas le même
+   * pouvoir que corriger le libellé d'une obligation.
+   */
+  "register.manage",
 
   // Occurrences
   "occurrence.read",
@@ -33,6 +42,14 @@ export const PERMISSIONS = [
   "document.delete",
 
   // Administration
+  /**
+   * Déclarer et révoquer une absence, pour soi ou pour autrui.
+   *
+   * ⚠️ Une absence est une information d'ORGANISATION. Elle n'accorde et ne
+   * retire aucun droit : le suppléant tient ses permissions de son rôle, jamais
+   * d'une déclaration d'absence.
+   */
+  "absence.manage",
   "audit.read",
   "user.manage",
   "role.manage",
@@ -84,8 +101,15 @@ type AssertLength<
   TExpected extends number,
 > = TTuple["length"] extends TExpected ? true : never;
 
-/** Casse la compilation si le nombre de permissions dérive des 18 arrêtées. */
-export type PermissionCountIs18 = AssertLength<typeof PERMISSIONS, 18>;
+/**
+ * Casse la compilation si le nombre de permissions dérive des 20 arrêtées.
+ *
+ * ⚠️ Dix-huit jusqu'à la migration 0019, vingt depuis : `register.manage` et
+ * `absence.manage` accompagnent la matrice des rôles. Le compte est
+ * volontairement figé — une permission qui apparaît sans décision se remarque
+ * ici, pas en production.
+ */
+export type PermissionCountIs20 = AssertLength<typeof PERMISSIONS, 20>;
 /**
  * Casse la compilation si le nombre de rôles dérive des 12 arrêtés.
  *

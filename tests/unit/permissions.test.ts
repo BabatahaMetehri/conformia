@@ -11,9 +11,11 @@ import {
 } from "@/config/permissions";
 
 describe("vocabulaire d'autorisation", () => {
-  it("déclare exactement les 18 permissions arrêtées", () => {
-    expect(PERMISSIONS).toHaveLength(18);
-    expect(new Set(PERMISSIONS).size).toBe(18);
+  it("déclare exactement les 20 permissions arrêtées", () => {
+    // ⚠️ Dix-huit jusqu'à 0019, vingt depuis : `register.manage` et
+    // `absence.manage` accompagnent la matrice des rôles.
+    expect(PERMISSIONS).toHaveLength(20);
+    expect(new Set(PERMISSIONS).size).toBe(20);
   });
 
   it("déclare exactement les 12 rôles arrêtés", () => {

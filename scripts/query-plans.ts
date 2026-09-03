@@ -278,6 +278,34 @@ async function tableSizes(): Promise<readonly { name: string; rows: string; size
   return rows;
 }
 
+/**
+ * Marqueurs du bloc TENU À LA MAIN, que la régénération doit conserver.
+ *
+ * ⚠️ Le relevé de tenue en charge ne se régénère pas : il exige 50 000 dossiers,
+ * un chargement de plusieurs minutes, et surtout une mesure AVANT correctif qui
+ * n'existe plus une fois le correctif appliqué. Le perdre à la première
+ * régénération reviendrait à effacer la seule preuve que le défaut a existé et
+ * qu'il a été corrigé — et donc la seule référence contre laquelle une
+ * régression future se lirait.
+ */
+const PRESERVED_START = "<!-- TENUE-EN-CHARGE:DEBUT -->";
+const PRESERVED_END = "<!-- TENUE-EN-CHARGE:FIN -->";
+
+function preservedSection(): string[] {
+  let existing: string;
+  try {
+    existing = readFileSync(new URL("../docs/query-plans.md", import.meta.url), "utf8");
+  } catch {
+    return [];
+  }
+
+  const start = existing.indexOf(PRESERVED_START);
+  const end = existing.indexOf(PRESERVED_END);
+  if (start < 0 || end < start) return [];
+
+  return [...existing.slice(start, end + PRESERVED_END.length).split(/\r?\n/), ""];
+}
+
 async function main(): Promise<void> {
   const user = await pool.query<{ id: string; email: string }>(
     `select p.id, p.email
@@ -328,6 +356,7 @@ async function main(): Promise<void> {
 
   const stamp = new Date().toISOString().slice(0, 10);
   const slow = plans.filter((plan) => plan.executionMs > SLOW_MS);
+  const charge = preservedSection();
 
   const lines: string[] = [
     "# Plans d'exécution",
@@ -348,6 +377,7 @@ async function main(): Promise<void> {
     "comparer les plans entre eux et à repérer un balayage séquentiel là où un index",
     "existe, pas à prédire les temps de production.",
     "",
+    ...charge,
     "## Synthèse",
     "",
     "| Requête | Planification | Exécution | Balayages séquentiels |",

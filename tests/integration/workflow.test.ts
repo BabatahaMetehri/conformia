@@ -1080,19 +1080,25 @@ describe("file de validation", () => {
 
   it("la vue applique EXACTEMENT la même séparation des pouvoirs que la fonction", async () => {
     /*
-     * ⚠️ 0012 exprime la séparation des pouvoirs sur les colonnes déjà jointes
-     * plutôt que d'appeler `self_validation_blocked()` une fois par ligne — le
-     * coût mesuré était de 6,4 s sur 10 000 dossiers. Le prédicat est donc écrit
-     * DEUX fois : une dans la fonction que le trigger applique, une dans la vue.
-     * Ce test compare leurs verdicts dossier par dossier ; toute évolution qui
-     * ne toucherait qu'un des deux le fait échouer.
+     * ⚠️ La vue exprime la séparation des pouvoirs sur les colonnes déjà
+     * jointes plutôt que d'appeler `self_validation_blocked()` une fois par
+     * ligne — le coût mesuré était de 6,4 s sur 10 000 dossiers. Le prédicat est
+     * donc écrit DEUX fois : une dans la fonction que le trigger applique, une
+     * dans la vue. Ce test compare leurs verdicts dossier par dossier ; toute
+     * évolution qui ne toucherait qu'un des deux le fait échouer.
+     *
+     * Il a d'ailleurs déjà servi : 0019 a ajouté le suppléant à la règle, et la
+     * vue avait oublié le `coalesce` que la fonction porte — sur des dossiers
+     * sans suppléant, `not (... and NULL and ...)` rend NULL et la file se
+     * vidait entièrement.
      */
     await asUser(USER.manager, async (client) => {
       const { rows } = await client.query<{ id: string; in_queue: boolean; blocked: boolean }>(
         `select oc.id,
                 exists (select 1 from public.validation_queue q where q.id = oc.id) as in_queue,
                 public.self_validation_blocked(
-                  oc.obligation_type_id, oc.owner_id, public.current_profile_id()) as blocked
+                  oc.id, oc.obligation_type_id, oc.owner_id, oc.deputy_id,
+                  public.current_profile_id()) as blocked
            from public.obligation_occurrences oc
            join public.obligation_types ot on ot.id = oc.obligation_type_id
           where ot.code like $1 and oc.status = 'PENDING_VALIDATION'`,

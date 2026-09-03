@@ -56,7 +56,24 @@ export const ObligationTypeBaseSchema = z.object({
     .max(CODE_MAX)
     .regex(CODE_PATTERN, { message: "validation.codeFormat" }),
   name: z.string().trim().min(3).max(NAME_MAX),
-  domain_id: uuidSchema.nullable().default(null),
+  /*
+   * ⚠️ LE DOMAINE EST OBLIGATOIRE, et ce n'est pas une exigence de saisie : c'est
+   * le domaine qui PORTE le cloisonnement. Une obligation sans domaine n'était
+   * pas « visible de personne » — elle échappait au cloisonnement tout court,
+   * les politiques portant toutes un terme `domain_id is null or ...`. La
+   * migration 0019 a posé la contrainte NOT NULL en base ; le schéma la reprend
+   * ici pour que le refus arrive avec un message lisible, et non sous la forme
+   * d'une violation de contrainte.
+   *
+   * Le champ reste `nullable` en ENTRÉE : le formulaire s'ouvre sur un choix
+   * vide, et c'est le raffinement qui refuse à la soumission. Un select
+   * pré-rempli au premier domaine venu ferait choisir le cloisonnement par
+   * inadvertance.
+   */
+  domain_id: uuidSchema
+    .nullable()
+    .default(null)
+    .refine((value): value is string => value !== null, { error: "validation.required" }),
   authority_id: uuidSchema.nullable().default(null),
 
   periodicity: z.enum(Periodicity),

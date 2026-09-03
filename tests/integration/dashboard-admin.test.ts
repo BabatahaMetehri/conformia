@@ -433,10 +433,18 @@ describe("invitations", () => {
 describe("matrice des rôles", () => {
   it("est modifiable par role.manage, et par personne d'autre", async () => {
     await asUser(USER.admin, async (client) => {
+      /*
+       * ⚠️ LE COUPLE CHOISI DOIT ÊTRE ABSENT DE LA MATRICE. Le test vérifie
+       * qu'une écriture PREND, donc il lui faut une ligne qui n'existe pas
+       * encore : 0019 accorde `export.generate` au RESPONSABLE, si bien que
+       * l'ancien couple ne produisait plus aucune insertion et le test mesurait
+       * le vide. `occurrence.unlock` n'appartient qu'à la DIRECTION — c'est
+       * précisément ce que la matrice arrête, et donc un couple sûrement absent.
+       */
       const { rowCount } = await client.query(
         `insert into public.role_permissions (role_id, permission_id)
          select r.id, p.id from public.roles r, public.permissions p
-          where r.code = 'RESPONSABLE' and p.code = 'export.generate'
+          where r.code = 'RESPONSABLE' and p.code = 'occurrence.unlock'
          on conflict do nothing`,
       );
       expect(rowCount).toBe(1);

@@ -17,7 +17,11 @@ import type { ObligationTypeId, ObligationTypeRow, RequiredDocumentRow } from "@
 export interface ObligationWritePayload {
   readonly code: string;
   readonly name: string;
-  readonly domain_id: string | null;
+  /**
+   * ⚠️ NON NULLABLE depuis 0019 : le domaine porte le cloisonnement, et une
+   * obligation qui n'en a pas y échappe au lieu d'être invisible.
+   */
+  readonly domain_id: string;
   readonly authority_id: string | null;
   readonly periodicity: ObligationTypeRow["periodicity"];
   readonly due_rule: Json;

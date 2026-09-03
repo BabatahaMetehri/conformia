@@ -421,8 +421,17 @@ describe("écriture du référentiel sous RLS", () => {
     await asUser(USER.direction, async (client) => {
       await expect(
         client.query(
-          `insert into public.obligation_types (code, name, periodicity, due_rule, effective_from)
-           values ('OBL-MAUVAISE', 'Regle absente', 'MONTHLY', '{}'::jsonb, '2026-01-01')`,
+          /*
+           * ⚠️ `domain_id` est renseigné bien que le test porte sur `due_rule`.
+           * Depuis 0019 la colonne est NOT NULL, et PostgreSQL vérifie les
+           * contraintes NOT NULL AVANT les contraintes CHECK : sans domaine, le
+           * test échouerait sur la mauvaise contrainte et ne prouverait plus
+           * rien de la règle qu'il vise.
+           */
+          `insert into public.obligation_types
+             (code, name, periodicity, due_rule, effective_from, domain_id)
+           values ('OBL-MAUVAISE', 'Regle absente', 'MONTHLY', '{}'::jsonb, '2026-01-01',
+                   (select id from public.domains where code = 'FISCAL'))`,
         ),
       ).rejects.toThrow(/due_rule_valid/);
     });

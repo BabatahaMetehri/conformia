@@ -437,11 +437,15 @@ export async function previewRuleChange(
   const rule = validateDueRule({ rule: candidateRule, periodicity });
   if (!rule.ok) return rule;
 
+  /*
+   * ⚠️ Le terme `row.domain_id === null` a DISPARU avec la migration 0019 : une
+   * obligation porte désormais toujours un domaine. Il n'était d'ailleurs pas
+   * anodin — il laissait passer une obligation sans domaine vers n'importe quel
+   * porteur de `occurrence.read`, quel que soit son périmètre.
+   */
   const canSeeOccurrences =
     context.value.permissions.has("occurrence.read") &&
-    (context.value.domains === null ||
-      row.domain_id === null ||
-      context.value.domains.has(row.domain_id as never));
+    (context.value.domains === null || context.value.domains.has(row.domain_id as never));
 
   const [existing, recalculable] = await Promise.all([
     listOccurrencesOfObligation(toObligationTypeId(id)),

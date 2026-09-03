@@ -272,7 +272,9 @@ export async function getOccurrenceDetail(id: string): Promise<Result<Occurrence
       legalBasis: type.legal_basis,
       portalUrl: type.portal_url,
       requiresProof: type.requires_proof,
-      domainLabel: type.domains?.label ?? null,
+      // Le domaine est obligatoire depuis 0019 : la jointure rend toujours une
+      // ligne, et un libellé absent n'est plus un cas à traiter.
+      domainLabel: type.domains.label,
       authorityName: type.authorities?.name ?? null,
       authorityPortalUrl: type.authorities?.portal_url ?? null,
     },

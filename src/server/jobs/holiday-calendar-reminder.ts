@@ -42,6 +42,27 @@ export async function ensureHolidayCalendarTask(
   const targetYear = today.getUTCFullYear() + 1;
   const periodKey = String(targetYear);
 
+  /*
+   * ⚠️ UNE TÂCHE INTERNE DOIT QUAND MÊME PORTER UN DOMAINE, depuis 0019 : le
+   * domaine porte le cloisonnement, et une obligation qui n'en a pas y échappe
+   * au lieu d'être invisible.
+   *
+   * `REGLEMENTAIRE` est le domaine retenu, et c'est le moins arbitraire des
+   * quatre : le calendrier des jours fériés est un INTRANT réglementaire — les
+   * fêtes religieuses sont fixées par décret — et la tâche consiste à le tenir à
+   * jour. Le domaine est lu PAR SON CODE, jamais par un identifiant écrit en
+   * dur : une base réinitialisée en attribue de nouveaux.
+   */
+  const { data: domain, error: domainError } = await supabase
+    .from("domains")
+    .select("id")
+    .eq("code", "REGLEMENTAIRE")
+    .single();
+
+  if (domainError !== null) {
+    throw new Error(`Domaine REGLEMENTAIRE introuvable : ${domainError.message}`);
+  }
+
   // L'obligation interne est créée à la première exécution : elle n'a pas sa
   // place dans le référentiel réglementaire livré, ce n'est pas une obligation
   // légale mais une tâche de l'outil.
@@ -50,6 +71,7 @@ export async function ensureHolidayCalendarTask(
     .upsert(
       {
         code: OBLIGATION_CODE,
+        domain_id: domain.id,
         name: "Mise à jour du calendrier des jours fériés",
         periodicity: "ANNUAL",
         due_rule: { anchor: "PERIOD_START", offset_days: 20 },
@@ -60,7 +82,7 @@ export async function ensureHolidayCalendarTask(
       },
       { onConflict: "code" },
     )
-    .select("id")
+    .select("id, domain_id")
     .single();
 
   if (obligationError !== null) {
@@ -88,6 +110,14 @@ export async function ensureHolidayCalendarTask(
     .upsert(
       {
         obligation_type_id: obligation.id,
+        /*
+         * ⚠️ Fourni pour satisfaire le type, PAS pour décider : le trigger
+         * `trg_occurrences_05_set_domain` réécrit cette colonne depuis
+         * l'obligation parente. La valeur passée ici est déjà celle-là — la
+         * faire diverger ne produirait rien d'autre qu'un écart entre ce qu'on
+         * lit dans ce fichier et ce qui atterrit en base.
+         */
+        domain_id: obligation.domain_id,
         period_key: periodKey,
         period_start: `${periodKey}-01-01`,
         period_end: `${periodKey}-12-31`,

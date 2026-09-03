@@ -20,17 +20,84 @@ d'affichage : un bouton rendu à tort n'ouvre rien.
 
 ### Matrice rôle → permissions
 
-| Rôle             | Permissions                                                                                                                                                                                                                                     |
-| ---------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `ADMIN`          | `audit.read`, `obligation.read`, `referential.manage`, `role.manage`, `settings.manage`, `user.manage`                                                                                                                                          |
-| `DIRECTION`      | `audit.read`, `dashboard.view_all`, `document.delete`, `document.read`, `export.generate`, `obligation.read`, `occurrence.assign`, `occurrence.mark_na`, `occurrence.read`, `occurrence.unlock`, `occurrence.validate`, `referential.manage`    |
-| `COMPTA_MANAGER` | `dashboard.view_all`, `document.delete`, `document.read`, `document.upload`, `export.generate`, `obligation.read`, `occurrence.assign`, `occurrence.mark_na`, `occurrence.read`, `occurrence.submit`, `occurrence.validate`, `occurrence.write` |
-| `RH_MANAGER`     | identique à `COMPTA_MANAGER`, sur le domaine `SOCIAL`                                                                                                                                                                                           |
-| `REGLEMENTAIRE`  | comme un responsable, **sans** `occurrence.validate` ni `occurrence.assign`                                                                                                                                                                     |
-| `COMPTA_AGENT`   | `document.read`, `document.upload`, `obligation.read`, `occurrence.read`, `occurrence.submit`, `occurrence.write`                                                                                                                               |
-| `RH_AGENT`       | identique à `COMPTA_AGENT`, sur le domaine `SOCIAL`                                                                                                                                                                                             |
-| `AUDITOR`        | `audit.read`, `dashboard.view_all`, `document.read`, `export.generate`, `obligation.read`, `occurrence.read` — **aucune écriture**                                                                                                              |
-| `EXTERNAL`       | `document.read`, `document.upload`, `obligation.read`, `occurrence.read`                                                                                                                                                                        |
+> Arrêtée par la migration **0019**, où elle est écrite **une seule fois**, en
+> `VALUES`. La base y est réconciliée : ce qui n'est pas dans la matrice est
+> **retiré**, et la migration échoue si le résultat diffère de ce qui est déclaré.
+> `tests/integration/authorization-model.test.ts` la compare **en entier** — pas
+> par sondage, parce que c'est l'octroi _en trop_ qui est dangereux et que lui
+> seul échappe à un test par échantillon.
+
+`✓` accordée · `—` refusée · `ᶠ` limité au domaine FISCAL
+
+| Permission            | ADMIN | DIRECTION | RESPONSABLE | SUPPLEANT | SUPERVISEUR | AUDITOR | EXTERNAL |
+| --------------------- | :---: | :-------: | :---------: | :-------: | :---------: | :-----: | :------: |
+| `obligation.read`     |   ✓   |     ✓     |      ✓      |     ✓     |      ✓      |    ✓    |    ✓ᶠ    |
+| `referential.manage`  |   ✓   |     ✓     |      —      |     —     |      —      |    —    |    —     |
+| `register.manage`     |   ✓   |     ✓     |      —      |     —     |      —      |    —    |    —     |
+| `occurrence.read`     |   —   |     ✓     |      ✓      |     ✓     |      ✓      |    ✓    |    ✓ᶠ    |
+| `occurrence.write`    |   —   |     —     |      ✓      |     ✓     |      ✓      |    —    |    —     |
+| `occurrence.assign`   |   —   |     ✓     |      —      |     —     |      ✓      |    —    |    —     |
+| `occurrence.submit`   |   —   |     —     |      ✓      |     ✓     |      ✓      |    —    |    —     |
+| `occurrence.validate` |   —   |     ✓     |      —      |     —     |      ✓      |    —    |    —     |
+| `occurrence.mark_na`  |   —   |     ✓     |      —      |     —     |      ✓      |    —    |    —     |
+| `occurrence.unlock`   |   —   |     ✓     |      —      |     —     |      —      |    —    |    —     |
+| `document.read`       |   —   |     ✓     |      ✓      |     ✓     |      ✓      |    ✓    |    ✓ᶠ    |
+| `document.upload`     |   —   |     —     |      ✓      |     ✓     |      ✓      |    —    |    ✓ᶠ    |
+| `document.delete`     |   —   |     ✓     |      —      |     —     |      ✓      |    —    |    —     |
+| `absence.manage`      |   ✓   |     ✓     |      —      |     —     |      ✓      |    —    |    —     |
+| `audit.read`          |   ✓   |     ✓     |      —      |     —     |      —      |    ✓    |    —     |
+| `user.manage`         |   ✓   |     —     |      —      |     —     |      —      |    —    |    —     |
+| `role.manage`         |   ✓   |     —     |      —      |     —     |      —      |    —    |    —     |
+| `settings.manage`     |   ✓   |     —     |      —      |     —     |      —      |    —    |    —     |
+| `dashboard.view_all`  |   —   |     ✓     |      ✓      |     ✓     |      ✓      |    ✓    |    —     |
+| `export.generate`     |   —   |     ✓     |      ✓      |     ✓     |      ✓      |    ✓    |    —     |
+
+**Portée.** RESPONSABLE, SUPPLEANT, SUPERVISEUR et DIRECTION sont **globaux** :
+une seule personne suit l'ensemble des dossiers, tous domaines et tous registres.
+Le mécanisme est par attribution (`user_roles.domain_id is null`), et aucun de ces
+quatre rôles ne porte de domaine par défaut. Une attribution restreinte à un
+domaine reste néanmoins possible — c'est par elle que la suite RLS _démontre_ le
+cloisonnement, et l'interdire aurait supprimé le moyen de le prouver.
+
+**Les cinq rôles par service** — `COMPTA_MANAGER`, `COMPTA_AGENT`, `RH_MANAGER`,
+`RH_AGENT`, `REGLEMENTAIRE` — sont **désactivés** depuis 0018, pas supprimés :
+`user_roles` et `audit_log` portent leurs identifiants, et l'historique doit
+rester lisible. Un rôle inactif n'est plus attribuable ; il reste lisible.
+
+#### Quatre décisions à ne pas « corriger »
+
+- **`register.manage` est distincte de `referential.manage`.** Le référentiel
+  décrit des obligations, les registres décrivent l'entreprise. Radier un registre
+  **éteint la génération** de tous les dossiers qui en dépendent — ce n'est pas le
+  même pouvoir que corriger le libellé d'une obligation.
+- **SUPERVISEUR détient `occurrence.write`.** Il peut donc préparer en cas de
+  nécessité, et la séparation des pouvoirs l'empêchera alors de valider **ce
+  dossier-là** — c'est la DIRECTION qui validera. Le contrôle porte sur l'**acte**,
+  pas sur le rôle.
+- **DIRECTION n'a ni `user.manage` ni `role.manage`.** Le pouvoir métier ne
+  s'attribue pas ses propres droits.
+- **RESPONSABLE et SUPPLEANT sont rigoureusement identiques.** Ce qui les
+  distingue est la **trace** (`occurrence_transitions.acted_as`), pas le droit. Une
+  déclaration d'absence n'accorde et ne retire **aucun** droit : `is_absent_on()`
+  n'est appelée par aucune politique, et un test le vérifie structurellement.
+
+### Séparation des pouvoirs : le contrôle porte sur l'acte
+
+Depuis 0019, la validation est refusée à quiconque a **préparé** le dossier.
+Trois faits l'établissent, et le rôle porté n'en fait pas partie :
+
+1. la personne en est le **responsable** (`owner_id`) ;
+2. elle en est le **suppléant** (`deputy_id`) ;
+3. elle y a **agi à ce titre** — une transition portant `acted_as` à `RESPONSABLE`
+   ou `SUPPLEANT`. Changer de fonction n'efface pas ce qu'on a préparé.
+
+Deux soupapes, inchangées : `app_settings.allow_self_validation` pour l'exception
+générale, `obligation_types.allow_self_validation` pour la dérogation par
+obligation.
+
+La règle vit dans `self_validation_blocked()`, appliquée par le trigger
+`trg_occurrences_25_separation_of_duties` — **c'est lui qui garantit**. La file de
+validation et la barre d'actions ne font que ne pas proposer ce qu'il refusera.
 
 ### ⚠️ Pourquoi ADMIN n'a NI `occurrence.read` NI `document.read`
 

@@ -1,6 +1,6 @@
 # Plans d'exécution
 
-> Relevé le 2026-09-02 par `node scripts/query-plans.ts`, sur la base locale.
+> Relevé le 2026-09-03 par `node scripts/query-plans.ts`, sur la base locale.
 > **Régénérer ce fichier plutôt que le modifier à la main.**
 
 ## Comment lire ce document
@@ -16,20 +16,131 @@ locale, les volumes sont ceux du jeu de développement : ces chiffres servent à
 comparer les plans entre eux et à repérer un balayage séquentiel là où un index
 existe, pas à prédire les temps de production.
 
+<!-- TENUE-EN-CHARGE:DEBUT -->
+## Tenue en charge — correction du défaut D-1
+
+> Relevé le **2026-09-03**, à la main, sur **50 000 occurrences** dont **10 000 en
+> attente de validation**, réparties sur 20 obligations et **deux préparateurs**.
+> Lu par un compte **SUPERVISEUR de portée FISCAL**, `set role authenticated` et
+> revendications JWT posées — donc RLS appliquée.
+>
+> ⚠️ **Ce bloc est tenu à la main et préservé par `scripts/query-plans.ts`.** Il
+> ne se régénère pas : la colonne « avant » n'existe plus une fois le correctif
+> appliqué.
+
+### Ce qui a été mesuré
+
+Les deux colonnes ont été relevées sur **le même jeu de données, dans le même
+état de table** — le correctif a été appliqué en place entre les deux passages.
+Les deux mesures portent donc le même ballonnement et la même distribution : la
+comparaison ne doit rien à un rechargement plus favorable.
+
+Chaque requête a été lue par `EXPLAIN (ANALYZE, BUFFERS)`. La file rend **5 000
+dossiers avant comme après** : c'est la même réponse, obtenue autrement.
+
+| Requête | Avant | Après | Accès tampon avant | après |
+| --- | ---: | ---: | ---: | ---: |
+| **File de validation** (`select *`) | **14 257 ms** | **57 ms** | **463 633** | **4 115** |
+| File de validation (`count`) | 11 914 ms | 14 ms | 459 992 | 1 693 |
+| **Pastille de navigation** | **4 043 ms** | **14 ms** | **131 542** | **1 699** |
+| Échéancier — première page | 9,6 ms | 1,0 ms | 453 | 90 |
+| Agrégats du tableau de bord | 1,6 ms | 1,2 ms | 119 | 125 |
+| Bandeau d'alertes | 11,7 ms | 12,3 ms | 2 954 | 3 171 |
+
+Le bandeau d'alertes est la seule ligne qui ne progresse pas. Mesuré cinq fois de
+suite, il se stabilise à **8,7–9,3 ms** : les 12,3 ms sont un premier passage
+sous instrumentation `EXPLAIN ANALYZE`, pas une dégradation. Il n'y avait rien à
+y gagner — il interroge les tables vives sur un prédicat déjà indexé.
+
+### La cause, telle que le plan la donnait
+
+```
+Filter: ((deleted_at IS NULL) AND is_active_user()
+         AND (has_permission_in_domain('occurrence.read',
+                obligation_domain_of_type(obligation_type_id))
+              OR (owner_id = current_profile_id())
+              OR (validator_id = current_profile_id()))
+         AND (ot.domain_id = ANY (domains_with_permission('occurrence.validate'))))
+Rows Removed by Filter: 2000
+Heap Blocks: exact=15696
+```
+
+Tout ce qui est dans un `Filter` est évalué **une fois par ligne examinée**.
+Trois défauts distincts s'y superposaient :
+
+1. **`obligation_domain_of_type(obligation_type_id)`** rouvrait `obligation_types`
+   pour chaque dossier, alors que le domaine d'un dossier ne change pas en cours
+   de requête.
+2. **Aucun appel n'était enveloppé dans un sous-select.** Y compris
+   `domains_with_permission(...)`, introduite en 0012 précisément pour n'être
+   évaluée qu'une fois : la migration 0012 avait corrigé la *forme* sans corriger
+   le *nombre d'évaluations*.
+3. **Les fonctions étaient `PARALLEL UNSAFE`** — le défaut de PostgreSQL — ce qui
+   interdit tout plan parallèle sur la requête entière.
+
+### Le plan après correctif
+
+```
+Aggregate
+  InitPlan 1  ->  Result (actual rows=1 loops=1)
+  InitPlan 2  ->  Result (never executed)
+  ...
+  ->  Hash Join
+        ->  Bitmap Heap Scan on obligation_occurrences oc
+              Filter: ((InitPlan 22).col1 AND (deleted_at IS NULL)
+                       AND ((domain_id = ANY ((InitPlan 23).col1))
+                            OR (owner_id = (InitPlan 24).col1)
+                            OR (deputy_id = (InitPlan 25).col1)
+                            OR (validator_id = (InitPlan 26).col1)))
+```
+
+Chaque terme d'habilitation est devenu un **`InitPlan`**, `rows=1 loops=1` :
+évalué une seule fois pour toute la requête. Plusieurs sont `never executed` — le
+filet DIRECTION ne s'ouvre pas pour un compte qui n'en relève pas. La boucle
+imbriquée sur `obligation_types` est devenue une jointure de hachage.
+
+### Les trois corrections
+
+| Cause | Correction | Où |
+| --- | --- | --- |
+| Domaine remonté par ligne | Colonne `obligation_occurrences.domain_id`, posée et réalignée par trigger | 0019 §2 |
+| Fonction évaluée par ligne | `X = any ((select accessible_domains_array(p))::uuid[])` | 0019 §3, §5 |
+| Plan parallèle interdit | `PARALLEL SAFE` sur les 15 fonctions d'habilitation | 0019 §3.2 |
+
+⚠️ Le transtypage `::uuid[]` est **portant**. `any` a deux formes, choisies sur la
+syntaxe : `any (sous-select)` est la forme ensembliste, qui compare la colonne aux
+*lignes* du sous-select — soit un `uuid` à un `uuid[]`, et un refus à la création
+de la politique. Le transtypage en fait une expression, donc la forme tableau,
+tout en la laissant non corrélée.
+
+### Ce qui garde la correction
+
+`tests/integration/dashboard-performance.test.ts`, marqué `@slow`, reconstruit
+les 50 000 dossiers et vérifie **deux** budgets : moins de 200 ms, et moins de
+10 000 accès tampon. La seconde assertion est la plus utile — le temps dépend de
+la machine, les accès tampon non, et un appel qui cesserait d'être enveloppé s'y
+verrait avant que le chronomètre ne s'en émeuve.
+
+`tests/integration/authorization-model.test.ts` vérifie **structurellement**
+qu'aucune politique ne porte d'appel d'habilitation non enveloppé, et que les
+quinze fonctions restent `STABLE PARALLEL SAFE`.
+
+<!-- TENUE-EN-CHARGE:FIN -->
+
 ## Synthèse
 
 | Requête | Planification | Exécution | Balayages séquentiels |
 | --- | ---: | ---: | ---: |
-| Échéancier — première page | 1.95 ms | 3.36 ms | 4 |
-| Échéancier — filtré par domaine et statut | 0.98 ms | 2.69 ms | 3 |
-| Échéancier — page suivante (curseur) | 0.88 ms | 2.57 ms | 3 |
-| Mes tâches | 0.23 ms | 2.45 ms | 1 |
-| File de validation | 0.21 ms | 2.64 ms | 0 |
-| Fiche d'un dossier — liste de contrôle | 1.16 ms | 2.57 ms | 2 |
-| Documents — liste filtrée | 0.47 ms | 0.02 ms | 1 |
-| Référentiel des obligations | 0.12 ms | 0.60 ms | 1 |
-| Centre de notifications | 0.49 ms | 0.02 ms | 1 |
-| Journal d'audit — dernière page | 3.71 ms | 13.83 ms | 0 |
+| Échéancier — première page | 1.80 ms | 0.30 ms | 4 |
+| Échéancier — filtré par domaine et statut | 0.60 ms | 0.08 ms | 4 |
+| Échéancier — page suivante (curseur) | 0.55 ms | 0.08 ms | 4 |
+| Mes tâches | 0.23 ms | 0.02 ms | 1 |
+| File de validation | 0.13 ms | 0.03 ms | 1 |
+| Fiche d'un dossier — liste de contrôle | 0.62 ms | 0.05 ms | 4 |
+| Documents — liste filtrée | 0.17 ms | 0.03 ms | 2 |
+| Référentiel des obligations | 0.06 ms | 0.03 ms | 1 |
+| Centre de notifications | 0.30 ms | 0.02 ms | 1 |
+| Journal d'audit — dernière page | 4.09 ms | 1.27 ms | 0 |
 
 Aucune requête au-dessus de 200 ms sur ce jeu de données.
 
@@ -37,21 +148,21 @@ Aucune requête au-dessus de 200 ms sur ce jeu de données.
 
 | Table | Lignes (estimation) | Taille totale |
 | --- | ---: | ---: |
-| `audit_log_2026m09` | 5423 | 7176 kB |
-| `auth_attempts` | 841 | 496 kB |
-| `obligation_occurrences` | 26 | 328 kB |
-| `documents` | 0 | 240 kB |
-| `document_upload_tickets` | 1 | 152 kB |
-| `obligation_types` | 1 | 144 kB |
-| `notifications` | 0 | 128 kB |
-| `export_runs` | 3 | 112 kB |
-| `document_access_log_2026m09` | -1 | 96 kB |
-| `occurrence_transitions` | 14 | 80 kB |
-| `obligation_required_documents` | 4 | 80 kB |
-| `user_roles` | -1 | 80 kB |
-| `occurrence_checklist_items` | 29 | 80 kB |
-| `profiles` | 19 | 64 kB |
-| `notification_rules` | -1 | 64 kB |
+| `audit_log_2026m09` | 21679 | 31 MB |
+| `obligation_occurrences` | 0 | 24 MB |
+| `occurrence_transitions` | 0 | 1472 kB |
+| `documents` | 0 | 200 kB |
+| `notifications` | 0 | 168 kB |
+| `obligation_types` | 0 | 152 kB |
+| `user_roles` | 1 | 112 kB |
+| `document_upload_tickets` | 0 | 104 kB |
+| `profiles` | 8 | 96 kB |
+| `occurrence_checklist_items` | 0 | 88 kB |
+| `commercial_registers` | -1 | 80 kB |
+| `export_runs` | -1 | 80 kB |
+| `document_integrity_checks` | -1 | 80 kB |
+| `calendar_feed_tokens` | 2 | 72 kB |
+| `auth_attempts` | -1 | 64 kB |
 
 ## Les dix requêtes les plus fréquentes
 
@@ -61,16 +172,16 @@ d'où les sondes explicites ci-dessus.
 
 | Appels | Moyenne | Total | Requête |
 | ---: | ---: | ---: | --- |
-| 65441 | 0.02 ms | 1492.5 ms | `select set_config('search_path', $1, true), set_config($2, $3, true), set_config('role', $4, true), set_config('request.jwt.claims', $5, true), set_config('requ` |
-| 14723 | 1.00 ms | 14715.4 ms | `WITH pgrst_source AS (SELECT pgrst_call.pgrst_scalar FROM (SELECT $1 AS json_data) pgrst_payload, LATERAL (SELECT "p_ip" FROM json_to_record(pgrst_payload.json_` |
-| 4478 | 0.37 ms | 1675.4 ms | `WITH pgrst_source AS (SELECT pgrst_call.pgrst_scalar FROM (SELECT $1 AS json_data) pgrst_payload, LATERAL (SELECT "p_user_id" FROM json_to_record(pgrst_payload.` |
-| 4478 | 0.18 ms | 815.5 ms | `WITH pgrst_source AS (SELECT pgrst_call.pgrst_scalar FROM (SELECT $1 AS json_data) pgrst_payload, LATERAL (SELECT "p_user_id" FROM json_to_record(pgrst_payload.` |
-| 3515 | 1.05 ms | 3675.2 ms | `WITH pgrst_source AS ( SELECT "public"."user_roles"."domain_id", "public"."user_roles"."expires_at", row_to_json("user_roles_roles_1".*)::jsonb AS "roles" FROM ` |
-| 3515 | 2.06 ms | 7234.7 ms | `WITH pgrst_source AS ( SELECT row_to_json("user_roles_role_permissions_1".*)::jsonb AS "role_permissions" FROM "public"."user_roles" INNER JOIN LATERAL ( SELECT` |
-| 3515 | 0.01 ms | 44.9 ms | `WITH pgrst_source AS ( SELECT "public"."validation_delegations"."delegator_id", "public"."validation_delegations"."domain_id", "public"."validation_delegations"` |
-| 3515 | 0.24 ms | 835.7 ms | `WITH pgrst_source AS ( SELECT "public"."profiles"."id", "public"."profiles"."entity_id", "public"."profiles"."department_id", "public"."profiles"."full_name", "` |
-| 2480 | 9.61 ms | 23834.2 ms | `WITH pgrst_source AS (SELECT "pgrst_call".* FROM "public"."navigation_counters"() pgrst_call) SELECT $3::bigint AS total_result_set, pg_catalog.count(_postgrest` |
-| 2445 | 0.19 ms | 473.8 ms | `WITH pgrst_source AS ( SELECT "public"."notifications"."id" FROM "public"."notifications" WHERE "public"."notifications"."channel" = $1 AND "public"."notificati` |
+| 1000 | 0.02 ms | 21.8 ms | `select set_config('search_path', $1, true), set_config($2, $3, true), set_config('role', $4, true), set_config('request.jwt.claims', $5, true), set_config('requ` |
+| 434 | 0.01 ms | 5.4 ms | `select set_config('search_path', $1, true), set_config('role', $2, true), set_config('request.jwt.claims', $3, true), set_config('request.method', $4, true), se` |
+| 394 | 0.01 ms | 2.7 ms | `set local role authenticated` |
+| 242 | 0.00 ms | 0.2 ms | `rollback` |
+| 181 | 0.98 ms | 177.0 ms | `WITH pgrst_source AS (SELECT pgrst_call.pgrst_scalar FROM (SELECT $1 AS json_data) pgrst_payload, LATERAL (SELECT "p_obligation_type_id", "p_period_key", "p_per` |
+| 89 | 0.30 ms | 26.5 ms | `WITH pgrst_source AS (SELECT pgrst_call.pgrst_scalar FROM (SELECT $1 AS json_data) pgrst_payload, LATERAL (SELECT "p_user_id" FROM json_to_record(pgrst_payload.` |
+| 89 | 0.50 ms | 44.7 ms | `WITH pgrst_source AS (SELECT pgrst_call.pgrst_scalar FROM (SELECT $1 AS json_data) pgrst_payload, LATERAL (SELECT "p_user_id" FROM json_to_record(pgrst_payload.` |
+| 69 | 1.26 ms | 86.7 ms | `select public.evaluate_transition($1, $2::public.occurrence_status, $3) as v` |
+| 68 | 1.09 ms | 74.0 ms | `WITH pgrst_source AS (SELECT pgrst_call.pgrst_scalar FROM (SELECT $1 AS json_data) pgrst_payload, LATERAL (SELECT "p_ip" FROM json_to_record(pgrst_payload.json_` |
+| 68 | 0.01 ms | 0.7 ms | `SELECT current_setting($1)::integer, current_setting($2), version()` |
 
 ## Ce que ce relevé apprend
 
@@ -116,46 +227,46 @@ sert à poser la question, pas à décider seul d'une suppression.
 
 | Table | Index | Balayages | Taille |
 | --- | --- | ---: | ---: |
-| `audit_log_2026m09` | `audit_log_2026m09_action_occurred_at_idx` | 0 | 264 kB |
-| `audit_log_2026m09` | `audit_log_2026m09_actor_id_occurred_at_idx` | 0 | 264 kB |
-| `auth_attempts` | `auth_attempts_pkey` | 0 | 40 kB |
-| `document_upload_tickets` | `document_upload_tickets_storage_path_key` | 0 | 32 kB |
-| `obligation_occurrences` | `obligation_occurrences_search_idx` | 0 | 24 kB |
-| `obligation_types` | `obligation_types_search_idx` | 0 | 24 kB |
+| `obligation_occurrences` | `obligation_occurrences_search_idx` | 0 | 3720 kB |
+| `obligation_occurrences` | `obligation_occurrences_entity_domain_status_idx` | 0 | 952 kB |
+| `audit_log_2026m09` | `audit_log_2026m09_pkey` | 0 | 704 kB |
+| `occurrence_transitions` | `occurrence_transitions_pkey` | 0 | 240 kB |
+| `audit_log_2026m09` | `audit_log_2026m09_actor_id_occurred_at_idx` | 0 | 208 kB |
+| `audit_log_2026m09` | `audit_log_2026m09_occurred_at_idx` | 0 | 200 kB |
+| `obligation_types` | `obligation_types_search_idx` | 0 | 48 kB |
 | `documents` | `documents_search_idx` | 0 | 24 kB |
+| `user_absences` | `user_absences_active_idx` | 0 | 16 kB |
+| `notifications` | `notifications_outbox_idx` | 0 | 16 kB |
 | `escalation_policies` | `escalation_policies_lookup_idx` | 0 | 16 kB |
-| `notification_rules` | `notification_rules_pkey` | 0 | 16 kB |
-| `export_runs` | `export_runs_pending_idx` | 0 | 16 kB |
-| `transition_notifications` | `transition_notifications_pkey` | 0 | 16 kB |
-| `dashboard_compliance_monthly` | `dashboard_compliance_monthly_key_idx` | 0 | 16 kB |
 | `notification_rules` | `notification_rules_lookup_idx` | 0 | 16 kB |
-| `escalation_policies` | `escalation_policies_pkey` | 0 | 16 kB |
-| `dashboard_workload` | `dashboard_workload_key_idx` | 0 | 16 kB |
-| `holidays` | `holidays_pkey` | 0 | 16 kB |
-| `document_upload_tickets` | `document_upload_tickets_creator_idx` | 0 | 16 kB |
-| `dashboard_upcoming_load` | `dashboard_upcoming_load_key_idx` | 0 | 16 kB |
-| `obligation_types` | `obligation_types_entity_code_key` | 0 | 16 kB |
-| `dashboard_health` | `dashboard_health_key_idx` | 0 | 16 kB |
-| `obligation_occurrences` | `obligation_occurrences_rectification_idx` | 0 | 16 kB |
-| `entities` | `entities_code_key` | 0 | 16 kB |
-| `occurrence_comments` | `occurrence_comments_pkey` | 0 | 16 kB |
-| `obligation_occurrences` | `obligation_occurrences_entity_status_due_idx` | 0 | 16 kB |
-| `permissions` | `permissions_code_key` | 0 | 16 kB |
-| `transition_notifications` | `transition_notifications_key` | 0 | 16 kB |
-| `status_transition_rules` | `status_transition_rules_pkey` | 0 | 16 kB |
 | `obligation_types` | `obligation_types_entity_domain_idx` | 0 | 16 kB |
+| `user_absences` | `user_absences_pkey` | 0 | 16 kB |
+| `entities` | `entities_code_key` | 0 | 16 kB |
 | `job_runs` | `job_runs_name_idx` | 0 | 16 kB |
+| `dashboard_workload` | `dashboard_workload_key_idx` | 0 | 16 kB |
+| `transition_notifications` | `transition_notifications_pkey` | 0 | 16 kB |
 | `job_runs` | `job_runs_unfinished_idx` | 0 | 16 kB |
-| `profiles` | `profiles_ics_token_key` | 0 | 16 kB |
-| `profiles` | `profiles_email_key` | 0 | 16 kB |
-| `document_access_log_2026m09` | `document_access_log_2026m09_pkey` | 0 | 16 kB |
-| `occurrence_transitions` | `occurrence_transitions_pkey` | 0 | 16 kB |
+| `holidays` | `holidays_pkey` | 0 | 16 kB |
 | `occurrence_stats` | `occurrence_stats_key_idx` | 0 | 16 kB |
-| `obligation_occurrences` | `obligation_occurrences_owner_status_idx` | 0 | 16 kB |
+| `backup_runs` | `backup_runs_recent_idx` | 0 | 16 kB |
+| `dashboard_health` | `dashboard_health_key_idx` | 0 | 16 kB |
+| `user_invitations` | `user_invitations_pending_idx` | 0 | 16 kB |
+| `dashboard_upcoming_load` | `dashboard_upcoming_load_key_idx` | 0 | 16 kB |
+| `user_invitations` | `user_invitations_active_email_idx` | 0 | 16 kB |
+| `document_upload_tickets` | `document_upload_tickets_storage_path_key` | 0 | 16 kB |
+| `dashboard_compliance_monthly` | `dashboard_compliance_monthly_key_idx` | 0 | 16 kB |
+| `profiles` | `profiles_email_key` | 0 | 16 kB |
+| `dashboard_late_reasons` | `dashboard_late_reasons_key_idx` | 0 | 16 kB |
+| `export_runs` | `export_runs_recent_idx` | 0 | 16 kB |
+| `profiles` | `profiles_ics_token_key` | 0 | 16 kB |
 | `document_access_log_2026m09` | `document_access_log_2026m09_actor_id_created_at_idx` | 0 | 16 kB |
-| `obligation_occurrences` | `obligation_occurrences_validator_idx` | 0 | 16 kB |
+| `status_transition_rules` | `status_transition_rules_pkey` | 0 | 16 kB |
+| `auth_attempts` | `auth_attempts_purge_idx` | 0 | 16 kB |
+| `user_invitations` | `user_invitations_pkey` | 0 | 16 kB |
+| `document_access_log_2026m09` | `document_access_log_2026m09_pkey` | 0 | 16 kB |
 | `documents` | `documents_sha256_idx` | 0 | 16 kB |
-| `notifications` | `notifications_read_state_idx` | 0 | 16 kB |
+| `auth_attempts` | `auth_attempts_pkey` | 0 | 16 kB |
+| `document_integrity_checks` | `document_integrity_checks_run_idx` | 0 | 16 kB |
 
 ## Plans détaillés
 
@@ -171,82 +282,140 @@ select id, period_key, status, internal_due_date, legal_due_date
 ```
 
 ```
-Limit  (cost=360.88..360.89 rows=3 width=36) (actual time=3.195..3.199 rows=0 loops=1)
-  Buffers: shared hit=572
-  ->  Sort  (cost=360.88..360.89 rows=3 width=36) (actual time=3.195..3.198 rows=0 loops=1)
+Limit  (cost=176.18..176.20 rows=8 width=36) (actual time=0.032..0.035 rows=0 loops=1)
+  Buffers: shared hit=7
+  InitPlan 1
+    ->  Result  (cost=0.00..0.26 rows=1 width=1) (never executed)
+  InitPlan 2
+    ->  Result  (cost=0.00..0.26 rows=1 width=32) (never executed)
+  InitPlan 3
+    ->  Result  (cost=0.00..0.26 rows=1 width=16) (never executed)
+  InitPlan 4
+    ->  Result  (cost=0.00..0.26 rows=1 width=16) (never executed)
+  InitPlan 5
+    ->  Result  (cost=0.00..0.26 rows=1 width=16) (never executed)
+  ->  Sort  (cost=174.88..174.90 rows=8 width=36) (actual time=0.032..0.034 rows=0 loops=1)
         Sort Key: oc.internal_due_date, oc.id
         Sort Method: quicksort  Memory: 25kB
-        Buffers: shared hit=572
-        ->  Nested Loop Left Join  (cost=8.39..360.86 rows=3 width=36) (actual time=3.174..3.178 rows=0 loops=1)
-              Buffers: shared hit=566
-              ->  Nested Loop Left Join  (cost=8.24..245.68 rows=3 width=52) (actual time=3.174..3.177 rows=0 loops=1)
-                    Buffers: shared hit=566
-                    ->  Nested Loop Left Join  (cost=8.09..84.45 rows=3 width=68) (actual time=3.174..3.176 rows=0 loops=1)
-                          Buffers: shared hit=566
-                          ->  Nested Loop Left Join  (cost=7.94..70.34 rows=3 width=84) (actual time=3.173..3.175 rows=0 loops=1)
-                                Buffers: shared hit=566
-                                ->  Nested Loop  (cost=7.78..56.22 rows=3 width=100) (actual time=3.173..3.174 rows=0 loops=1)
-                                      Buffers: shared hit=566
-                                      ->  Seq Scan on obligation_occurrences oc  (cost=0.00..33.89 rows=3 width=84) (actual time=3.173..3.173 rows=0 loops=1)
-                                            Filter: ((deleted_at IS NULL) AND is_active_user() AND (has_permission_in_domain('occurrence.read'::text, obligation_domain_of_type(obligation_type_id)) OR (owner_id = current_profile_id()) OR (validator_id = current_profile_id())))
-                                            Rows Removed by Filter: 14
-                                            Buffers: shared hit=566
-                                      ->  Memoize  (cost=7.78..9.55 rows=1 width=32) (never executed)
-                                            Cache Key: oc.obligation_type_id
-                                            Cache Mode: binary
-                                            ->  Subquery Scan on ot  (cost=7.77..9.54 rows=1 width=32) (never executed)
-                                                  ->  Limit  (cost=7.77..9.53 rows=1 width=105) (never executed)
-                                                        ->  Seq Scan on obligation_types ot_1  (cost=7.77..9.53 rows=1 width=105) (never executed)
-                                                              Filter: ((id = oc.obligation_type_id) AND is_active_user() AND (is_admin() OR (has_permission('obligation.read'::text) AND ((domain_id IS NULL) OR (ANY (domain_id = (hashed SubPlan 1).col1))))))
-                                                              SubPlan 1
-                                                                ->  ProjectSet  (cost=0.00..5.27 rows=1000 width=16) (never executed)
-                                                                      ->  Result  (cost=0.00..0.01 rows=1 width=0) (never executed)
-                                ->  Memoize  (cost=0.16..8.44 rows=1 width=0) (never executed)
+        Buffers: shared hit=7
+        ->  Nested Loop Left Join  (cost=3.71..174.76 rows=8 width=36) (actual time=0.009..0.012 rows=0 loops=1)
+              Buffers: shared hit=1
+              ->  Nested Loop Left Join  (cost=2.80..76.74 rows=8 width=52) (actual time=0.009..0.010 rows=0 loops=1)
+                    Buffers: shared hit=1
+                    ->  Nested Loop Left Join  (cost=1.88..53.59 rows=8 width=68) (actual time=0.009..0.010 rows=0 loops=1)
+                          Buffers: shared hit=1
+                          ->  Nested Loop Left Join  (cost=1.46..37.58 rows=8 width=84) (actual time=0.009..0.009 rows=0 loops=1)
+                                Buffers: shared hit=1
+                                ->  Nested Loop  (cost=1.04..21.56 rows=8 width=100) (actual time=0.008..0.009 rows=0 loops=1)
+                                      Buffers: shared hit=1
+                                      ->  Seq Scan on obligation_occurrences oc  (cost=0.00..1.48 rows=8 width=84) (actual time=0.008..0.009 rows=0 loops=1)
+                                            Filter: ((InitPlan 1).col1 AND (deleted_at IS NULL) AND ((domain_id = ANY ((InitPlan 2).col1)) OR (owner_id = (InitPlan 3).col1) OR (deputy_id = (InitPlan 4).col1) OR (validator_id = (InitPlan 5).col1)))
+                                            Buffers: shared hit=1
+                                      ->  Limit  (cost=1.04..2.49 rows=1 width=105) (never executed)
+                                            InitPlan 6
+                                              ->  Result  (cost=0.00..0.26 rows=1 width=1) (never executed)
+                                            InitPlan 7
+                                              ->  Result  (cost=0.00..0.26 rows=1 width=1) (never executed)
+                                            InitPlan 8
+                                              ->  Result  (cost=0.00..0.26 rows=1 width=1) (never executed)
+                                            InitPlan 9
+                                              ->  Result  (cost=0.00..0.26 rows=1 width=32) (never executed)
+                                            ->  Seq Scan on obligation_types ot  (cost=0.00..1.45 rows=1 width=105) (never executed)
+                                                  Filter: ((InitPlan 6).col1 AND (id = oc.obligation_type_id) AND ((InitPlan 7).col1 OR ((InitPlan 8).col1 AND (domain_id = ANY ((InitPlan 9).col1)))))
+                                ->  Memoize  (cost=0.42..8.45 rows=1 width=0) (never executed)
                                       Cache Key: ot.domain_id
                                       Cache Mode: binary
-                                      ->  Subquery Scan on dom  (cost=0.15..8.43 rows=1 width=0) (never executed)
-                                            ->  Limit  (cost=0.15..8.42 rows=1 width=64) (never executed)
-                                                  ->  Index Only Scan using domains_pkey on domains d  (cost=0.15..8.42 rows=1 width=64) (never executed)
+                                      ->  Subquery Scan on dom  (cost=0.41..8.44 rows=1 width=0) (never executed)
+                                            ->  Limit  (cost=0.41..8.43 rows=1 width=64) (never executed)
+                                                  InitPlan 10
+                                                    ->  Result  (cost=0.00..0.26 rows=1 width=1) (never executed)
+                                                  ->  Index Only Scan using domains_pkey on domains d  (cost=0.15..8.17 rows=1 width=64) (never executed)
                                                         Index Cond: (id = ot.domain_id)
-                                                        Filter: is_active_user()
+                                                        Filter: (InitPlan 10).col1
                                                         Heap Fetches: 0
-                          ->  Memoize  (cost=0.16..8.44 rows=1 width=0) (never executed)
+                          ->  Memoize  (cost=0.42..8.45 rows=1 width=0) (never executed)
                                 Cache Key: ot.authority_id
                                 Cache Mode: binary
-                                ->  Subquery Scan on auth_org  (cost=0.15..8.43 rows=1 width=0) (never executed)
-                                      ->  Limit  (cost=0.15..8.42 rows=1 width=32) (never executed)
-                                            ->  Index Only Scan using authorities_pkey on authorities a  (cost=0.15..8.42 rows=1 width=32) (never executed)
+                                ->  Subquery Scan on auth_org  (cost=0.41..8.44 rows=1 width=0) (never executed)
+                                      ->  Limit  (cost=0.41..8.43 rows=1 width=32) (never executed)
+                                            InitPlan 11
+                                              ->  Result  (cost=0.00..0.26 rows=1 width=1) (never executed)
+                                            ->  Index Only Scan using authorities_pkey on authorities a  (cost=0.15..8.17 rows=1 width=32) (never executed)
                                                   Index Cond: (id = ot.authority_id)
-                                                  Filter: is_active_user()
+                                                  Filter: (InitPlan 11).col1
                                                   Heap Fetches: 0
-                    ->  Memoize  (cost=0.15..69.08 rows=1 width=0) (never executed)
+                    ->  Memoize  (cost=0.92..12.25 rows=1 width=0) (never executed)
                           Cache Key: oc.owner_id
                           Cache Mode: binary
-                          ->  Subquery Scan on owner_profile  (cost=0.14..69.07 rows=1 width=0) (never executed)
-                                ->  Limit  (cost=0.14..69.06 rows=1 width=32) (never executed)
-                                      ->  Index Only Scan using profiles_pkey on profiles p  (cost=0.14..69.06 rows=1 width=32) (never executed)
+                          ->  Subquery Scan on owner_profile  (cost=0.91..12.24 rows=1 width=0) (never executed)
+                                ->  Limit  (cost=0.91..12.23 rows=1 width=32) (never executed)
+                                      InitPlan 12
+                                        ->  Result  (cost=0.00..0.26 rows=1 width=1) (never executed)
+                                      InitPlan 13
+                                        ->  Result  (cost=0.00..0.26 rows=1 width=16) (never executed)
+                                      InitPlan 14
+                                        ->  Result  (cost=0.00..0.26 rows=1 width=1) (never executed)
+                                      ->  Index Only Scan using profiles_pkey on profiles p  (cost=0.13..11.45 rows=1 width=32) (never executed)
                                             Index Cond: (id = oc.owner_id)
-                                            Filter: (is_active_user() AND ((id = current_profile_id()) OR has_permission('user.manage'::text) OR EXISTS(SubPlan 2)))
+                                            Filter: ((InitPlan 12).col1 AND ((id = (InitPlan 13).col1) OR (InitPlan 14).col1 OR EXISTS(SubPlan 24)))
                                             Heap Fetches: 0
-                                            SubPlan 2
-                                              ->  Seq Scan on obligation_occurrences oc_1  (cost=0.00..60.15 rows=1 width=0) (never executed)
-                                                    Filter: (((owner_id = p.id) OR (validator_id = p.id)) AND is_active_user() AND (has_permission_in_domain('occurrence.read'::text, obligation_domain_of_type(obligation_type_id)) OR (owner_id = current_profile_id()) OR (validator_id = current_profile_id())) AND (has_permission_in_domain('occurrence.read'::text, obligation_domain_of_type(obligation_type_id)) OR (owner_id = current_profile_id()) OR (validator_id = current_profile_id())))
-              ->  Memoize  (cost=0.15..69.08 rows=1 width=0) (never executed)
-                    Cache Key: oc.validator_id
-                    Cache Mode: binary
-                    ->  Subquery Scan on validator_profile  (cost=0.14..69.07 rows=1 width=0) (never executed)
-                          ->  Limit  (cost=0.14..69.06 rows=1 width=32) (never executed)
-                                ->  Index Only Scan using profiles_pkey on profiles p_1  (cost=0.14..69.06 rows=1 width=32) (never executed)
-                                      Index Cond: (id = oc.validator_id)
-                                      Filter: (is_active_user() AND ((id = current_profile_id()) OR has_permission('user.manage'::text) OR EXISTS(SubPlan 3)))
-                                      Heap Fetches: 0
-                                      SubPlan 3
-                                        ->  Seq Scan on obligation_occurrences oc_2  (cost=0.00..60.15 rows=1 width=0) (never executed)
-                                              Filter: (((owner_id = p_1.id) OR (validator_id = p_1.id)) AND is_active_user() AND (has_permission_in_domain('occurrence.read'::text, obligation_domain_of_type(obligation_type_id)) OR (owner_id = current_profile_id()) OR (validator_id = current_profile_id())) AND (has_permission_in_domain('occurrence.read'::text, obligation_domain_of_type(obligation_type_id)) OR (owner_id = current_profile_id()) OR (validator_id = current_profile_id())))
+                                            SubPlan 24
+                                              ->  Seq Scan on obligation_occurrences oc_1  (cost=2.34..4.26 rows=2 width=0) (never executed)
+                                                    Filter: ((InitPlan 19).col1 AND ((owner_id = p.id) OR (deputy_id = p.id) OR (validator_id = p.id)) AND ((domain_id = ANY ((InitPlan 20).col1)) OR (owner_id = (InitPlan 21).col1) OR (deputy_id = (InitPlan 22).col1) OR (validator_id = (InitPlan 23).col1)) AND ((domain_id = ANY ((InitPlan 15).col1)) OR (owner_id = (InitPlan 16).col1) OR (deputy_id = (InitPlan 17).col1) OR (validator_id = (InitPlan 18).col1)))
+                                                    InitPlan 15
+                                                      ->  Result  (cost=0.00..0.26 rows=1 width=32) (never executed)
+                                                    InitPlan 16
+                                                      ->  Result  (cost=0.00..0.26 rows=1 width=16) (never executed)
+                                                    InitPlan 17
+                                                      ->  Result  (cost=0.00..0.26 rows=1 width=16) (never executed)
+                                                    InitPlan 18
+                                                      ->  Result  (cost=0.00..0.26 rows=1 width=16) (never executed)
+                                                    InitPlan 19
+                                                      ->  Result  (cost=0.00..0.26 rows=1 width=1) (never executed)
+                                                    InitPlan 20
+                                                      ->  Result  (cost=0.00..0.26 rows=1 width=32) (never executed)
+                                                    InitPlan 21
+                                                      ->  Result  (cost=0.00..0.26 rows=1 width=16) (never executed)
+                                                    InitPlan 22
+                                                      ->  Result  (cost=0.00..0.26 rows=1 width=16) (never executed)
+                                                    InitPlan 23
+                                                      ->  Result  (cost=0.00..0.26 rows=1 width=16) (never executed)
+              ->  Limit  (cost=0.91..12.23 rows=1 width=32) (never executed)
+                    InitPlan 25
+                      ->  Result  (cost=0.00..0.26 rows=1 width=1) (never executed)
+                    InitPlan 26
+                      ->  Result  (cost=0.00..0.26 rows=1 width=16) (never executed)
+                    InitPlan 27
+                      ->  Result  (cost=0.00..0.26 rows=1 width=1) (never executed)
+                    ->  Index Only Scan using profiles_pkey on profiles p_1  (cost=0.13..11.45 rows=1 width=32) (never executed)
+                          Index Cond: (id = oc.validator_id)
+                          Filter: ((InitPlan 25).col1 AND ((id = (InitPlan 26).col1) OR (InitPlan 27).col1 OR EXISTS(SubPlan 37)))
+                          Heap Fetches: 0
+                          SubPlan 37
+                            ->  Seq Scan on obligation_occurrences oc_2  (cost=2.34..4.26 rows=2 width=0) (never executed)
+                                  Filter: ((InitPlan 32).col1 AND ((owner_id = p_1.id) OR (deputy_id = p_1.id) OR (validator_id = p_1.id)) AND ((domain_id = ANY ((InitPlan 33).col1)) OR (owner_id = (InitPlan 34).col1) OR (deputy_id = (InitPlan 35).col1) OR (validator_id = (InitPlan 36).col1)) AND ((domain_id = ANY ((InitPlan 28).col1)) OR (owner_id = (InitPlan 29).col1) OR (deputy_id = (InitPlan 30).col1) OR (validator_id = (InitPlan 31).col1)))
+                                  InitPlan 28
+                                    ->  Result  (cost=0.00..0.26 rows=1 width=32) (never executed)
+                                  InitPlan 29
+                                    ->  Result  (cost=0.00..0.26 rows=1 width=16) (never executed)
+                                  InitPlan 30
+                                    ->  Result  (cost=0.00..0.26 rows=1 width=16) (never executed)
+                                  InitPlan 31
+                                    ->  Result  (cost=0.00..0.26 rows=1 width=16) (never executed)
+                                  InitPlan 32
+                                    ->  Result  (cost=0.00..0.26 rows=1 width=1) (never executed)
+                                  InitPlan 33
+                                    ->  Result  (cost=0.00..0.26 rows=1 width=32) (never executed)
+                                  InitPlan 34
+                                    ->  Result  (cost=0.00..0.26 rows=1 width=16) (never executed)
+                                  InitPlan 35
+                                    ->  Result  (cost=0.00..0.26 rows=1 width=16) (never executed)
+                                  InitPlan 36
+                                    ->  Result  (cost=0.00..0.26 rows=1 width=16) (never executed)
 Planning:
-  Buffers: shared hit=738
-Planning Time: 1.950 ms
-Execution Time: 3.357 ms
+  Buffers: shared hit=831
+Planning Time: 1.799 ms
+Execution Time: 0.302 ms
 ```
 
 ### Échéancier — filtré par domaine et statut
@@ -262,82 +431,140 @@ select id, period_key, status, internal_due_date
 ```
 
 ```
-Limit  (cost=338.95..338.96 rows=3 width=32) (actual time=2.636..2.640 rows=0 loops=1)
-  Buffers: shared hit=282
-  ->  Sort  (cost=338.95..338.96 rows=3 width=32) (actual time=2.636..2.639 rows=0 loops=1)
+Limit  (cost=113.17..113.18 rows=4 width=32) (actual time=0.007..0.009 rows=0 loops=1)
+  Buffers: shared hit=1
+  InitPlan 1
+    ->  Result  (cost=0.00..0.26 rows=1 width=1) (never executed)
+  InitPlan 2
+    ->  Result  (cost=0.00..0.26 rows=1 width=32) (never executed)
+  InitPlan 3
+    ->  Result  (cost=0.00..0.26 rows=1 width=16) (never executed)
+  InitPlan 4
+    ->  Result  (cost=0.00..0.26 rows=1 width=16) (never executed)
+  InitPlan 5
+    ->  Result  (cost=0.00..0.26 rows=1 width=16) (never executed)
+  ->  Sort  (cost=111.87..111.88 rows=4 width=32) (actual time=0.007..0.008 rows=0 loops=1)
         Sort Key: oc.internal_due_date, oc.id
         Sort Method: quicksort  Memory: 25kB
-        Buffers: shared hit=282
-        ->  Nested Loop Left Join  (cost=8.53..338.93 rows=3 width=32) (actual time=2.633..2.636 rows=0 loops=1)
-              Buffers: shared hit=282
-              ->  Nested Loop Left Join  (cost=8.38..223.74 rows=3 width=48) (actual time=2.633..2.636 rows=0 loops=1)
-                    Buffers: shared hit=282
-                    ->  Nested Loop Left Join  (cost=8.23..62.52 rows=3 width=64) (actual time=2.633..2.634 rows=0 loops=1)
-                          Buffers: shared hit=282
-                          ->  Nested Loop Left Join  (cost=8.07..48.40 rows=3 width=80) (actual time=2.632..2.634 rows=0 loops=1)
-                                Buffers: shared hit=282
-                                ->  Nested Loop  (cost=7.91..34.29 rows=3 width=96) (actual time=2.632..2.633 rows=0 loops=1)
-                                      Buffers: shared hit=282
-                                      ->  Index Scan using obligation_occurrences_open_due_idx on obligation_occurrences oc  (cost=0.14..11.96 rows=3 width=80) (actual time=2.632..2.632 rows=0 loops=1)
-                                            Filter: ((deleted_at IS NULL) AND is_active_user() AND (has_permission_in_domain('occurrence.read'::text, obligation_domain_of_type(obligation_type_id)) OR (owner_id = current_profile_id()) OR (validator_id = current_profile_id())) AND (status = ANY ('{TODO,IN_PROGRESS,PENDING_VALIDATION}'::occurrence_status[])))
-                                            Rows Removed by Filter: 14
-                                            Buffers: shared hit=282
-                                      ->  Memoize  (cost=7.78..9.55 rows=1 width=32) (never executed)
-                                            Cache Key: oc.obligation_type_id
-                                            Cache Mode: binary
-                                            ->  Subquery Scan on ot  (cost=7.77..9.54 rows=1 width=32) (never executed)
-                                                  ->  Limit  (cost=7.77..9.53 rows=1 width=105) (never executed)
-                                                        ->  Seq Scan on obligation_types ot_1  (cost=7.77..9.53 rows=1 width=105) (never executed)
-                                                              Filter: ((id = oc.obligation_type_id) AND is_active_user() AND (is_admin() OR (has_permission('obligation.read'::text) AND ((domain_id IS NULL) OR (ANY (domain_id = (hashed SubPlan 1).col1))))))
-                                                              SubPlan 1
-                                                                ->  ProjectSet  (cost=0.00..5.27 rows=1000 width=16) (never executed)
-                                                                      ->  Result  (cost=0.00..0.01 rows=1 width=0) (never executed)
-                                ->  Memoize  (cost=0.16..8.44 rows=1 width=0) (never executed)
+        Buffers: shared hit=1
+        ->  Nested Loop Left Join  (cost=3.71..111.83 rows=4 width=32) (actual time=0.004..0.005 rows=0 loops=1)
+              Buffers: shared hit=1
+              ->  Nested Loop Left Join  (cost=2.80..62.82 rows=4 width=48) (actual time=0.004..0.005 rows=0 loops=1)
+                    Buffers: shared hit=1
+                    ->  Nested Loop Left Join  (cost=1.88..41.30 rows=4 width=64) (actual time=0.004..0.005 rows=0 loops=1)
+                          Buffers: shared hit=1
+                          ->  Nested Loop Left Join  (cost=1.46..26.44 rows=4 width=80) (actual time=0.004..0.004 rows=0 loops=1)
+                                Buffers: shared hit=1
+                                ->  Nested Loop  (cost=1.04..11.58 rows=4 width=96) (actual time=0.004..0.004 rows=0 loops=1)
+                                      Buffers: shared hit=1
+                                      ->  Seq Scan on obligation_occurrences oc  (cost=0.00..1.54 rows=4 width=80) (actual time=0.003..0.004 rows=0 loops=1)
+                                            Filter: ((InitPlan 1).col1 AND (deleted_at IS NULL) AND ((domain_id = ANY ((InitPlan 2).col1)) OR (owner_id = (InitPlan 3).col1) OR (deputy_id = (InitPlan 4).col1) OR (validator_id = (InitPlan 5).col1)) AND (status = ANY ('{TODO,IN_PROGRESS,PENDING_VALIDATION}'::occurrence_status[])))
+                                            Buffers: shared hit=1
+                                      ->  Limit  (cost=1.04..2.49 rows=1 width=105) (never executed)
+                                            InitPlan 6
+                                              ->  Result  (cost=0.00..0.26 rows=1 width=1) (never executed)
+                                            InitPlan 7
+                                              ->  Result  (cost=0.00..0.26 rows=1 width=1) (never executed)
+                                            InitPlan 8
+                                              ->  Result  (cost=0.00..0.26 rows=1 width=1) (never executed)
+                                            InitPlan 9
+                                              ->  Result  (cost=0.00..0.26 rows=1 width=32) (never executed)
+                                            ->  Seq Scan on obligation_types ot  (cost=0.00..1.45 rows=1 width=105) (never executed)
+                                                  Filter: ((InitPlan 6).col1 AND (id = oc.obligation_type_id) AND ((InitPlan 7).col1 OR ((InitPlan 8).col1 AND (domain_id = ANY ((InitPlan 9).col1)))))
+                                ->  Memoize  (cost=0.42..8.45 rows=1 width=0) (never executed)
                                       Cache Key: ot.domain_id
                                       Cache Mode: binary
-                                      ->  Subquery Scan on dom  (cost=0.15..8.43 rows=1 width=0) (never executed)
-                                            ->  Limit  (cost=0.15..8.42 rows=1 width=64) (never executed)
-                                                  ->  Index Only Scan using domains_pkey on domains d  (cost=0.15..8.42 rows=1 width=64) (never executed)
+                                      ->  Subquery Scan on dom  (cost=0.41..8.44 rows=1 width=0) (never executed)
+                                            ->  Limit  (cost=0.41..8.43 rows=1 width=64) (never executed)
+                                                  InitPlan 10
+                                                    ->  Result  (cost=0.00..0.26 rows=1 width=1) (never executed)
+                                                  ->  Index Only Scan using domains_pkey on domains d  (cost=0.15..8.17 rows=1 width=64) (never executed)
                                                         Index Cond: (id = ot.domain_id)
-                                                        Filter: is_active_user()
+                                                        Filter: (InitPlan 10).col1
                                                         Heap Fetches: 0
-                          ->  Memoize  (cost=0.16..8.44 rows=1 width=0) (never executed)
+                          ->  Memoize  (cost=0.42..8.45 rows=1 width=0) (never executed)
                                 Cache Key: ot.authority_id
                                 Cache Mode: binary
-                                ->  Subquery Scan on auth_org  (cost=0.15..8.43 rows=1 width=0) (never executed)
-                                      ->  Limit  (cost=0.15..8.42 rows=1 width=32) (never executed)
-                                            ->  Index Only Scan using authorities_pkey on authorities a  (cost=0.15..8.42 rows=1 width=32) (never executed)
+                                ->  Subquery Scan on auth_org  (cost=0.41..8.44 rows=1 width=0) (never executed)
+                                      ->  Limit  (cost=0.41..8.43 rows=1 width=32) (never executed)
+                                            InitPlan 11
+                                              ->  Result  (cost=0.00..0.26 rows=1 width=1) (never executed)
+                                            ->  Index Only Scan using authorities_pkey on authorities a  (cost=0.15..8.17 rows=1 width=32) (never executed)
                                                   Index Cond: (id = ot.authority_id)
-                                                  Filter: is_active_user()
+                                                  Filter: (InitPlan 11).col1
                                                   Heap Fetches: 0
-                    ->  Memoize  (cost=0.15..69.08 rows=1 width=0) (never executed)
+                    ->  Memoize  (cost=0.92..12.25 rows=1 width=0) (never executed)
                           Cache Key: oc.owner_id
                           Cache Mode: binary
-                          ->  Subquery Scan on owner_profile  (cost=0.14..69.07 rows=1 width=0) (never executed)
-                                ->  Limit  (cost=0.14..69.06 rows=1 width=32) (never executed)
-                                      ->  Index Only Scan using profiles_pkey on profiles p  (cost=0.14..69.06 rows=1 width=32) (never executed)
+                          ->  Subquery Scan on owner_profile  (cost=0.91..12.24 rows=1 width=0) (never executed)
+                                ->  Limit  (cost=0.91..12.23 rows=1 width=32) (never executed)
+                                      InitPlan 12
+                                        ->  Result  (cost=0.00..0.26 rows=1 width=1) (never executed)
+                                      InitPlan 13
+                                        ->  Result  (cost=0.00..0.26 rows=1 width=16) (never executed)
+                                      InitPlan 14
+                                        ->  Result  (cost=0.00..0.26 rows=1 width=1) (never executed)
+                                      ->  Index Only Scan using profiles_pkey on profiles p  (cost=0.13..11.45 rows=1 width=32) (never executed)
                                             Index Cond: (id = oc.owner_id)
-                                            Filter: (is_active_user() AND ((id = current_profile_id()) OR has_permission('user.manage'::text) OR EXISTS(SubPlan 2)))
+                                            Filter: ((InitPlan 12).col1 AND ((id = (InitPlan 13).col1) OR (InitPlan 14).col1 OR EXISTS(SubPlan 24)))
                                             Heap Fetches: 0
-                                            SubPlan 2
-                                              ->  Seq Scan on obligation_occurrences oc_1  (cost=0.00..60.15 rows=1 width=0) (never executed)
-                                                    Filter: (((owner_id = p.id) OR (validator_id = p.id)) AND is_active_user() AND (has_permission_in_domain('occurrence.read'::text, obligation_domain_of_type(obligation_type_id)) OR (owner_id = current_profile_id()) OR (validator_id = current_profile_id())) AND (has_permission_in_domain('occurrence.read'::text, obligation_domain_of_type(obligation_type_id)) OR (owner_id = current_profile_id()) OR (validator_id = current_profile_id())))
-              ->  Memoize  (cost=0.15..69.08 rows=1 width=0) (never executed)
-                    Cache Key: oc.validator_id
-                    Cache Mode: binary
-                    ->  Subquery Scan on validator_profile  (cost=0.14..69.07 rows=1 width=0) (never executed)
-                          ->  Limit  (cost=0.14..69.06 rows=1 width=32) (never executed)
-                                ->  Index Only Scan using profiles_pkey on profiles p_1  (cost=0.14..69.06 rows=1 width=32) (never executed)
-                                      Index Cond: (id = oc.validator_id)
-                                      Filter: (is_active_user() AND ((id = current_profile_id()) OR has_permission('user.manage'::text) OR EXISTS(SubPlan 3)))
-                                      Heap Fetches: 0
-                                      SubPlan 3
-                                        ->  Seq Scan on obligation_occurrences oc_2  (cost=0.00..60.15 rows=1 width=0) (never executed)
-                                              Filter: (((owner_id = p_1.id) OR (validator_id = p_1.id)) AND is_active_user() AND (has_permission_in_domain('occurrence.read'::text, obligation_domain_of_type(obligation_type_id)) OR (owner_id = current_profile_id()) OR (validator_id = current_profile_id())) AND (has_permission_in_domain('occurrence.read'::text, obligation_domain_of_type(obligation_type_id)) OR (owner_id = current_profile_id()) OR (validator_id = current_profile_id())))
+                                            SubPlan 24
+                                              ->  Seq Scan on obligation_occurrences oc_1  (cost=2.34..4.26 rows=2 width=0) (never executed)
+                                                    Filter: ((InitPlan 19).col1 AND ((owner_id = p.id) OR (deputy_id = p.id) OR (validator_id = p.id)) AND ((domain_id = ANY ((InitPlan 20).col1)) OR (owner_id = (InitPlan 21).col1) OR (deputy_id = (InitPlan 22).col1) OR (validator_id = (InitPlan 23).col1)) AND ((domain_id = ANY ((InitPlan 15).col1)) OR (owner_id = (InitPlan 16).col1) OR (deputy_id = (InitPlan 17).col1) OR (validator_id = (InitPlan 18).col1)))
+                                                    InitPlan 15
+                                                      ->  Result  (cost=0.00..0.26 rows=1 width=32) (never executed)
+                                                    InitPlan 16
+                                                      ->  Result  (cost=0.00..0.26 rows=1 width=16) (never executed)
+                                                    InitPlan 17
+                                                      ->  Result  (cost=0.00..0.26 rows=1 width=16) (never executed)
+                                                    InitPlan 18
+                                                      ->  Result  (cost=0.00..0.26 rows=1 width=16) (never executed)
+                                                    InitPlan 19
+                                                      ->  Result  (cost=0.00..0.26 rows=1 width=1) (never executed)
+                                                    InitPlan 20
+                                                      ->  Result  (cost=0.00..0.26 rows=1 width=32) (never executed)
+                                                    InitPlan 21
+                                                      ->  Result  (cost=0.00..0.26 rows=1 width=16) (never executed)
+                                                    InitPlan 22
+                                                      ->  Result  (cost=0.00..0.26 rows=1 width=16) (never executed)
+                                                    InitPlan 23
+                                                      ->  Result  (cost=0.00..0.26 rows=1 width=16) (never executed)
+              ->  Limit  (cost=0.91..12.23 rows=1 width=32) (never executed)
+                    InitPlan 25
+                      ->  Result  (cost=0.00..0.26 rows=1 width=1) (never executed)
+                    InitPlan 26
+                      ->  Result  (cost=0.00..0.26 rows=1 width=16) (never executed)
+                    InitPlan 27
+                      ->  Result  (cost=0.00..0.26 rows=1 width=1) (never executed)
+                    ->  Index Only Scan using profiles_pkey on profiles p_1  (cost=0.13..11.45 rows=1 width=32) (never executed)
+                          Index Cond: (id = oc.validator_id)
+                          Filter: ((InitPlan 25).col1 AND ((id = (InitPlan 26).col1) OR (InitPlan 27).col1 OR EXISTS(SubPlan 37)))
+                          Heap Fetches: 0
+                          SubPlan 37
+                            ->  Seq Scan on obligation_occurrences oc_2  (cost=2.34..4.26 rows=2 width=0) (never executed)
+                                  Filter: ((InitPlan 32).col1 AND ((owner_id = p_1.id) OR (deputy_id = p_1.id) OR (validator_id = p_1.id)) AND ((domain_id = ANY ((InitPlan 33).col1)) OR (owner_id = (InitPlan 34).col1) OR (deputy_id = (InitPlan 35).col1) OR (validator_id = (InitPlan 36).col1)) AND ((domain_id = ANY ((InitPlan 28).col1)) OR (owner_id = (InitPlan 29).col1) OR (deputy_id = (InitPlan 30).col1) OR (validator_id = (InitPlan 31).col1)))
+                                  InitPlan 28
+                                    ->  Result  (cost=0.00..0.26 rows=1 width=32) (never executed)
+                                  InitPlan 29
+                                    ->  Result  (cost=0.00..0.26 rows=1 width=16) (never executed)
+                                  InitPlan 30
+                                    ->  Result  (cost=0.00..0.26 rows=1 width=16) (never executed)
+                                  InitPlan 31
+                                    ->  Result  (cost=0.00..0.26 rows=1 width=16) (never executed)
+                                  InitPlan 32
+                                    ->  Result  (cost=0.00..0.26 rows=1 width=1) (never executed)
+                                  InitPlan 33
+                                    ->  Result  (cost=0.00..0.26 rows=1 width=32) (never executed)
+                                  InitPlan 34
+                                    ->  Result  (cost=0.00..0.26 rows=1 width=16) (never executed)
+                                  InitPlan 35
+                                    ->  Result  (cost=0.00..0.26 rows=1 width=16) (never executed)
+                                  InitPlan 36
+                                    ->  Result  (cost=0.00..0.26 rows=1 width=16) (never executed)
 Planning:
-  Buffers: shared hit=55
-Planning Time: 0.983 ms
-Execution Time: 2.695 ms
+  Buffers: shared hit=38
+Planning Time: 0.602 ms
+Execution Time: 0.082 ms
 ```
 
 ### Échéancier — page suivante (curseur)
@@ -353,75 +580,128 @@ select id, period_key, status, internal_due_date
 ```
 
 ```
-Limit  (cost=8.52..281.72 rows=2 width=32) (actual time=2.512..2.515 rows=0 loops=1)
-  Buffers: shared hit=282
-  ->  Nested Loop Left Join  (cost=8.52..281.72 rows=2 width=32) (actual time=2.512..2.515 rows=0 loops=1)
-        Buffers: shared hit=282
-        ->  Nested Loop Left Join  (cost=8.37..178.07 rows=2 width=48) (actual time=2.511..2.514 rows=0 loops=1)
-              Buffers: shared hit=282
-              ->  Nested Loop Left Join  (cost=8.22..74.42 rows=2 width=64) (actual time=2.511..2.513 rows=0 loops=1)
-                    Buffers: shared hit=282
-                    ->  Nested Loop Left Join  (cost=8.06..61.74 rows=2 width=80) (actual time=2.511..2.513 rows=0 loops=1)
-                          Buffers: shared hit=282
-                          ->  Nested Loop  (cost=7.91..49.05 rows=2 width=96) (actual time=2.511..2.512 rows=0 loops=1)
-                                Buffers: shared hit=282
-                                ->  Index Scan using obligation_occurrences_internal_due_cursor_idx on obligation_occurrences oc  (cost=0.14..29.95 rows=2 width=80) (actual time=2.511..2.511 rows=0 loops=1)
-                                      Index Cond: (ROW(internal_due_date, id) > ROW(CURRENT_DATE, '00000000-0000-0000-0000-000000000000'::uuid))
-                                      Filter: (is_active_user() AND (has_permission_in_domain('occurrence.read'::text, obligation_domain_of_type(obligation_type_id)) OR (owner_id = current_profile_id()) OR (validator_id = current_profile_id())))
-                                      Rows Removed by Filter: 14
-                                      Buffers: shared hit=282
-                                ->  Limit  (cost=7.77..9.53 rows=1 width=105) (never executed)
-                                      ->  Seq Scan on obligation_types ot  (cost=7.77..9.53 rows=1 width=105) (never executed)
-                                            Filter: ((id = oc.obligation_type_id) AND is_active_user() AND (is_admin() OR (has_permission('obligation.read'::text) AND ((domain_id IS NULL) OR (ANY (domain_id = (hashed SubPlan 1).col1))))))
-                                            SubPlan 1
-                                              ->  ProjectSet  (cost=0.00..5.27 rows=1000 width=16) (never executed)
-                                                    ->  Result  (cost=0.00..0.01 rows=1 width=0) (never executed)
-                          ->  Memoize  (cost=0.16..8.44 rows=1 width=0) (never executed)
-                                Cache Key: ot.domain_id
-                                Cache Mode: binary
-                                ->  Subquery Scan on dom  (cost=0.15..8.43 rows=1 width=0) (never executed)
-                                      ->  Limit  (cost=0.15..8.42 rows=1 width=64) (never executed)
-                                            ->  Index Only Scan using domains_pkey on domains d  (cost=0.15..8.42 rows=1 width=64) (never executed)
-                                                  Index Cond: (id = ot.domain_id)
-                                                  Filter: is_active_user()
-                                                  Heap Fetches: 0
-                    ->  Memoize  (cost=0.16..8.44 rows=1 width=0) (never executed)
-                          Cache Key: ot.authority_id
-                          Cache Mode: binary
-                          ->  Subquery Scan on auth_org  (cost=0.15..8.43 rows=1 width=0) (never executed)
-                                ->  Limit  (cost=0.15..8.42 rows=1 width=32) (never executed)
-                                      ->  Index Only Scan using authorities_pkey on authorities a  (cost=0.15..8.42 rows=1 width=32) (never executed)
-                                            Index Cond: (id = ot.authority_id)
-                                            Filter: is_active_user()
+Limit  (cost=46.82..46.82 rows=1 width=32) (actual time=0.007..0.009 rows=0 loops=1)
+  Buffers: shared hit=1
+  InitPlan 1
+    ->  Result  (cost=0.00..0.26 rows=1 width=1) (never executed)
+  InitPlan 2
+    ->  Result  (cost=0.00..0.26 rows=1 width=32) (never executed)
+  InitPlan 3
+    ->  Result  (cost=0.00..0.26 rows=1 width=16) (never executed)
+  InitPlan 4
+    ->  Result  (cost=0.00..0.26 rows=1 width=16) (never executed)
+  InitPlan 5
+    ->  Result  (cost=0.00..0.26 rows=1 width=16) (never executed)
+  ->  Sort  (cost=45.52..45.52 rows=1 width=32) (actual time=0.007..0.008 rows=0 loops=1)
+        Sort Key: oc.internal_due_date, oc.id
+        Sort Method: quicksort  Memory: 25kB
+        Buffers: shared hit=1
+        ->  Nested Loop Left Join  (cost=3.68..45.51 rows=1 width=32) (actual time=0.005..0.006 rows=0 loops=1)
+              Buffers: shared hit=1
+              ->  Nested Loop Left Join  (cost=2.77..33.26 rows=1 width=48) (actual time=0.005..0.005 rows=0 loops=1)
+                    Buffers: shared hit=1
+                    ->  Nested Loop Left Join  (cost=1.86..21.00 rows=1 width=64) (actual time=0.004..0.005 rows=0 loops=1)
+                          Buffers: shared hit=1
+                          ->  Nested Loop Left Join  (cost=1.45..12.56 rows=1 width=80) (actual time=0.004..0.005 rows=0 loops=1)
+                                Buffers: shared hit=1
+                                ->  Nested Loop  (cost=1.04..4.11 rows=1 width=96) (actual time=0.004..0.005 rows=0 loops=1)
+                                      Buffers: shared hit=1
+                                      ->  Seq Scan on obligation_occurrences oc  (cost=0.00..1.60 rows=1 width=80) (actual time=0.004..0.004 rows=0 loops=1)
+                                            Filter: ((InitPlan 1).col1 AND (deleted_at IS NULL) AND (ROW(internal_due_date, id) > ROW(CURRENT_DATE, '00000000-0000-0000-0000-000000000000'::uuid)) AND ((domain_id = ANY ((InitPlan 2).col1)) OR (owner_id = (InitPlan 3).col1) OR (deputy_id = (InitPlan 4).col1) OR (validator_id = (InitPlan 5).col1)))
+                                            Buffers: shared hit=1
+                                      ->  Limit  (cost=1.04..2.49 rows=1 width=105) (never executed)
+                                            InitPlan 6
+                                              ->  Result  (cost=0.00..0.26 rows=1 width=1) (never executed)
+                                            InitPlan 7
+                                              ->  Result  (cost=0.00..0.26 rows=1 width=1) (never executed)
+                                            InitPlan 8
+                                              ->  Result  (cost=0.00..0.26 rows=1 width=1) (never executed)
+                                            InitPlan 9
+                                              ->  Result  (cost=0.00..0.26 rows=1 width=32) (never executed)
+                                            ->  Seq Scan on obligation_types ot  (cost=0.00..1.45 rows=1 width=105) (never executed)
+                                                  Filter: ((InitPlan 6).col1 AND (id = oc.obligation_type_id) AND ((InitPlan 7).col1 OR ((InitPlan 8).col1 AND (domain_id = ANY ((InitPlan 9).col1)))))
+                                ->  Limit  (cost=0.41..8.43 rows=1 width=64) (never executed)
+                                      InitPlan 10
+                                        ->  Result  (cost=0.00..0.26 rows=1 width=1) (never executed)
+                                      ->  Index Only Scan using domains_pkey on domains d  (cost=0.15..8.17 rows=1 width=64) (never executed)
+                                            Index Cond: (id = ot.domain_id)
+                                            Filter: (InitPlan 10).col1
                                             Heap Fetches: 0
-              ->  Memoize  (cost=0.15..69.08 rows=1 width=0) (never executed)
-                    Cache Key: oc.owner_id
-                    Cache Mode: binary
-                    ->  Subquery Scan on owner_profile  (cost=0.14..69.07 rows=1 width=0) (never executed)
-                          ->  Limit  (cost=0.14..69.06 rows=1 width=32) (never executed)
-                                ->  Index Only Scan using profiles_pkey on profiles p  (cost=0.14..69.06 rows=1 width=32) (never executed)
-                                      Index Cond: (id = oc.owner_id)
-                                      Filter: (is_active_user() AND ((id = current_profile_id()) OR has_permission('user.manage'::text) OR EXISTS(SubPlan 2)))
+                          ->  Limit  (cost=0.41..8.43 rows=1 width=32) (never executed)
+                                InitPlan 11
+                                  ->  Result  (cost=0.00..0.26 rows=1 width=1) (never executed)
+                                ->  Index Only Scan using authorities_pkey on authorities a  (cost=0.15..8.17 rows=1 width=32) (never executed)
+                                      Index Cond: (id = ot.authority_id)
+                                      Filter: (InitPlan 11).col1
                                       Heap Fetches: 0
-                                      SubPlan 2
-                                        ->  Seq Scan on obligation_occurrences oc_1  (cost=0.00..60.15 rows=1 width=0) (never executed)
-                                              Filter: (((owner_id = p.id) OR (validator_id = p.id)) AND is_active_user() AND (has_permission_in_domain('occurrence.read'::text, obligation_domain_of_type(obligation_type_id)) OR (owner_id = current_profile_id()) OR (validator_id = current_profile_id())) AND (has_permission_in_domain('occurrence.read'::text, obligation_domain_of_type(obligation_type_id)) OR (owner_id = current_profile_id()) OR (validator_id = current_profile_id())))
-        ->  Memoize  (cost=0.15..69.08 rows=1 width=0) (never executed)
-              Cache Key: oc.validator_id
-              Cache Mode: binary
-              ->  Subquery Scan on validator_profile  (cost=0.14..69.07 rows=1 width=0) (never executed)
-                    ->  Limit  (cost=0.14..69.06 rows=1 width=32) (never executed)
-                          ->  Index Only Scan using profiles_pkey on profiles p_1  (cost=0.14..69.06 rows=1 width=32) (never executed)
-                                Index Cond: (id = oc.validator_id)
-                                Filter: (is_active_user() AND ((id = current_profile_id()) OR has_permission('user.manage'::text) OR EXISTS(SubPlan 3)))
+                    ->  Limit  (cost=0.91..12.23 rows=1 width=32) (never executed)
+                          InitPlan 12
+                            ->  Result  (cost=0.00..0.26 rows=1 width=1) (never executed)
+                          InitPlan 13
+                            ->  Result  (cost=0.00..0.26 rows=1 width=16) (never executed)
+                          InitPlan 14
+                            ->  Result  (cost=0.00..0.26 rows=1 width=1) (never executed)
+                          ->  Index Only Scan using profiles_pkey on profiles p  (cost=0.13..11.45 rows=1 width=32) (never executed)
+                                Index Cond: (id = oc.owner_id)
+                                Filter: ((InitPlan 12).col1 AND ((id = (InitPlan 13).col1) OR (InitPlan 14).col1 OR EXISTS(SubPlan 24)))
                                 Heap Fetches: 0
-                                SubPlan 3
-                                  ->  Seq Scan on obligation_occurrences oc_2  (cost=0.00..60.15 rows=1 width=0) (never executed)
-                                        Filter: (((owner_id = p_1.id) OR (validator_id = p_1.id)) AND is_active_user() AND (has_permission_in_domain('occurrence.read'::text, obligation_domain_of_type(obligation_type_id)) OR (owner_id = current_profile_id()) OR (validator_id = current_profile_id())) AND (has_permission_in_domain('occurrence.read'::text, obligation_domain_of_type(obligation_type_id)) OR (owner_id = current_profile_id()) OR (validator_id = current_profile_id())))
+                                SubPlan 24
+                                  ->  Seq Scan on obligation_occurrences oc_1  (cost=2.34..4.26 rows=2 width=0) (never executed)
+                                        Filter: ((InitPlan 19).col1 AND ((owner_id = p.id) OR (deputy_id = p.id) OR (validator_id = p.id)) AND ((domain_id = ANY ((InitPlan 20).col1)) OR (owner_id = (InitPlan 21).col1) OR (deputy_id = (InitPlan 22).col1) OR (validator_id = (InitPlan 23).col1)) AND ((domain_id = ANY ((InitPlan 15).col1)) OR (owner_id = (InitPlan 16).col1) OR (deputy_id = (InitPlan 17).col1) OR (validator_id = (InitPlan 18).col1)))
+                                        InitPlan 15
+                                          ->  Result  (cost=0.00..0.26 rows=1 width=32) (never executed)
+                                        InitPlan 16
+                                          ->  Result  (cost=0.00..0.26 rows=1 width=16) (never executed)
+                                        InitPlan 17
+                                          ->  Result  (cost=0.00..0.26 rows=1 width=16) (never executed)
+                                        InitPlan 18
+                                          ->  Result  (cost=0.00..0.26 rows=1 width=16) (never executed)
+                                        InitPlan 19
+                                          ->  Result  (cost=0.00..0.26 rows=1 width=1) (never executed)
+                                        InitPlan 20
+                                          ->  Result  (cost=0.00..0.26 rows=1 width=32) (never executed)
+                                        InitPlan 21
+                                          ->  Result  (cost=0.00..0.26 rows=1 width=16) (never executed)
+                                        InitPlan 22
+                                          ->  Result  (cost=0.00..0.26 rows=1 width=16) (never executed)
+                                        InitPlan 23
+                                          ->  Result  (cost=0.00..0.26 rows=1 width=16) (never executed)
+              ->  Limit  (cost=0.91..12.23 rows=1 width=32) (never executed)
+                    InitPlan 25
+                      ->  Result  (cost=0.00..0.26 rows=1 width=1) (never executed)
+                    InitPlan 26
+                      ->  Result  (cost=0.00..0.26 rows=1 width=16) (never executed)
+                    InitPlan 27
+                      ->  Result  (cost=0.00..0.26 rows=1 width=1) (never executed)
+                    ->  Index Only Scan using profiles_pkey on profiles p_1  (cost=0.13..11.45 rows=1 width=32) (never executed)
+                          Index Cond: (id = oc.validator_id)
+                          Filter: ((InitPlan 25).col1 AND ((id = (InitPlan 26).col1) OR (InitPlan 27).col1 OR EXISTS(SubPlan 37)))
+                          Heap Fetches: 0
+                          SubPlan 37
+                            ->  Seq Scan on obligation_occurrences oc_2  (cost=2.34..4.26 rows=2 width=0) (never executed)
+                                  Filter: ((InitPlan 32).col1 AND ((owner_id = p_1.id) OR (deputy_id = p_1.id) OR (validator_id = p_1.id)) AND ((domain_id = ANY ((InitPlan 33).col1)) OR (owner_id = (InitPlan 34).col1) OR (deputy_id = (InitPlan 35).col1) OR (validator_id = (InitPlan 36).col1)) AND ((domain_id = ANY ((InitPlan 28).col1)) OR (owner_id = (InitPlan 29).col1) OR (deputy_id = (InitPlan 30).col1) OR (validator_id = (InitPlan 31).col1)))
+                                  InitPlan 28
+                                    ->  Result  (cost=0.00..0.26 rows=1 width=32) (never executed)
+                                  InitPlan 29
+                                    ->  Result  (cost=0.00..0.26 rows=1 width=16) (never executed)
+                                  InitPlan 30
+                                    ->  Result  (cost=0.00..0.26 rows=1 width=16) (never executed)
+                                  InitPlan 31
+                                    ->  Result  (cost=0.00..0.26 rows=1 width=16) (never executed)
+                                  InitPlan 32
+                                    ->  Result  (cost=0.00..0.26 rows=1 width=1) (never executed)
+                                  InitPlan 33
+                                    ->  Result  (cost=0.00..0.26 rows=1 width=32) (never executed)
+                                  InitPlan 34
+                                    ->  Result  (cost=0.00..0.26 rows=1 width=16) (never executed)
+                                  InitPlan 35
+                                    ->  Result  (cost=0.00..0.26 rows=1 width=16) (never executed)
+                                  InitPlan 36
+                                    ->  Result  (cost=0.00..0.26 rows=1 width=16) (never executed)
 Planning:
-  Buffers: shared hit=21
-Planning Time: 0.880 ms
-Execution Time: 2.574 ms
+  Buffers: shared hit=13
+Planning Time: 0.552 ms
+Execution Time: 0.084 ms
 ```
 
 ### Mes tâches
@@ -437,20 +717,29 @@ select id, period_key, status, internal_due_date
 ```
 
 ```
-Limit  (cost=34.55..34.55 rows=1 width=32) (actual time=2.437..2.437 rows=0 loops=1)
-  Buffers: shared hit=281
-  ->  Sort  (cost=34.55..34.55 rows=1 width=32) (actual time=2.436..2.436 rows=0 loops=1)
-        Sort Key: internal_due_date
+Limit  (cost=3.19..3.19 rows=1 width=32) (actual time=0.005..0.005 rows=0 loops=1)
+  Buffers: shared hit=1
+  InitPlan 1
+    ->  Result  (cost=0.00..0.26 rows=1 width=1) (never executed)
+  InitPlan 2
+    ->  Result  (cost=0.00..0.26 rows=1 width=32) (never executed)
+  InitPlan 3
+    ->  Result  (cost=0.00..0.26 rows=1 width=16) (never executed)
+  InitPlan 4
+    ->  Result  (cost=0.00..0.26 rows=1 width=16) (never executed)
+  InitPlan 5
+    ->  Result  (cost=0.00..0.26 rows=1 width=16) (never executed)
+  ->  Sort  (cost=1.89..1.89 rows=1 width=32) (actual time=0.004..0.005 rows=0 loops=1)
+        Sort Key: obligation_occurrences.internal_due_date
         Sort Method: quicksort  Memory: 25kB
-        Buffers: shared hit=281
-        ->  Seq Scan on obligation_occurrences  (cost=0.00..34.54 rows=1 width=32) (actual time=2.435..2.435 rows=0 loops=1)
-              Filter: ((deleted_at IS NULL) AND is_active_user() AND (has_permission_in_domain('occurrence.read'::text, obligation_domain_of_type(obligation_type_id)) OR (owner_id = current_profile_id()) OR (validator_id = current_profile_id())) AND (owner_id = (COALESCE(NULLIF(current_setting('request.jwt.claim.sub'::text, true), ''::text), ((NULLIF(current_setting('request.jwt.claims'::text, true), ''::text))::jsonb ->> 'sub'::text)))::uuid))
-              Rows Removed by Filter: 14
-              Buffers: shared hit=281
+        Buffers: shared hit=1
+        ->  Seq Scan on obligation_occurrences  (cost=0.00..1.88 rows=1 width=32) (actual time=0.003..0.003 rows=0 loops=1)
+              Filter: ((InitPlan 1).col1 AND (deleted_at IS NULL) AND ((domain_id = ANY ((InitPlan 2).col1)) OR (owner_id = (InitPlan 3).col1) OR (deputy_id = (InitPlan 4).col1) OR (validator_id = (InitPlan 5).col1)) AND (owner_id = (COALESCE(NULLIF(current_setting('request.jwt.claim.sub'::text, true), ''::text), ((NULLIF(current_setting('request.jwt.claims'::text, true), ''::text))::jsonb ->> 'sub'::text)))::uuid))
+              Buffers: shared hit=1
 Planning:
-  Buffers: shared hit=4
-Planning Time: 0.232 ms
-Execution Time: 2.446 ms
+  Buffers: shared hit=49
+Planning Time: 0.235 ms
+Execution Time: 0.022 ms
 ```
 
 ### File de validation
@@ -463,16 +752,25 @@ select count(*) from public.obligation_occurrences
 ```
 
 ```
-Aggregate  (cost=11.96..11.97 rows=1 width=8) (actual time=2.618..2.618 rows=1 loops=1)
-  Buffers: shared hit=282
-  ->  Index Scan using obligation_occurrences_open_due_idx on obligation_occurrences  (cost=0.14..11.95 rows=2 width=0) (actual time=2.617..2.617 rows=0 loops=1)
-        Filter: ((deleted_at IS NULL) AND is_active_user() AND (has_permission_in_domain('occurrence.read'::text, obligation_domain_of_type(obligation_type_id)) OR (owner_id = current_profile_id()) OR (validator_id = current_profile_id())) AND (status = 'PENDING_VALIDATION'::occurrence_status))
-        Rows Removed by Filter: 14
-        Buffers: shared hit=282
+Aggregate  (cost=2.82..2.83 rows=1 width=8) (actual time=0.004..0.004 rows=1 loops=1)
+  Buffers: shared hit=1
+  InitPlan 1
+    ->  Result  (cost=0.00..0.26 rows=1 width=1) (never executed)
+  InitPlan 2
+    ->  Result  (cost=0.00..0.26 rows=1 width=32) (never executed)
+  InitPlan 3
+    ->  Result  (cost=0.00..0.26 rows=1 width=16) (never executed)
+  InitPlan 4
+    ->  Result  (cost=0.00..0.26 rows=1 width=16) (never executed)
+  InitPlan 5
+    ->  Result  (cost=0.00..0.26 rows=1 width=16) (never executed)
+  ->  Seq Scan on obligation_occurrences  (cost=0.00..1.52 rows=1 width=0) (actual time=0.003..0.003 rows=0 loops=1)
+        Filter: ((InitPlan 1).col1 AND (deleted_at IS NULL) AND ((domain_id = ANY ((InitPlan 2).col1)) OR (owner_id = (InitPlan 3).col1) OR (deputy_id = (InitPlan 4).col1) OR (validator_id = (InitPlan 5).col1)) AND (status = 'PENDING_VALIDATION'::occurrence_status))
+        Buffers: shared hit=1
 Planning:
-  Buffers: shared hit=7
-Planning Time: 0.215 ms
-Execution Time: 2.637 ms
+  Buffers: shared hit=4
+Planning Time: 0.133 ms
+Execution Time: 0.027 ms
 ```
 
 ### Fiche d'un dossier — liste de contrôle
@@ -488,38 +786,71 @@ select ci.id, ci.label, ci.is_mandatory, d.id as document_id
 ```
 
 ```
-Nested Loop Left Join  (cost=11.44..38.82 rows=1 width=42) (actual time=2.544..2.545 rows=0 loops=1)
+Nested Loop Left Join  (cost=2.41..13.28 rows=1 width=65) (actual time=0.005..0.006 rows=0 loops=1)
   Join Filter: (d.checklist_item_id = ci.id)
-  Buffers: shared hit=281
-  ->  Nested Loop  (cost=11.44..38.81 rows=1 width=26) (actual time=2.544..2.544 rows=0 loops=1)
-        Buffers: shared hit=281
-        ->  HashAggregate  (cost=11.30..11.31 rows=1 width=16) (actual time=2.543..2.544 rows=0 loops=1)
+  Buffers: shared hit=1
+  InitPlan 1
+    ->  Result  (cost=0.00..0.26 rows=1 width=1) (never executed)
+  InitPlan 14
+    ->  Result  (cost=0.00..0.26 rows=1 width=1) (never executed)
+  InitPlan 15
+    ->  Result  (cost=0.00..0.26 rows=1 width=32) (never executed)
+  ->  Nested Loop  (cost=1.63..12.48 rows=1 width=49) (actual time=0.005..0.006 rows=0 loops=1)
+        Buffers: shared hit=1
+        ->  HashAggregate  (cost=1.49..1.50 rows=1 width=16) (actual time=0.005..0.005 rows=0 loops=1)
               Group Key: obligation_occurrences.id
               Batches: 1  Memory Usage: 24kB
-              Buffers: shared hit=281
-              ->  Limit  (cost=0.00..11.30 rows=1 width=16) (actual time=2.543..2.543 rows=0 loops=1)
-                    Buffers: shared hit=281
-                    ->  Seq Scan on obligation_occurrences  (cost=0.00..33.89 rows=3 width=16) (actual time=2.542..2.542 rows=0 loops=1)
-                          Filter: (is_active_user() AND (has_permission_in_domain('occurrence.read'::text, obligation_domain_of_type(obligation_type_id)) OR (owner_id = current_profile_id()) OR (validator_id = current_profile_id())))
-                          Rows Removed by Filter: 14
-                          Buffers: shared hit=281
-        ->  Index Scan using occurrence_checklist_items_occurrence_idx on occurrence_checklist_items ci  (cost=0.14..27.49 rows=1 width=42) (never executed)
+              Buffers: shared hit=1
+              ->  Limit  (cost=1.30..1.49 rows=1 width=16) (actual time=0.004..0.004 rows=0 loops=1)
+                    Buffers: shared hit=1
+                    InitPlan 28
+                      ->  Result  (cost=0.00..0.26 rows=1 width=1) (never executed)
+                    InitPlan 29
+                      ->  Result  (cost=0.00..0.26 rows=1 width=32) (never executed)
+                    InitPlan 30
+                      ->  Result  (cost=0.00..0.26 rows=1 width=16) (never executed)
+                    InitPlan 31
+                      ->  Result  (cost=0.00..0.26 rows=1 width=16) (never executed)
+                    InitPlan 32
+                      ->  Result  (cost=0.00..0.26 rows=1 width=16) (never executed)
+                    ->  Seq Scan on obligation_occurrences  (cost=0.00..1.48 rows=8 width=16) (actual time=0.003..0.003 rows=0 loops=1)
+                          Filter: ((InitPlan 28).col1 AND ((domain_id = ANY ((InitPlan 29).col1)) OR (owner_id = (InitPlan 30).col1) OR (deputy_id = (InitPlan 31).col1) OR (validator_id = (InitPlan 32).col1)))
+                          Buffers: shared hit=1
+        ->  Index Scan using occurrence_checklist_items_occurrence_idx on occurrence_checklist_items ci  (cost=0.14..10.98 rows=1 width=65) (never executed)
               Index Cond: (occurrence_id = obligation_occurrences.id)
-              Filter: (is_active_user() AND EXISTS(SubPlan 1))
-              SubPlan 1
-                ->  Index Scan using obligation_occurrences_pkey on obligation_occurrences oc  (cost=0.14..9.41 rows=1 width=0) (never executed)
-                      Index Cond: (id = ci.occurrence_id)
-                      Filter: (is_active_user() AND (has_permission_in_domain('occurrence.read'::text, obligation_domain_of_type(obligation_type_id)) OR (owner_id = current_profile_id()) OR (validator_id = current_profile_id())))
+              Filter: ((InitPlan 1).col1 AND (ANY (occurrence_id = (hashed SubPlan 13).col1)))
+              SubPlan 13
+                ->  Seq Scan on obligation_occurrences oc  (cost=1.30..2.78 rows=8 width=16) (never executed)
+                      Filter: ((InitPlan 8).col1 AND ((domain_id = ANY ((InitPlan 9).col1)) OR (owner_id = (InitPlan 10).col1) OR (deputy_id = (InitPlan 11).col1) OR (validator_id = (InitPlan 12).col1)))
+                      InitPlan 8
+                        ->  Result  (cost=0.00..0.26 rows=1 width=1) (never executed)
+                      InitPlan 9
+                        ->  Result  (cost=0.00..0.26 rows=1 width=32) (never executed)
+                      InitPlan 10
+                        ->  Result  (cost=0.00..0.26 rows=1 width=16) (never executed)
+                      InitPlan 11
+                        ->  Result  (cost=0.00..0.26 rows=1 width=16) (never executed)
+                      InitPlan 12
+                        ->  Result  (cost=0.00..0.26 rows=1 width=16) (never executed)
   ->  Seq Scan on documents d  (cost=0.00..0.00 rows=1 width=32) (never executed)
-        Filter: ((deleted_at IS NULL) AND (deleted_at IS NULL) AND is_active_user() AND has_permission_in_domain('document.read'::text, obligation_domain_of_occurrence(occurrence_id)) AND EXISTS(SubPlan 3))
-        SubPlan 3
-          ->  Index Scan using obligation_occurrences_pkey on obligation_occurrences oc_1  (cost=0.14..9.41 rows=1 width=0) (never executed)
-                Index Cond: (id = d.occurrence_id)
-                Filter: (is_active_user() AND (has_permission_in_domain('occurrence.read'::text, obligation_domain_of_type(obligation_type_id)) OR (owner_id = current_profile_id()) OR (validator_id = current_profile_id())))
+        Filter: ((InitPlan 14).col1 AND (deleted_at IS NULL) AND (deleted_at IS NULL) AND (obligation_domain_of_occurrence(occurrence_id) = ANY ((InitPlan 15).col1)) AND (ANY (occurrence_id = (hashed SubPlan 27).col1)))
+        SubPlan 27
+          ->  Seq Scan on obligation_occurrences oc_1  (cost=1.30..2.78 rows=8 width=16) (never executed)
+                Filter: ((InitPlan 22).col1 AND ((domain_id = ANY ((InitPlan 23).col1)) OR (owner_id = (InitPlan 24).col1) OR (deputy_id = (InitPlan 25).col1) OR (validator_id = (InitPlan 26).col1)))
+                InitPlan 22
+                  ->  Result  (cost=0.00..0.26 rows=1 width=1) (never executed)
+                InitPlan 23
+                  ->  Result  (cost=0.00..0.26 rows=1 width=32) (never executed)
+                InitPlan 24
+                  ->  Result  (cost=0.00..0.26 rows=1 width=16) (never executed)
+                InitPlan 25
+                  ->  Result  (cost=0.00..0.26 rows=1 width=16) (never executed)
+                InitPlan 26
+                  ->  Result  (cost=0.00..0.26 rows=1 width=16) (never executed)
 Planning:
-  Buffers: shared hit=267
-Planning Time: 1.157 ms
-Execution Time: 2.570 ms
+  Buffers: shared hit=240
+Planning Time: 0.624 ms
+Execution Time: 0.052 ms
 ```
 
 ### Documents — liste filtrée
@@ -535,20 +866,33 @@ select id, original_filename, document_kind, uploaded_at
 ```
 
 ```
-Limit  (cost=0.01..0.02 rows=1 width=58) (actual time=0.006..0.006 rows=0 loops=1)
-  ->  Sort  (cost=0.01..0.02 rows=1 width=58) (actual time=0.005..0.006 rows=0 loops=1)
+Limit  (cost=0.53..0.54 rows=1 width=88) (actual time=0.011..0.011 rows=0 loops=1)
+  InitPlan 1
+    ->  Result  (cost=0.00..0.26 rows=1 width=1) (never executed)
+  InitPlan 2
+    ->  Result  (cost=0.00..0.26 rows=1 width=32) (never executed)
+  ->  Sort  (cost=0.01..0.02 rows=1 width=88) (actual time=0.010..0.011 rows=0 loops=1)
         Sort Key: documents.uploaded_at DESC
         Sort Method: quicksort  Memory: 25kB
-        ->  Seq Scan on documents  (cost=0.00..0.00 rows=1 width=58) (actual time=0.003..0.003 rows=0 loops=1)
-              Filter: ((deleted_at IS NULL) AND (deleted_at IS NULL) AND is_active_user() AND has_permission_in_domain('document.read'::text, obligation_domain_of_occurrence(occurrence_id)) AND EXISTS(SubPlan 1))
-              SubPlan 1
-                ->  Index Scan using obligation_occurrences_pkey on obligation_occurrences oc  (cost=0.14..9.41 rows=1 width=0) (never executed)
-                      Index Cond: (id = documents.occurrence_id)
-                      Filter: (is_active_user() AND (has_permission_in_domain('occurrence.read'::text, obligation_domain_of_type(obligation_type_id)) OR (owner_id = current_profile_id()) OR (validator_id = current_profile_id())))
+        ->  Seq Scan on documents  (cost=0.00..0.00 rows=1 width=88) (actual time=0.002..0.003 rows=0 loops=1)
+              Filter: ((InitPlan 1).col1 AND (deleted_at IS NULL) AND (deleted_at IS NULL) AND (obligation_domain_of_occurrence(occurrence_id) = ANY ((InitPlan 2).col1)) AND (ANY (occurrence_id = (hashed SubPlan 14).col1)))
+              SubPlan 14
+                ->  Seq Scan on obligation_occurrences oc  (cost=1.30..2.78 rows=8 width=16) (never executed)
+                      Filter: ((InitPlan 9).col1 AND ((domain_id = ANY ((InitPlan 10).col1)) OR (owner_id = (InitPlan 11).col1) OR (deputy_id = (InitPlan 12).col1) OR (validator_id = (InitPlan 13).col1)))
+                      InitPlan 9
+                        ->  Result  (cost=0.00..0.26 rows=1 width=1) (never executed)
+                      InitPlan 10
+                        ->  Result  (cost=0.00..0.26 rows=1 width=32) (never executed)
+                      InitPlan 11
+                        ->  Result  (cost=0.00..0.26 rows=1 width=16) (never executed)
+                      InitPlan 12
+                        ->  Result  (cost=0.00..0.26 rows=1 width=16) (never executed)
+                      InitPlan 13
+                        ->  Result  (cost=0.00..0.26 rows=1 width=16) (never executed)
 Planning:
-  Buffers: shared hit=20
-Planning Time: 0.471 ms
-Execution Time: 0.018 ms
+  Buffers: shared hit=10
+Planning Time: 0.172 ms
+Execution Time: 0.034 ms
 ```
 
 ### Référentiel des obligations
@@ -564,22 +908,27 @@ select id, code, name, periodicity
 ```
 
 ```
-Limit  (cost=9.54..9.54 rows=1 width=35) (actual time=0.572..0.573 rows=1 loops=1)
-  Buffers: shared hit=85
-  ->  Sort  (cost=9.54..9.54 rows=1 width=35) (actual time=0.571..0.572 rows=1 loops=1)
+Limit  (cost=2.54..2.56 rows=7 width=52) (actual time=0.011..0.011 rows=0 loops=1)
+  Buffers: shared hit=4
+  InitPlan 1
+    ->  Result  (cost=0.00..0.26 rows=1 width=1) (never executed)
+  InitPlan 2
+    ->  Result  (cost=0.00..0.26 rows=1 width=1) (never executed)
+  InitPlan 3
+    ->  Result  (cost=0.00..0.26 rows=1 width=1) (never executed)
+  InitPlan 4
+    ->  Result  (cost=0.00..0.26 rows=1 width=32) (never executed)
+  ->  Sort  (cost=1.50..1.52 rows=7 width=52) (actual time=0.011..0.011 rows=0 loops=1)
         Sort Key: obligation_types.code
         Sort Method: quicksort  Memory: 25kB
-        Buffers: shared hit=85
-        ->  Seq Scan on obligation_types  (cost=7.77..9.53 rows=1 width=35) (actual time=0.563..0.564 rows=1 loops=1)
-              Filter: ((deleted_at IS NULL) AND is_active_user() AND (is_admin() OR (has_permission('obligation.read'::text) AND ((domain_id IS NULL) OR (ANY (domain_id = (hashed SubPlan 1).col1))))))
-              Buffers: shared hit=82
-              SubPlan 1
-                ->  ProjectSet  (cost=0.00..5.27 rows=1000 width=16) (never executed)
-                      ->  Result  (cost=0.00..0.01 rows=1 width=0) (never executed)
+        Buffers: shared hit=4
+        ->  Seq Scan on obligation_types  (cost=0.00..1.41 rows=7 width=52) (actual time=0.003..0.003 rows=0 loops=1)
+              Filter: ((InitPlan 1).col1 AND (deleted_at IS NULL) AND ((InitPlan 2).col1 OR ((InitPlan 3).col1 AND (domain_id = ANY ((InitPlan 4).col1)))))
+              Buffers: shared hit=1
 Planning:
-  Buffers: shared hit=34
-Planning Time: 0.119 ms
-Execution Time: 0.598 ms
+  Buffers: shared hit=6
+Planning Time: 0.063 ms
+Execution Time: 0.027 ms
 ```
 
 ### Centre de notifications
@@ -595,19 +944,23 @@ select id, kind, created_at
 ```
 
 ```
-Limit  (cost=1.01..1.01 rows=1 width=37) (actual time=0.011..0.012 rows=0 loops=1)
+Limit  (cost=2.35..2.36 rows=1 width=48) (actual time=0.008..0.009 rows=0 loops=1)
   Buffers: shared hit=1
-  ->  Sort  (cost=1.01..1.01 rows=1 width=37) (actual time=0.011..0.011 rows=0 loops=1)
-        Sort Key: created_at DESC
+  InitPlan 1
+    ->  Result  (cost=0.00..0.26 rows=1 width=1) (never executed)
+  InitPlan 2
+    ->  Result  (cost=0.00..0.26 rows=1 width=16) (never executed)
+  ->  Sort  (cost=1.83..1.84 rows=1 width=48) (actual time=0.008..0.008 rows=0 loops=1)
+        Sort Key: notifications.created_at DESC
         Sort Method: quicksort  Memory: 25kB
         Buffers: shared hit=1
-        ->  Seq Scan on notifications  (cost=0.00..1.00 rows=1 width=37) (actual time=0.008..0.008 rows=0 loops=1)
-              Filter: ((read_at IS NULL) AND is_active_user() AND (recipient_id = current_profile_id()) AND (recipient_id = (COALESCE(NULLIF(current_setting('request.jwt.claim.sub'::text, true), ''::text), ((NULLIF(current_setting('request.jwt.claims'::text, true), ''::text))::jsonb ->> 'sub'::text)))::uuid))
+        ->  Seq Scan on notifications  (cost=0.00..1.82 rows=1 width=48) (actual time=0.006..0.006 rows=0 loops=1)
+              Filter: ((InitPlan 1).col1 AND (read_at IS NULL) AND (recipient_id = (InitPlan 2).col1) AND (recipient_id = (COALESCE(NULLIF(current_setting('request.jwt.claim.sub'::text, true), ''::text), ((NULLIF(current_setting('request.jwt.claims'::text, true), ''::text))::jsonb ->> 'sub'::text)))::uuid))
               Buffers: shared hit=1
 Planning:
-  Buffers: shared hit=157
-Planning Time: 0.487 ms
-Execution Time: 0.020 ms
+  Buffers: shared hit=170
+Planning Time: 0.299 ms
+Execution Time: 0.022 ms
 ```
 
 ### Journal d'audit — dernière page
@@ -622,145 +975,100 @@ select id, action, entity_table, occurred_at
 ```
 
 ```
-Limit  (cost=4.05..14.92 rows=50 width=57) (actual time=13.662..13.708 rows=50 loops=1)
-  Buffers: shared hit=423
-  ->  Append  (cost=4.05..2351.16 rows=10798 width=57) (actual time=13.661..13.704 rows=50 loops=1)
-        Buffers: shared hit=423
-        ->  Result  (cost=0.14..47.00 rows=190 width=80) (actual time=0.706..0.706 rows=0 loops=1)
-              One-Time Filter: (is_active_user() AND has_permission('audit.read'::text))
-              Buffers: shared hit=15
-              ->  Index Scan using audit_log_2028m10_occurred_at_idx on audit_log_2028m10 audit_log_27  (cost=0.14..47.00 rows=190 width=80) (actual time=0.002..0.003 rows=0 loops=1)
-                    Buffers: shared hit=1
-        ->  Result  (cost=0.14..47.00 rows=190 width=80) (actual time=0.565..0.565 rows=0 loops=1)
-              One-Time Filter: (is_active_user() AND has_permission('audit.read'::text))
-              Buffers: shared hit=15
-              ->  Index Scan using audit_log_2028m09_occurred_at_idx on audit_log_2028m09 audit_log_26  (cost=0.14..47.00 rows=190 width=80) (actual time=0.001..0.001 rows=0 loops=1)
-                    Buffers: shared hit=1
-        ->  Result  (cost=0.14..47.00 rows=190 width=80) (actual time=0.521..0.521 rows=0 loops=1)
-              One-Time Filter: (is_active_user() AND has_permission('audit.read'::text))
-              Buffers: shared hit=15
-              ->  Index Scan using audit_log_2028m08_occurred_at_idx on audit_log_2028m08 audit_log_25  (cost=0.14..47.00 rows=190 width=80) (actual time=0.002..0.002 rows=0 loops=1)
-                    Buffers: shared hit=1
-        ->  Result  (cost=0.14..47.00 rows=190 width=80) (actual time=0.556..0.556 rows=0 loops=1)
-              One-Time Filter: (is_active_user() AND has_permission('audit.read'::text))
-              Buffers: shared hit=15
-              ->  Index Scan using audit_log_2028m07_occurred_at_idx on audit_log_2028m07 audit_log_24  (cost=0.14..47.00 rows=190 width=80) (actual time=0.002..0.002 rows=0 loops=1)
-                    Buffers: shared hit=1
-        ->  Result  (cost=0.14..47.00 rows=190 width=80) (actual time=0.482..0.482 rows=0 loops=1)
-              One-Time Filter: (is_active_user() AND has_permission('audit.read'::text))
-              Buffers: shared hit=15
-              ->  Index Scan using audit_log_2028m06_occurred_at_idx on audit_log_2028m06 audit_log_23  (cost=0.14..47.00 rows=190 width=80) (actual time=0.001..0.001 rows=0 loops=1)
-                    Buffers: shared hit=1
-        ->  Result  (cost=0.14..47.00 rows=190 width=80) (actual time=0.501..0.501 rows=0 loops=1)
-              One-Time Filter: (is_active_user() AND has_permission('audit.read'::text))
-              Buffers: shared hit=15
-              ->  Index Scan using audit_log_2028m05_occurred_at_idx on audit_log_2028m05 audit_log_22  (cost=0.14..47.00 rows=190 width=80) (actual time=0.002..0.002 rows=0 loops=1)
-                    Buffers: shared hit=1
-        ->  Result  (cost=0.14..47.00 rows=190 width=80) (actual time=0.533..0.533 rows=0 loops=1)
-              One-Time Filter: (is_active_user() AND has_permission('audit.read'::text))
-              Buffers: shared hit=15
-              ->  Index Scan using audit_log_2028m04_occurred_at_idx on audit_log_2028m04 audit_log_21  (cost=0.14..47.00 rows=190 width=80) (actual time=0.002..0.002 rows=0 loops=1)
-                    Buffers: shared hit=1
-        ->  Result  (cost=0.14..47.00 rows=190 width=80) (actual time=0.502..0.502 rows=0 loops=1)
-              One-Time Filter: (is_active_user() AND has_permission('audit.read'::text))
-              Buffers: shared hit=15
-              ->  Index Scan using audit_log_2028m03_occurred_at_idx on audit_log_2028m03 audit_log_20  (cost=0.14..47.00 rows=190 width=80) (actual time=0.002..0.002 rows=0 loops=1)
-                    Buffers: shared hit=1
-        ->  Result  (cost=0.14..47.00 rows=190 width=80) (actual time=0.527..0.528 rows=0 loops=1)
-              One-Time Filter: (is_active_user() AND has_permission('audit.read'::text))
-              Buffers: shared hit=15
-              ->  Index Scan using audit_log_2028m02_occurred_at_idx on audit_log_2028m02 audit_log_19  (cost=0.14..47.00 rows=190 width=80) (actual time=0.002..0.002 rows=0 loops=1)
-                    Buffers: shared hit=1
-        ->  Result  (cost=0.14..47.00 rows=190 width=80) (actual time=0.478..0.479 rows=0 loops=1)
-              One-Time Filter: (is_active_user() AND has_permission('audit.read'::text))
-              Buffers: shared hit=15
-              ->  Index Scan using audit_log_2028m01_occurred_at_idx on audit_log_2028m01 audit_log_18  (cost=0.14..47.00 rows=190 width=80) (actual time=0.002..0.002 rows=0 loops=1)
-                    Buffers: shared hit=1
-        ->  Result  (cost=0.14..47.00 rows=190 width=80) (actual time=0.516..0.517 rows=0 loops=1)
-              One-Time Filter: (is_active_user() AND has_permission('audit.read'::text))
-              Buffers: shared hit=15
-              ->  Index Scan using audit_log_2027m12_occurred_at_idx on audit_log_2027m12 audit_log_17  (cost=0.14..47.00 rows=190 width=80) (actual time=0.002..0.002 rows=0 loops=1)
-                    Buffers: shared hit=1
-        ->  Result  (cost=0.14..47.00 rows=190 width=80) (actual time=0.590..0.590 rows=0 loops=1)
-              One-Time Filter: (is_active_user() AND has_permission('audit.read'::text))
-              Buffers: shared hit=15
-              ->  Index Scan using audit_log_2027m11_occurred_at_idx on audit_log_2027m11 audit_log_16  (cost=0.14..47.00 rows=190 width=80) (actual time=0.002..0.002 rows=0 loops=1)
-                    Buffers: shared hit=1
-        ->  Result  (cost=0.14..47.00 rows=190 width=80) (actual time=0.518..0.518 rows=0 loops=1)
-              One-Time Filter: (is_active_user() AND has_permission('audit.read'::text))
-              Buffers: shared hit=15
-              ->  Index Scan using audit_log_2027m10_occurred_at_idx on audit_log_2027m10 audit_log_15  (cost=0.14..47.00 rows=190 width=80) (actual time=0.002..0.002 rows=0 loops=1)
-                    Buffers: shared hit=1
-        ->  Result  (cost=0.14..47.00 rows=190 width=80) (actual time=0.492..0.492 rows=0 loops=1)
-              One-Time Filter: (is_active_user() AND has_permission('audit.read'::text))
-              Buffers: shared hit=15
-              ->  Index Scan using audit_log_2027m09_occurred_at_idx on audit_log_2027m09 audit_log_14  (cost=0.14..47.00 rows=190 width=80) (actual time=0.002..0.002 rows=0 loops=1)
-                    Buffers: shared hit=1
-        ->  Result  (cost=0.14..47.00 rows=190 width=80) (actual time=0.525..0.526 rows=0 loops=1)
-              One-Time Filter: (is_active_user() AND has_permission('audit.read'::text))
-              Buffers: shared hit=15
-              ->  Index Scan using audit_log_2027m08_occurred_at_idx on audit_log_2027m08 audit_log_13  (cost=0.14..47.00 rows=190 width=80) (actual time=0.002..0.002 rows=0 loops=1)
-                    Buffers: shared hit=1
-        ->  Result  (cost=0.14..47.00 rows=190 width=80) (actual time=0.507..0.508 rows=0 loops=1)
-              One-Time Filter: (is_active_user() AND has_permission('audit.read'::text))
-              Buffers: shared hit=15
-              ->  Index Scan using audit_log_2027m07_occurred_at_idx on audit_log_2027m07 audit_log_12  (cost=0.14..47.00 rows=190 width=80) (actual time=0.002..0.002 rows=0 loops=1)
-                    Buffers: shared hit=1
-        ->  Result  (cost=0.14..47.00 rows=190 width=80) (actual time=0.495..0.495 rows=0 loops=1)
-              One-Time Filter: (is_active_user() AND has_permission('audit.read'::text))
-              Buffers: shared hit=15
-              ->  Index Scan using audit_log_2027m06_occurred_at_idx on audit_log_2027m06 audit_log_11  (cost=0.14..47.00 rows=190 width=80) (actual time=0.002..0.002 rows=0 loops=1)
-                    Buffers: shared hit=1
-        ->  Result  (cost=0.14..47.00 rows=190 width=80) (actual time=0.608..0.608 rows=0 loops=1)
-              One-Time Filter: (is_active_user() AND has_permission('audit.read'::text))
-              Buffers: shared hit=15
-              ->  Index Scan using audit_log_2027m05_occurred_at_idx on audit_log_2027m05 audit_log_10  (cost=0.14..47.00 rows=190 width=80) (actual time=0.002..0.002 rows=0 loops=1)
-                    Buffers: shared hit=1
-        ->  Result  (cost=0.14..47.00 rows=190 width=80) (actual time=0.547..0.548 rows=0 loops=1)
-              One-Time Filter: (is_active_user() AND has_permission('audit.read'::text))
-              Buffers: shared hit=15
-              ->  Index Scan using audit_log_2027m04_occurred_at_idx on audit_log_2027m04 audit_log_9  (cost=0.14..47.00 rows=190 width=80) (actual time=0.003..0.003 rows=0 loops=1)
-                    Buffers: shared hit=1
-        ->  Result  (cost=0.14..47.00 rows=190 width=80) (actual time=0.504..0.504 rows=0 loops=1)
-              One-Time Filter: (is_active_user() AND has_permission('audit.read'::text))
-              Buffers: shared hit=15
-              ->  Index Scan using audit_log_2027m03_occurred_at_idx on audit_log_2027m03 audit_log_8  (cost=0.14..47.00 rows=190 width=80) (actual time=0.002..0.002 rows=0 loops=1)
-                    Buffers: shared hit=1
-        ->  Result  (cost=0.14..47.00 rows=190 width=80) (actual time=0.473..0.474 rows=0 loops=1)
-              One-Time Filter: (is_active_user() AND has_permission('audit.read'::text))
-              Buffers: shared hit=15
-              ->  Index Scan using audit_log_2027m02_occurred_at_idx on audit_log_2027m02 audit_log_7  (cost=0.14..47.00 rows=190 width=80) (actual time=0.002..0.002 rows=0 loops=1)
-                    Buffers: shared hit=1
-        ->  Result  (cost=0.14..47.00 rows=190 width=80) (actual time=0.490..0.491 rows=0 loops=1)
-              One-Time Filter: (is_active_user() AND has_permission('audit.read'::text))
-              Buffers: shared hit=15
-              ->  Index Scan using audit_log_2027m01_occurred_at_idx on audit_log_2027m01 audit_log_6  (cost=0.14..47.00 rows=190 width=80) (actual time=0.002..0.002 rows=0 loops=1)
-                    Buffers: shared hit=1
-        ->  Result  (cost=0.14..47.00 rows=190 width=80) (actual time=0.524..0.525 rows=0 loops=1)
-              One-Time Filter: (is_active_user() AND has_permission('audit.read'::text))
-              Buffers: shared hit=15
-              ->  Index Scan using audit_log_2026m12_occurred_at_idx on audit_log_2026m12 audit_log_5  (cost=0.14..47.00 rows=190 width=80) (actual time=0.002..0.002 rows=0 loops=1)
-                    Buffers: shared hit=1
-        ->  Result  (cost=0.14..47.00 rows=190 width=80) (actual time=0.503..0.503 rows=0 loops=1)
-              One-Time Filter: (is_active_user() AND has_permission('audit.read'::text))
-              Buffers: shared hit=15
-              ->  Index Scan using audit_log_2026m11_occurred_at_idx on audit_log_2026m11 audit_log_4  (cost=0.14..47.00 rows=190 width=80) (actual time=0.002..0.002 rows=0 loops=1)
-                    Buffers: shared hit=1
-        ->  Result  (cost=0.14..47.00 rows=190 width=80) (actual time=0.482..0.483 rows=0 loops=1)
-              One-Time Filter: (is_active_user() AND has_permission('audit.read'::text))
-              Buffers: shared hit=15
-              ->  Index Scan using audit_log_2026m10_occurred_at_idx on audit_log_2026m10 audit_log_3  (cost=0.14..47.00 rows=190 width=80) (actual time=0.002..0.002 rows=0 loops=1)
-                    Buffers: shared hit=1
-        ->  Result  (cost=0.28..1075.30 rows=5858 width=38) (actual time=0.505..0.533 rows=50 loops=1)
-              One-Time Filter: (is_active_user() AND has_permission('audit.read'::text))
-              Buffers: shared hit=48
-              ->  Index Scan using audit_log_2026m09_occurred_at_idx on audit_log_2026m09 audit_log_2  (cost=0.28..1075.30 rows=5858 width=38) (actual time=0.025..0.051 rows=50 loops=1)
-                    Buffers: shared hit=34
-        ->  Result  (cost=0.14..47.00 rows=190 width=80) (never executed)
-              One-Time Filter: (is_active_user() AND has_permission('audit.read'::text))
+Limit  (cost=4.58..19.11 rows=50 width=51) (actual time=1.189..1.194 rows=0 loops=1)
+  Buffers: shared hit=271
+  InitPlan 1
+    ->  Result  (cost=0.00..0.26 rows=1 width=1) (actual time=0.140..0.141 rows=1 loops=1)
+          Buffers: shared hit=6
+  InitPlan 2
+    ->  Result  (cost=0.00..0.26 rows=1 width=1) (actual time=1.034..1.035 rows=1 loops=1)
+          Buffers: shared hit=265
+  ->  Append  (cost=4.06..7742.59 rows=26619 width=51) (actual time=1.188..1.193 rows=0 loops=1)
+        Buffers: shared hit=271
+        ->  Result  (cost=0.14..47.00 rows=190 width=80) (actual time=1.177..1.177 rows=0 loops=1)
+              One-Time Filter: ((InitPlan 1).col1 AND (InitPlan 2).col1)
+              Buffers: shared hit=271
+              ->  Index Scan using audit_log_2028m10_occurred_at_idx on audit_log_2028m10 audit_log_27  (cost=0.14..47.00 rows=190 width=80) (never executed)
+        ->  Result  (cost=0.14..47.00 rows=190 width=80) (actual time=0.000..0.000 rows=0 loops=1)
+              One-Time Filter: ((InitPlan 1).col1 AND (InitPlan 2).col1)
+              ->  Index Scan using audit_log_2028m09_occurred_at_idx on audit_log_2028m09 audit_log_26  (cost=0.14..47.00 rows=190 width=80) (never executed)
+        ->  Result  (cost=0.14..47.00 rows=190 width=80) (actual time=0.000..0.000 rows=0 loops=1)
+              One-Time Filter: ((InitPlan 1).col1 AND (InitPlan 2).col1)
+              ->  Index Scan using audit_log_2028m08_occurred_at_idx on audit_log_2028m08 audit_log_25  (cost=0.14..47.00 rows=190 width=80) (never executed)
+        ->  Result  (cost=0.14..47.00 rows=190 width=80) (actual time=0.000..0.000 rows=0 loops=1)
+              One-Time Filter: ((InitPlan 1).col1 AND (InitPlan 2).col1)
+              ->  Index Scan using audit_log_2028m07_occurred_at_idx on audit_log_2028m07 audit_log_24  (cost=0.14..47.00 rows=190 width=80) (never executed)
+        ->  Result  (cost=0.14..47.00 rows=190 width=80) (actual time=0.000..0.000 rows=0 loops=1)
+              One-Time Filter: ((InitPlan 1).col1 AND (InitPlan 2).col1)
+              ->  Index Scan using audit_log_2028m06_occurred_at_idx on audit_log_2028m06 audit_log_23  (cost=0.14..47.00 rows=190 width=80) (never executed)
+        ->  Result  (cost=0.14..47.00 rows=190 width=80) (actual time=0.000..0.000 rows=0 loops=1)
+              One-Time Filter: ((InitPlan 1).col1 AND (InitPlan 2).col1)
+              ->  Index Scan using audit_log_2028m05_occurred_at_idx on audit_log_2028m05 audit_log_22  (cost=0.14..47.00 rows=190 width=80) (never executed)
+        ->  Result  (cost=0.14..47.00 rows=190 width=80) (actual time=0.000..0.000 rows=0 loops=1)
+              One-Time Filter: ((InitPlan 1).col1 AND (InitPlan 2).col1)
+              ->  Index Scan using audit_log_2028m04_occurred_at_idx on audit_log_2028m04 audit_log_21  (cost=0.14..47.00 rows=190 width=80) (never executed)
+        ->  Result  (cost=0.14..47.00 rows=190 width=80) (actual time=0.000..0.000 rows=0 loops=1)
+              One-Time Filter: ((InitPlan 1).col1 AND (InitPlan 2).col1)
+              ->  Index Scan using audit_log_2028m03_occurred_at_idx on audit_log_2028m03 audit_log_20  (cost=0.14..47.00 rows=190 width=80) (never executed)
+        ->  Result  (cost=0.14..47.00 rows=190 width=80) (actual time=0.000..0.000 rows=0 loops=1)
+              One-Time Filter: ((InitPlan 1).col1 AND (InitPlan 2).col1)
+              ->  Index Scan using audit_log_2028m02_occurred_at_idx on audit_log_2028m02 audit_log_19  (cost=0.14..47.00 rows=190 width=80) (never executed)
+        ->  Result  (cost=0.14..47.00 rows=190 width=80) (actual time=0.000..0.001 rows=0 loops=1)
+              One-Time Filter: ((InitPlan 1).col1 AND (InitPlan 2).col1)
+              ->  Index Scan using audit_log_2028m01_occurred_at_idx on audit_log_2028m01 audit_log_18  (cost=0.14..47.00 rows=190 width=80) (never executed)
+        ->  Result  (cost=0.14..47.00 rows=190 width=80) (actual time=0.000..0.000 rows=0 loops=1)
+              One-Time Filter: ((InitPlan 1).col1 AND (InitPlan 2).col1)
+              ->  Index Scan using audit_log_2027m12_occurred_at_idx on audit_log_2027m12 audit_log_17  (cost=0.14..47.00 rows=190 width=80) (never executed)
+        ->  Result  (cost=0.14..47.00 rows=190 width=80) (actual time=0.000..0.000 rows=0 loops=1)
+              One-Time Filter: ((InitPlan 1).col1 AND (InitPlan 2).col1)
+              ->  Index Scan using audit_log_2027m11_occurred_at_idx on audit_log_2027m11 audit_log_16  (cost=0.14..47.00 rows=190 width=80) (never executed)
+        ->  Result  (cost=0.14..47.00 rows=190 width=80) (actual time=0.000..0.000 rows=0 loops=1)
+              One-Time Filter: ((InitPlan 1).col1 AND (InitPlan 2).col1)
+              ->  Index Scan using audit_log_2027m10_occurred_at_idx on audit_log_2027m10 audit_log_15  (cost=0.14..47.00 rows=190 width=80) (never executed)
+        ->  Result  (cost=0.14..47.00 rows=190 width=80) (actual time=0.000..0.000 rows=0 loops=1)
+              One-Time Filter: ((InitPlan 1).col1 AND (InitPlan 2).col1)
+              ->  Index Scan using audit_log_2027m09_occurred_at_idx on audit_log_2027m09 audit_log_14  (cost=0.14..47.00 rows=190 width=80) (never executed)
+        ->  Result  (cost=0.14..47.00 rows=190 width=80) (actual time=0.000..0.000 rows=0 loops=1)
+              One-Time Filter: ((InitPlan 1).col1 AND (InitPlan 2).col1)
+              ->  Index Scan using audit_log_2027m08_occurred_at_idx on audit_log_2027m08 audit_log_13  (cost=0.14..47.00 rows=190 width=80) (never executed)
+        ->  Result  (cost=0.14..47.00 rows=190 width=80) (actual time=0.000..0.001 rows=0 loops=1)
+              One-Time Filter: ((InitPlan 1).col1 AND (InitPlan 2).col1)
+              ->  Index Scan using audit_log_2027m07_occurred_at_idx on audit_log_2027m07 audit_log_12  (cost=0.14..47.00 rows=190 width=80) (never executed)
+        ->  Result  (cost=0.14..47.00 rows=190 width=80) (actual time=0.000..0.000 rows=0 loops=1)
+              One-Time Filter: ((InitPlan 1).col1 AND (InitPlan 2).col1)
+              ->  Index Scan using audit_log_2027m06_occurred_at_idx on audit_log_2027m06 audit_log_11  (cost=0.14..47.00 rows=190 width=80) (never executed)
+        ->  Result  (cost=0.14..47.00 rows=190 width=80) (actual time=0.000..0.000 rows=0 loops=1)
+              One-Time Filter: ((InitPlan 1).col1 AND (InitPlan 2).col1)
+              ->  Index Scan using audit_log_2027m05_occurred_at_idx on audit_log_2027m05 audit_log_10  (cost=0.14..47.00 rows=190 width=80) (never executed)
+        ->  Result  (cost=0.14..47.00 rows=190 width=80) (actual time=0.000..0.000 rows=0 loops=1)
+              One-Time Filter: ((InitPlan 1).col1 AND (InitPlan 2).col1)
+              ->  Index Scan using audit_log_2027m04_occurred_at_idx on audit_log_2027m04 audit_log_9  (cost=0.14..47.00 rows=190 width=80) (never executed)
+        ->  Result  (cost=0.14..47.00 rows=190 width=80) (actual time=0.000..0.000 rows=0 loops=1)
+              One-Time Filter: ((InitPlan 1).col1 AND (InitPlan 2).col1)
+              ->  Index Scan using audit_log_2027m03_occurred_at_idx on audit_log_2027m03 audit_log_8  (cost=0.14..47.00 rows=190 width=80) (never executed)
+        ->  Result  (cost=0.14..47.00 rows=190 width=80) (actual time=0.000..0.000 rows=0 loops=1)
+              One-Time Filter: ((InitPlan 1).col1 AND (InitPlan 2).col1)
+              ->  Index Scan using audit_log_2027m02_occurred_at_idx on audit_log_2027m02 audit_log_7  (cost=0.14..47.00 rows=190 width=80) (never executed)
+        ->  Result  (cost=0.14..47.00 rows=190 width=80) (actual time=0.000..0.000 rows=0 loops=1)
+              One-Time Filter: ((InitPlan 1).col1 AND (InitPlan 2).col1)
+              ->  Index Scan using audit_log_2027m01_occurred_at_idx on audit_log_2027m01 audit_log_6  (cost=0.14..47.00 rows=190 width=80) (never executed)
+        ->  Result  (cost=0.14..47.00 rows=190 width=80) (actual time=0.000..0.000 rows=0 loops=1)
+              One-Time Filter: ((InitPlan 1).col1 AND (InitPlan 2).col1)
+              ->  Index Scan using audit_log_2026m12_occurred_at_idx on audit_log_2026m12 audit_log_5  (cost=0.14..47.00 rows=190 width=80) (never executed)
+        ->  Result  (cost=0.14..47.00 rows=190 width=80) (actual time=0.000..0.000 rows=0 loops=1)
+              One-Time Filter: ((InitPlan 1).col1 AND (InitPlan 2).col1)
+              ->  Index Scan using audit_log_2026m11_occurred_at_idx on audit_log_2026m11 audit_log_4  (cost=0.14..47.00 rows=190 width=80) (never executed)
+        ->  Result  (cost=0.14..47.00 rows=190 width=80) (actual time=0.000..0.000 rows=0 loops=1)
+              One-Time Filter: ((InitPlan 1).col1 AND (InitPlan 2).col1)
+              ->  Index Scan using audit_log_2026m10_occurred_at_idx on audit_log_2026m10 audit_log_3  (cost=0.14..47.00 rows=190 width=80) (never executed)
+        ->  Result  (cost=0.29..6387.62 rows=21679 width=44) (actual time=0.000..0.000 rows=0 loops=1)
+              One-Time Filter: ((InitPlan 1).col1 AND (InitPlan 2).col1)
+              ->  Index Scan using audit_log_2026m09_occurred_at_idx on audit_log_2026m09 audit_log_2  (cost=0.29..6387.62 rows=21679 width=44) (never executed)
+        ->  Result  (cost=0.14..47.00 rows=190 width=80) (actual time=0.000..0.000 rows=0 loops=1)
+              One-Time Filter: ((InitPlan 1).col1 AND (InitPlan 2).col1)
               ->  Index Scan using audit_log_2026m08_occurred_at_idx on audit_log_2026m08 audit_log_1  (cost=0.14..47.00 rows=190 width=80) (never executed)
 Planning:
-  Buffers: shared hit=3819
-Planning Time: 3.712 ms
-Execution Time: 13.830 ms
+  Buffers: shared hit=3748
+Planning Time: 4.087 ms
+Execution Time: 1.270 ms
 ```

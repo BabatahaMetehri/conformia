@@ -141,11 +141,19 @@ beforeAll(async () => {
   await pool.query("alter table public.obligation_occurrences disable trigger user");
 
   await pool.query(
+    /*
+     * ⚠️ `domain_id` EST FOURNI EXPLICITEMENT, et c'est la conséquence directe
+     * de la ligne au-dessus. Depuis 0019, la colonne est posée par le trigger
+     * `trg_occurrences_05_set_domain` — que `disable trigger user` vient de
+     * couper. Couper les triggers, c'est se charger soi-même de poser un état
+     * COMPLET : la colonne est NOT NULL, et l'insertion échoue sinon.
+     */
     `insert into public.obligation_occurrences
-       (obligation_type_id, period_key, period_start, period_end,
+       (obligation_type_id, domain_id, period_key, period_start, period_end,
         legal_due_date, internal_due_date, status, owner_id, submitted_at,
         late_reason_code)
      select ot.id,
+            ot.domain_id,
             -- ⚠️ Clé de période UNIQUE par ligne : (obligation, période) porte une
             -- contrainte d'unicité, et un jeu d'essai qui la viole ne mesure rien.
             'P' || n,
@@ -163,13 +171,31 @@ beforeAll(async () => {
                  else null end
      from generate_series(1, $1::int) as n
      join lateral (
-       select id from public.obligation_types
+       select id, domain_id from public.obligation_types
         where code like '${PREFIX}%' order by code offset (n % 20) limit 1
      ) ot on true`,
     [OCCURRENCE_COUNT, MANAGER],
   );
 
   await pool.query("alter table public.obligation_occurrences enable trigger user");
+
+  /*
+   * ⚠️ `VACUUM ANALYZE` N'EST PAS UN CONFORT, C'EST LA CONDITION D'UNE MESURE
+   * REPRODUCTIBLE.
+   *
+   * Le nettoyage de fin de fichier supprime 50 000 lignes ; leurs versions
+   * mortes restent dans le tas jusqu'au passage de l'autovacuum. Un second
+   * lancement recharge alors 50 000 lignes vivantes DANS un tas qui en contient
+   * déjà 50 000 mortes, et l'assertion sur les accès tampon mesure le
+   * ballonnement au lieu du coût de la requête. Constaté : 18 535 accès au
+   * deuxième lancement contre moins de 10 000 au premier, sur un code
+   * identique — un test qui échoue selon le nombre de fois qu'on l'a lancé
+   * n'apprend rien à personne.
+   *
+   * `ANALYZE` suit dans la foulée : sans statistiques fraîches, le
+   * planificateur choisit son plan sur un volume qu'il croit encore vide.
+   */
+  await pool.query("vacuum analyze public.obligation_occurrences");
 
   const started = performance.now();
   await pool.query("select public.refresh_dashboard_views()");
@@ -190,7 +216,7 @@ afterAll(async () => {
   }
 }, 300_000);
 
-describe("tenue en charge du tableau de bord", () => {
+describe("tenue en charge du tableau de bord @slow", () => {
   it("dispose bien de 50 000 occurrences", async () => {
     const { rows } = await pool.query<{ n: number }>(
       `select count(*)::int as n from public.obligation_occurrences oc
@@ -241,31 +267,30 @@ describe("tenue en charge du tableau de bord", () => {
     expect(elapsed).toBeLessThan(BUDGET_MS);
   });
 
-  it("le compteur de la file tient la charge — et la file dit où le coût reste", async () => {
+  it("la file de validation tient son budget, et ses accès tampon avec", async () => {
     /*
-     * ⚠️ DEUX MESURES, ET DEUX CONCLUSIONS DIFFÉRENTES. À lire ensemble.
+     * ⚠️ TEST DE NON-RÉGRESSION DE PERFORMANCE. Il a remplacé un GARDE-FOU.
      *
-     * 1. LA PASTILLE est corrigée. `validation_queue` et
-     *    `pending_validation_count()` filtraient chaque ligne par
-     *    `can_validate_occurrence(oc.id)` et `self_validation_blocked(...)`, qui
-     *    rouvrent des tables pour CHAQUE dossier. Mesuré sur ce jeu d'essai :
-     *    22 secondes. Reformulé en 0012 (habilitation par domaine, séparation
-     *    des pouvoirs lue sur les colonnes déjà jointes) : moins de 100 ms.
+     * Jusqu'à la migration 0019, ce test ne vérifiait pas un budget : il
+     * plafonnait un défaut connu à 20 secondes, faute de pouvoir le corriger
+     * dans un lot consacré au tableau de bord. La politique RLS
+     * `obligation_occurrences_select` appelait
+     * `has_permission_in_domain(obligation_domain_of_type(...))` une fois par
+     * ligne. Mesuré sur ce jeu d'essai : 14 257 ms et 463 633 accès tampon.
      *
-     * 2. LA FILE ELLE-MÊME reste lente, et le coût n'est PAS dans la vue.
-     *    `EXPLAIN ANALYZE` l'attribue à la politique RLS
-     *    `obligation_occurrences_select` (phase 2), qui appelle
-     *    `has_permission_in_domain(obligation_domain_of_type(...))` une fois par
-     *    ligne : 8,4 s et 1,75 million d'accès tampon pour 50 000 dossiers.
-     *    C'est un défaut TRANSVERSE — tout écran de liste le paie — et sa
-     *    correction touche la politique de sécurité centrale. Elle n'a pas sa
-     *    place dans un lot consacré au tableau de bord : elle mérite son propre
-     *    changement, avec la suite RLS complète pour l'accompagner.
+     * 0019 a corrigé les trois causes — domaine dénormalisé sur la ligne,
+     * fonctions d'habilitation enveloppées dans un sous-select donc évaluées
+     * une seule fois, index sur la disjonction d'identité. Mesuré après :
+     * 57 ms et 4 115 accès tampon.
      *
-     * Ce plafond est donc un GARDE-FOU DE RÉGRESSION sur l'état constaté, pas
-     * un budget atteint. Le baisser suppose d'avoir corrigé la politique.
+     * ⚠️ LES DEUX ASSERTIONS SONT NÉCESSAIRES, et la seconde plus que la
+     * première. Le temps dépend de la machine et de l'état du cache ; les accès
+     * tampon, non. Un retour du défaut se verrait d'abord là : une politique
+     * dont un appel cesse d'être enveloppé refait exploser le nombre de blocs
+     * lus bien avant que le chronomètre ne s'en émeuve sur une machine rapide.
      */
-    const KNOWN_RLS_CEILING_MS = 20_000;
+    const QUEUE_BUDGET_MS = 200;
+    const QUEUE_BUFFER_BUDGET = 10_000;
 
     const queue = await asManager((client) =>
       medianDuration(() => client.query("select * from public.validation_queue"), 3),
@@ -274,23 +299,32 @@ describe("tenue en charge du tableau de bord", () => {
       medianDuration(() => client.query("select public.pending_validation_count()"), 3),
     );
 
+    const buffers = await asManager(async (client) => {
+      const { rows } = await client.query<{ "QUERY PLAN": string }>(
+        "explain (analyze, buffers) select * from public.validation_queue",
+      );
+      /*
+       * Le total de la requête est porté par la ligne `Buffers:` du nœud
+       * RACINE, la moins indentée. Les nœuds enfants ont la leur, et les
+       * additionner compterait plusieurs fois les mêmes blocs.
+       */
+      const plan = rows.map((row) => row["QUERY PLAN"]);
+      const root = plan.find((line) => /^ *Buffers: shared/.test(line));
+      const hit = /hit=(\d+)/.exec(root ?? "");
+      const read = /read=(\d+)/.exec(root ?? "");
+      return Number(hit?.[1] ?? 0) + Number(read?.[1] ?? 0);
+    });
+
     console.log(
-      `file de validation : ${queue.toFixed(0)} ms (plafond connu ${String(KNOWN_RLS_CEILING_MS)} ms, ` +
-        `coût imputé à la politique RLS) · pastille : ${badge.toFixed(0)} ms (budget ${String(BUDGET_MS)} ms)`,
+      `file de validation : ${queue.toFixed(0)} ms, ${String(buffers)} accès tampon ` +
+        `(budgets ${String(QUEUE_BUDGET_MS)} ms / ${String(QUEUE_BUFFER_BUDGET)}) · ` +
+        `pastille : ${badge.toFixed(0)} ms`,
     );
 
-    expect(badge).toBeLessThan(BUDGET_MS);
-    expect(queue).toBeLessThan(KNOWN_RLS_CEILING_MS);
-    /*
-     * ⚠️ TROIS MINUTES DE DÉLAI, ET CE N'EST PAS UN RELÂCHEMENT.
-     *
-     * Ce test MESURE une requête volontairement lente, trois fois, pour en
-     * prendre la médiane. À 8,4 s la requête, le délai par défaut de 30 s ne
-     * suffit pas à terminer la mesure : le test échouait sur le chronomètre du
-     * lanceur AVANT d'avoir pu vérifier son plafond, si bien que le garde-fou de
-     * régression ne gardait plus rien. Le seuil qui compte reste
-     * `KNOWN_RLS_CEILING_MS` ; celui-ci ne fait que laisser la mesure aboutir.
-     */
+    expect(buffers).toBeGreaterThan(0);
+    expect(buffers).toBeLessThan(QUEUE_BUFFER_BUDGET);
+    expect(queue).toBeLessThan(QUEUE_BUDGET_MS);
+    expect(badge).toBeLessThan(QUEUE_BUDGET_MS);
   }, 180_000);
 
   it("le rafraîchissement des vues reste compatible avec un pas de 15 minutes", () => {

@@ -3679,6 +3679,7 @@ export type Database = {
           created_at: string
           deleted_at: string | null
           deputy_id: string | null
+          domain_id: string
           entity_id: string
           event_date: string | null
           expiry_date: string | null
@@ -3720,6 +3721,7 @@ export type Database = {
           created_at?: string
           deleted_at?: string | null
           deputy_id?: string | null
+          domain_id: string
           entity_id?: string
           event_date?: string | null
           expiry_date?: string | null
@@ -3761,6 +3763,7 @@ export type Database = {
           created_at?: string
           deleted_at?: string | null
           deputy_id?: string | null
+          domain_id?: string
           entity_id?: string
           event_date?: string | null
           expiry_date?: string | null
@@ -3817,6 +3820,20 @@ export type Database = {
             columns: ["deputy_id"]
             isOneToOne: false
             referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "obligation_occurrences_domain_id_fkey"
+            columns: ["domain_id"]
+            isOneToOne: false
+            referencedRelation: "documents_search"
+            referencedColumns: ["domain_id"]
+          },
+          {
+            foreignKeyName: "obligation_occurrences_domain_id_fkey"
+            columns: ["domain_id"]
+            isOneToOne: false
+            referencedRelation: "domains"
             referencedColumns: ["id"]
           },
           {
@@ -4000,7 +4017,7 @@ export type Database = {
           default_validator_id: string | null
           deleted_at: string | null
           depends_on_obligation_type_id: string | null
-          domain_id: string | null
+          domain_id: string
           due_rule: Json
           effective_from: string
           effective_to: string | null
@@ -4034,7 +4051,7 @@ export type Database = {
           default_validator_id?: string | null
           deleted_at?: string | null
           depends_on_obligation_type_id?: string | null
-          domain_id?: string | null
+          domain_id: string
           due_rule: Json
           effective_from: string
           effective_to?: string | null
@@ -4068,7 +4085,7 @@ export type Database = {
           default_validator_id?: string | null
           deleted_at?: string | null
           depends_on_obligation_type_id?: string | null
-          domain_id?: string | null
+          domain_id?: string
           due_rule?: Json
           effective_from?: string
           effective_to?: string | null
@@ -5879,6 +5896,10 @@ export type Database = {
         }[]
       }
       accessible_domains: { Args: never; Returns: string[] }
+      accessible_domains_array: {
+        Args: { p_permission: string }
+        Returns: string[]
+      }
       acknowledge_integrity_alert: {
         Args: { p_check_id: number; p_note: string }
         Returns: boolean
@@ -6532,6 +6553,8 @@ export type Database = {
       self_validation_blocked: {
         Args: {
           p_actor_id: string
+          p_deputy_id: string
+          p_occurrence_id: string
           p_occurrence_type_id: string
           p_owner_id: string
         }

@@ -234,7 +234,7 @@ export async function listOccurrencesOfObligation(
   const { data, error } = await supabase
     .from("obligation_occurrences")
     .select(
-      "id, entity_id, obligation_type_id, period_key, period_start, period_end, event_date, expiry_date, legal_due_date, internal_due_date, status, owner_id, deputy_id, validator_id, commercial_register_id, rectifies_occurrence_id, rectification_index, started_at, submitted_for_validation_at, validated_at, validated_by, submitted_at, submitted_by, reference_number, na_reason, rejection_reason, late_reason, late_reason_code, penalty_incurred, penalty_note, is_locked, locked_at, locked_by, version, created_at, updated_at, deleted_at",
+      "id, entity_id, obligation_type_id, domain_id, period_key, period_start, period_end, event_date, expiry_date, legal_due_date, internal_due_date, status, owner_id, deputy_id, validator_id, commercial_register_id, rectifies_occurrence_id, rectification_index, started_at, submitted_for_validation_at, validated_at, validated_by, submitted_at, submitted_by, reference_number, na_reason, rejection_reason, late_reason, late_reason_code, penalty_incurred, penalty_note, is_locked, locked_at, locked_by, version, created_at, updated_at, deleted_at",
     )
     .eq("obligation_type_id", id)
     .is("deleted_at", null)
@@ -261,7 +261,7 @@ export async function listRecalculableOccurrences(
   const { data, error } = await supabase
     .from("obligation_occurrences")
     .select(
-      "id, entity_id, obligation_type_id, period_key, period_start, period_end, event_date, expiry_date, legal_due_date, internal_due_date, status, owner_id, deputy_id, validator_id, commercial_register_id, rectifies_occurrence_id, rectification_index, started_at, submitted_for_validation_at, validated_at, validated_by, submitted_at, submitted_by, reference_number, na_reason, rejection_reason, late_reason, late_reason_code, penalty_incurred, penalty_note, is_locked, locked_at, locked_by, version, created_at, updated_at, deleted_at",
+      "id, entity_id, obligation_type_id, domain_id, period_key, period_start, period_end, event_date, expiry_date, legal_due_date, internal_due_date, status, owner_id, deputy_id, validator_id, commercial_register_id, rectifies_occurrence_id, rectification_index, started_at, submitted_for_validation_at, validated_at, validated_by, submitted_at, submitted_by, reference_number, na_reason, rejection_reason, late_reason, late_reason_code, penalty_incurred, penalty_note, is_locked, locked_at, locked_by, version, created_at, updated_at, deleted_at",
     )
     .eq("obligation_type_id", id)
     .eq("status", "TODO")

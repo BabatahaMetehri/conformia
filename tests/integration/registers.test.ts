@@ -113,9 +113,10 @@ beforeAll(async () => {
   const perRegister = await pool.query<{ id: string }>(
     `insert into public.obligation_types
        (entity_id, code, name, periodicity, due_rule, internal_lead_days, criticality,
-        validation_levels, requires_validation, effective_from, scope)
+        validation_levels, requires_validation, effective_from, scope, domain_id)
      values ($1, $2, 'Obligation par registre', 'ANNUAL', $3::jsonb, 5, 'MEDIUM', 1, true,
-             date '2024-01-01', 'PER_REGISTER')
+             date '2024-01-01', 'PER_REGISTER',
+             (select id from public.domains where code = 'REGLEMENTAIRE'))
      on conflict (entity_id, code) do update set scope = 'PER_REGISTER'
      returning id`,
     [ENTITY, `${PREFIX}-PER`, annual],
@@ -125,9 +126,10 @@ beforeAll(async () => {
   const entityScoped = await pool.query<{ id: string }>(
     `insert into public.obligation_types
        (entity_id, code, name, periodicity, due_rule, internal_lead_days, criticality,
-        validation_levels, requires_validation, effective_from, scope)
+        validation_levels, requires_validation, effective_from, scope, domain_id)
      values ($1, $2, 'Obligation pour l''entreprise', 'ANNUAL', $3::jsonb, 5, 'MEDIUM', 1, true,
-             date '2024-01-01', 'ENTITY')
+             date '2024-01-01', 'ENTITY',
+             (select id from public.domains where code = 'REGLEMENTAIRE'))
      on conflict (entity_id, code) do update set scope = 'ENTITY'
      returning id`,
     [ENTITY, `${PREFIX}-ENT`, annual],
