@@ -40,7 +40,7 @@ export function NotificationBell({ count = null }: { readonly count?: number | n
             <span
               aria-hidden="true"
               data-numeric
-              className="absolute -end-0.5 -top-0.5 inline-flex min-w-4 items-center justify-center rounded-full bg-status-overdue px-1 text-2xs font-semibold text-text-inverse"
+              className="absolute -inset-e-0.5 -top-0.5 inline-flex min-w-4 items-center justify-center rounded-full bg-status-overdue px-1 text-2xs font-semibold text-text-inverse"
             >
               {unread > 99 ? "99+" : unread}
             </span>
