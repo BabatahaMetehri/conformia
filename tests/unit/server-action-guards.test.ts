@@ -134,6 +134,12 @@ const GUARDED_BY_SERVICE: Readonly<Record<string, string>> = {
    */
   declareAbsenceAction: "declareAbsence",
   revokeAbsenceAction: "revokeAbsenceEarly",
+  /*
+   * Le rapport « Situation par registre » ne prend aucun filtre d'écran : sa
+   * seule entrée est un format de fichier. La garde `export.generate` vit donc
+   * dans le producteur, au plus près de la lecture qu'elle protège.
+   */
+  exportRegisterReportAction: "produceRegisterReport",
 };
 
 // ─── Balayage des sources ────────────────────────────────────────────────────

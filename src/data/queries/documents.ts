@@ -273,7 +273,7 @@ export async function getNamingContext(
 // ─── Recherche transverse ────────────────────────────────────────────────────
 
 const SEARCH_COLUMNS =
-  "id, occurrence_id, checklist_item_id, original_filename, normalized_filename, mime_type, size_bytes, sha256, version, supersedes_id, document_kind, uploaded_at, uploaded_by, integrity_status, integrity_checked_at, uploader_name, period_key, period_start, obligation_type_id, obligation_code, obligation_name, domain_id, domain_code, authority_id, authority_name, is_current_version";
+  "id, occurrence_id, checklist_item_id, original_filename, normalized_filename, mime_type, size_bytes, sha256, version, supersedes_id, document_kind, uploaded_at, uploaded_by, integrity_status, integrity_checked_at, uploader_name, period_key, period_start, obligation_type_id, obligation_code, obligation_name, obligation_scope, commercial_register_id, register_number, domain_id, domain_code, authority_id, authority_name, is_current_version";
 
 export interface DocumentSearchFilters {
   /** Fiche d'une pièce : filtre le plus étroit, tout le reste est ignoré. */
@@ -289,6 +289,16 @@ export interface DocumentSearchFilters {
   readonly from?: string | undefined;
   readonly to?: string | undefined;
   readonly currentOnly?: boolean | undefined;
+  /**
+   * Registre de commerce.
+   *
+   * ⚠️ INCLUSIF : « ce registre OU toute l'entreprise ». /documents est un écran
+   * de CONSULTATION — la question posée est « qu'est-ce qui concerne cet
+   * établissement ? », et les pièces d'une déclaration valant pour toute
+   * l'entreprise le concernent aussi. Les masquer donnerait de l'établissement
+   * une image faussement dégarnie.
+   */
+  readonly registerId?: string | undefined;
   readonly limit: number;
   readonly offset: number;
 }
@@ -313,6 +323,9 @@ export interface DocumentSearchRow {
   readonly obligationName: string;
   readonly authorityName: string | null;
   readonly isCurrentVersion: boolean;
+  /** `ENTITY` ou `PER_REGISTER` — porte la mention « toute l'entreprise ». */
+  readonly obligationScope: string;
+  readonly registerNumber: string | null;
 }
 
 export interface DocumentSearchPage {
@@ -356,6 +369,10 @@ export async function searchDocuments(
   if (filters.from !== undefined) query = query.gte("uploaded_at", filters.from);
   if (filters.to !== undefined) query = query.lte("uploaded_at", filters.to);
   if (filters.currentOnly === true) query = query.eq("is_current_version", true);
+  if (filters.registerId !== undefined) {
+    // Voir le commentaire du champ : la forme inclusive est délibérée.
+    query = query.or(`commercial_register_id.eq.${filters.registerId},obligation_scope.eq.ENTITY`);
+  }
 
   const { data, error, count } = await query;
   if (error !== null) return err(mapPostgrestError(error));
@@ -382,6 +399,8 @@ export async function searchDocuments(
       obligationName: row.obligation_name ?? "",
       authorityName: row.authority_name,
       isCurrentVersion: row.is_current_version ?? true,
+      obligationScope: row.obligation_scope ?? "ENTITY",
+      registerNumber: row.register_number,
     })),
   });
 }

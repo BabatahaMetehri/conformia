@@ -4,6 +4,7 @@ import { getTranslations } from "next-intl/server";
 
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { listAssignableProfiles } from "@/data/queries/profiles-directory";
 import { ObligationDetailTabs } from "@/features/obligations/components/obligation-detail-tabs";
 import { Link } from "@/i18n/navigation";
 import { listObligationAuditEntries } from "@/data/queries/obligations";
@@ -34,12 +35,14 @@ export default async function Page({ params }: { params: Promise<{ obligationId:
   const detail = await getObligation(obligationId);
   if (!detail.ok) notFound();
 
-  const [occurrences, options, audit, context, canManage] = await Promise.all([
+  const [occurrences, options, audit, context, canManage, assignees] = await Promise.all([
     listObligationOccurrences(obligationId),
     getFormOptions(),
     listObligationAuditEntries(toObligationTypeId(obligationId)),
     requireAuthContext(),
     currentUserCanManageReferential(),
+    // L'annuaire alimente les trois sélecteurs de l'onglet « Affectations ».
+    listAssignableProfiles(),
   ]);
 
   const row = detail.value.obligationType;
@@ -72,6 +75,8 @@ export default async function Page({ params }: { params: Promise<{ obligationId:
 
       <ObligationDetailTabs
         holidays={options.ok ? options.value.holidays : []}
+        assignees={assignees.ok ? assignees.value : []}
+        canManage={canManage}
         detail={{
           id: row.id,
           code: row.code,
@@ -92,6 +97,9 @@ export default async function Page({ params }: { params: Promise<{ obligationId:
           requiresProof: row.requires_proof,
           defaultOwnerName: detail.value.defaultOwnerName,
           defaultValidatorName: detail.value.defaultValidatorName,
+          defaultOwnerId: detail.value.obligationType.default_owner_id,
+          defaultDeputyId: detail.value.obligationType.default_deputy_id,
+          defaultValidatorId: detail.value.obligationType.default_validator_id,
           dueRule: row.due_rule,
           dependsOn:
             detail.value.dependsOn === null

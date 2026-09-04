@@ -5652,6 +5652,7 @@ export type Database = {
           authority_id: string | null
           authority_name: string | null
           checklist_item_id: string | null
+          commercial_register_id: string | null
           document_kind: string | null
           domain_code: string | null
           domain_id: string | null
@@ -5666,6 +5667,7 @@ export type Database = {
           normalized_filename: string | null
           obligation_code: string | null
           obligation_name: string | null
+          obligation_scope: string | null
           obligation_type_id: string | null
           occurrence_id: string | null
           occurrence_status:
@@ -5674,6 +5676,7 @@ export type Database = {
           original_filename: string | null
           period_key: string | null
           period_start: string | null
+          register_number: string | null
           search_text: string | null
           sha256: string | null
           size_bytes: number | null
@@ -5745,6 +5748,20 @@ export type Database = {
             columns: ["uploaded_by"]
             isOneToOne: false
             referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "obligation_occurrences_commercial_register_id_fkey"
+            columns: ["commercial_register_id"]
+            isOneToOne: false
+            referencedRelation: "commercial_register_list"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "obligation_occurrences_commercial_register_id_fkey"
+            columns: ["commercial_register_id"]
+            isOneToOne: false
+            referencedRelation: "commercial_registers"
             referencedColumns: ["id"]
           },
         ]
@@ -6661,6 +6678,16 @@ export type Database = {
         Returns: number
       }
       purge_auth_attempts: { Args: never; Returns: undefined }
+      reassign_occurrence_triad: {
+        Args: {
+          p_deputy_id?: string
+          p_occurrence_id: string
+          p_owner_id?: string
+          p_reason: string
+          p_validator_id?: string
+        }
+        Returns: number
+      }
       reassign_occurrences: {
         Args: { p_occurrence_ids: string[]; p_owner_id: string }
         Returns: number
@@ -6865,6 +6892,7 @@ export type Database = {
         | "WORKLOAD"
         | "LATE_REASONS"
         | "REPORT"
+        | "REGISTERS"
       export_status: "RUNNING" | "SUCCEEDED" | "FAILED" | "PARTIAL"
       late_reason_code:
         | "MISSING_DOCUMENT"
@@ -7035,6 +7063,7 @@ export const Constants = {
         "WORKLOAD",
         "LATE_REASONS",
         "REPORT",
+        "REGISTERS",
       ],
       export_status: ["RUNNING", "SUCCEEDED", "FAILED", "PARTIAL"],
       late_reason_code: [

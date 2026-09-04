@@ -14,6 +14,7 @@ import { buildCsv } from "@/lib/csv";
 import { buildSheetWorkbook, type CellValue, type Sheet } from "@/lib/workbook";
 import { err, ok, type Result } from "@/lib/result";
 import { AppError } from "@/lib/errors";
+import { getRegisterCompliance, listRegisters } from "@/data/queries/registers";
 import {
   loadMyExportScope,
   type ExportableOccurrence,
@@ -22,6 +23,16 @@ import {
 } from "@/data/queries/export";
 
 export type TabularKind = "OCCURRENCES" | "COMPLIANCE" | "WORKLOAD" | "LATE_REASONS";
+
+/**
+ * Genres d'export bâtis sur les OCCURRENCES de l'appelant.
+ *
+ * ⚠️ « Situation par registre » n'en fait PAS partie, et c'est structurel : elle
+ * ne se calcule pas à partir d'une liste de dossiers mais de
+ * `register_compliance()`, qui porte déjà la définition de la conformité. La
+ * recalculer à partir des occurrences en produirait une seconde, vouée à
+ * diverger de celle qu'affiche le tableau de bord.
+ */
 export type TabularFormat = "XLSX" | "CSV";
 
 export interface TabularExport {
@@ -416,5 +427,115 @@ export async function buildTabularExport(
     rowCount: table.body.length,
     occurrenceCount: scope.value.length,
     kind: KIND_TO_EXPORT[kind],
+  });
+}
+
+// ─── Situation par registre ──────────────────────────────────────────────────
+
+export interface RegisterReportLabels {
+  readonly sheetName: string;
+  readonly headers: readonly string[];
+  /** Mention de périmètre, portée en tête du fichier. */
+  readonly scopeNotice: string;
+}
+
+/**
+ * Rapport « Situation par registre ».
+ *
+ * ⚠️ MESURE EXCLUSIVE, ET LE FICHIER LE DIT EN PREMIÈRE LIGNE. Le taux porte sur
+ * les seules obligations propres à chaque établissement : y mêler celles qui
+ * valent pour toute l'entreprise donnerait à tous les registres pratiquement le
+ * même taux, et le rapport ne dirait plus rien. Un tableau exporté circule sans
+ * son écran — la mention doit voyager avec lui.
+ *
+ * ⚠️ Les lignes viennent de `register_compliance()`, CÂBLÉE et non réécrite.
+ * Elle est `security invoker` : l'export ne montre que ce que l'appelant peut
+ * déjà voir.
+ */
+export async function buildRegisterReport(
+  format: TabularFormat,
+  labels: RegisterReportLabels,
+  now: Date = new Date(),
+): Promise<Result<TabularExport>> {
+  /*
+   * ⚠️ DEUX SOURCES CÂBLÉES, AUCUNE RÉÉCRITE. `register_compliance()` porte la
+   * définition de la conformité ; elle ne rend pas la date d'expiration du
+   * registre, qui vit dans `commercial_register_list`. On les JOINT ici plutôt
+   * que d'ajouter une colonne à la fonction : la modifier pour un besoin
+   * d'affichage ferait diverger le rapport du tableau de bord, qui l'appelle
+   * aussi.
+   */
+  const [compliance, registers] = await Promise.all([getRegisterCompliance(), listRegisters()]);
+  if (!compliance.ok) return err(compliance.error);
+
+  const expiryOf = new Map(
+    (registers.ok ? registers.value : []).map((row) => [row.id, row.expiresAt]),
+  );
+
+  if (compliance.value.length === 0) {
+    // Un fichier vide se télécharge, s'ouvre, et laisse croire qu'il n'y avait
+    // rien à déclarer. Mieux vaut le dire.
+    return err(AppError.validationFailed({ reason: "EXPORT_EMPTY" }));
+  }
+
+  const columns = [
+    { header: labels.headers[0] ?? "", width: 22, format: "text" as const },
+    { header: labels.headers[1] ?? "", width: 32, format: "text" as const },
+    { header: labels.headers[2] ?? "", width: 16, format: "text" as const },
+    { header: labels.headers[3] ?? "", width: 12, format: "text" as const },
+    { header: labels.headers[4] ?? "", width: 10, format: "integer" as const },
+    { header: labels.headers[5] ?? "", width: 12, format: "integer" as const },
+    { header: labels.headers[6] ?? "", width: 10, format: "integer" as const },
+    { header: labels.headers[7] ?? "", width: 12, format: "percent" as const },
+    { header: labels.headers[8] ?? "", width: 14, format: "text" as const },
+  ];
+
+  const body: CellValue[][] = compliance.value.map((row) => [
+    row.rcNumber,
+    row.label,
+    row.wilaya ?? "",
+    row.status,
+    row.total,
+    row.submitted,
+    row.overdue,
+    // Un établissement sans dossier n'est pas « à 0 % » : il n'a rien à
+    // déclarer. La cellule reste vide plutôt que de montrer un zéro accusateur.
+    row.complianceRate === null ? "" : row.complianceRate / 100,
+    expiryOf.get(row.registerId) ?? "",
+  ]);
+
+  const stamp = now.toISOString().slice(0, 10);
+  const base = `situation-par-registre-${stamp}`;
+
+  if (format === "CSV") {
+    const csv = buildCsv({
+      // ⚠️ La mention de périmètre est la PREMIÈRE ligne du CSV, avant les
+      // en-têtes : un tableau qui circule sans son écran doit porter son
+      // périmètre avec lui.
+      headers: [labels.scopeNotice],
+      rows: [columns.map((column) => column.header), ...body],
+    });
+
+    return ok({
+      fileName: `${base}.csv`,
+      contentBase64: Buffer.from(csv, "utf8").toString("base64"),
+      rowCount: body.length,
+      occurrenceCount: 0,
+      kind: "REGISTERS",
+    });
+  }
+
+  const bytes = await buildSheetWorkbook({
+    name: labels.sheetName,
+    columns,
+    rows: body,
+  });
+
+  return ok({
+    fileName: `${base}.xlsx`,
+    contentBase64: Buffer.from(bytes).toString("base64"),
+    rowCount: body.length,
+    occurrenceCount: 0,
+    kind: "REGISTERS",
   });
 }

@@ -184,3 +184,43 @@ export async function reassignSingle(
   if (error !== null) return err(mapPostgrestError(error));
   return ok(data);
 }
+
+/**
+ * Réaffectation UNITAIRE des trois rôles, avec motif.
+ *
+ * ⚠️ Distincte de `reassignSingle`, qui ne déplace que le responsable et sert la
+ * réaffectation en LOT depuis la liste. Deux gestes différents, deux fonctions —
+ * les confondre imposerait un motif là où l'on déplace vingt dossiers d'un coup,
+ * ou le retirerait là où il compte.
+ *
+ * Le motif, la distinction des trois personnes et le cloisonnement sont
+ * contrôlés EN BASE : une Server Action est un point d'entrée HTTP, et un
+ * contrôle qui ne vit qu'à l'écran se contourne depuis la console.
+ */
+export async function reassignTriad(input: {
+  readonly occurrenceId: OccurrenceId;
+  readonly ownerId: ProfileId | null;
+  readonly deputyId: ProfileId | null;
+  readonly validatorId: ProfileId | null;
+  readonly reason: string;
+}): Promise<Result<number>> {
+  const supabase = await createSupabaseServerClient();
+
+  /*
+   * ⚠️ LA CLÉ EST OMISE PLUTÔT QUE MISE À NULL. Les trois rôles ont une valeur
+   * par défaut en SQL : omettre la clé y vaut NULL, ce qui est exactement le
+   * sens voulu — « ce dossier n'a plus de suppléant ». Passer `null` serait un
+   * refus de typage sous `exactOptionalPropertyTypes`, et le contourner par un
+   * transtypage masquerait la seule chose que le type sait dire ici.
+   */
+  const { data, error } = await supabase.rpc("reassign_occurrence_triad", {
+    p_occurrence_id: input.occurrenceId,
+    p_reason: input.reason,
+    ...(input.ownerId === null ? {} : { p_owner_id: input.ownerId }),
+    ...(input.deputyId === null ? {} : { p_deputy_id: input.deputyId }),
+    ...(input.validatorId === null ? {} : { p_validator_id: input.validatorId }),
+  });
+
+  if (error !== null) return err(mapPostgrestError(error));
+  return ok(data);
+}

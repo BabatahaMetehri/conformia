@@ -39,6 +39,7 @@ export interface DocumentSearchInput {
   readonly from?: string | undefined;
   readonly to?: string | undefined;
   readonly currentOnly?: boolean | undefined;
+  readonly registerId?: string | undefined;
   readonly page: number;
 }
 
@@ -61,6 +62,14 @@ export async function findDocuments(
     // sans heure exclurait tout ce qui a été déposé après minuit.
     to: input.to === undefined ? undefined : `${input.to}T23:59:59.999Z`,
     currentOnly: input.currentOnly,
+    /*
+     * ⚠️ FILTRE INCLUSIF. /documents est un écran de CONSULTATION : la question
+     * posée est « qu'est-ce qui concerne cet établissement ? », et les pièces
+     * d'une déclaration valant pour toute l'entreprise le concernent aussi.
+     * L'écran ANNONCE le mode — un chiffre dont on ignore le périmètre finit
+     * mal interprété en réunion.
+     */
+    registerId: input.registerId,
     limit: DOCUMENTS_PAGE_SIZE,
     offset: (page - 1) * DOCUMENTS_PAGE_SIZE,
   });

@@ -34,6 +34,7 @@ import {
   createRectification as createRectificationRow,
   insertComment,
   reassignSingle,
+  reassignTriad,
   softDeleteComment,
   type LateReasonCode,
   type TransitionOutcome,
@@ -89,6 +90,16 @@ export interface TimelineEntry {
   readonly fromStatus: OccurrenceStatus | null;
   readonly toStatus: OccurrenceStatus | null;
   readonly actorName: string | null;
+  /**
+   * À quel TITRE l'acteur a agi : `RESPONSABLE`, `SUPPLEANT`, `SUPERVISEUR`,
+   * `DIRECTION`… ou `null` quand la trace est antérieure à la migration 0018,
+   * ou que l'acteur n'avait aucune relation nommée au dossier.
+   *
+   * ⚠️ VALEUR BRUTE, jamais affichée telle quelle : l'écran la traduit par
+   * next-intl. Un `SUPPLEANT` en capitales dans une chronologie est une fuite
+   * du modèle de données vers l'utilisateur.
+   */
+  readonly actedAs: string | null;
   /** Délégant, lorsque l'action a été faite au nom d'un autre. */
   readonly onBehalfOfName: string | null;
   readonly reason: string | null;
@@ -163,6 +174,10 @@ export interface OccurrenceDetailView {
 
   readonly ownerName: string | null;
   readonly ownerId: string | null;
+  readonly deputyName: string | null;
+  readonly deputyId: string | null;
+  /** Registre rattaché, `null` pour une obligation valant pour toute l'entreprise. */
+  readonly commercialRegisterId: string | null;
   readonly validatorName: string | null;
   readonly validatorId: string | null;
 
@@ -281,6 +296,9 @@ export async function getOccurrenceDetail(id: string): Promise<Result<Occurrence
 
     ownerId: row.owner_id,
     ownerName: row.owner?.full_name ?? null,
+    deputyId: row.deputy_id,
+    deputyName: row.deputy?.full_name ?? null,
+    commercialRegisterId: row.commercial_register_id,
     validatorId: row.validator_id,
     validatorName: row.validator?.full_name ?? null,
 
@@ -448,6 +466,7 @@ interface RawTransition {
   readonly to_status: OccurrenceStatus;
   readonly reason: string | null;
   readonly created_at: string;
+  readonly acted_as: string | null;
   readonly actor: { readonly full_name: string | null } | null;
   readonly on_behalf_of: { readonly full_name: string | null } | null;
 }
@@ -483,6 +502,7 @@ function buildTimeline(
       fromStatus: transition.from_status,
       toStatus: transition.to_status,
       actorName: transition.actor?.full_name ?? null,
+      actedAs: transition.acted_as,
       onBehalfOfName: transition.on_behalf_of?.full_name ?? null,
       reason: transition.reason,
       detail: null,
@@ -498,6 +518,14 @@ function buildTimeline(
       fromStatus: null,
       toStatus: null,
       actorName: document.uploader?.full_name ?? null,
+      /*
+       * ⚠️ Un DÉPÔT DE PIÈCE ne porte pas de qualité, et on n'en invente pas.
+       * `acted_as` est résolu par la base au moment d'une TRANSITION, en faisant
+       * primer la relation au dossier sur le rôle global. Le déduire ici pour un
+       * dépôt donnerait une seconde règle, écrite ailleurs, qui divergerait de
+       * `resolve_acted_as()` au premier changement d'organisation.
+       */
+      actedAs: null,
       onBehalfOfName: null,
       reason: null,
       detail: document.original_filename,
@@ -514,6 +542,7 @@ function buildTimeline(
       fromStatus: null,
       toStatus: null,
       actorName: entry.actorEmail,
+      actedAs: null,
       onBehalfOfName: null,
       reason: null,
       detail: entry.action,
@@ -663,6 +692,36 @@ export async function reassignOccurrence(
   if (!context.ok) return context;
 
   const updated = await reassignSingle(toOccurrenceId(occurrenceId), toProfileId(ownerId));
+  if (!updated.ok) return updated;
+
+  return ok({ updated: updated.value });
+}
+
+/**
+ * Réaffectation UNITAIRE des trois rôles, avec motif.
+ *
+ * ⚠️ Le service ne revérifie NI le motif, NI la distinction des trois personnes,
+ * NI le cloisonnement : la base les impose déjà, et les redire ici créerait une
+ * seconde règle vouée à diverger. Il ne garde que la permission, pour que le
+ * refus arrive avec un message plutôt que par une exception Postgres.
+ */
+export async function reassignOccurrenceTriad(input: {
+  readonly occurrenceId: string;
+  readonly ownerId: string | null;
+  readonly deputyId: string | null;
+  readonly validatorId: string | null;
+  readonly reason: string;
+}): Promise<Result<{ readonly updated: number }>> {
+  const context = await requirePermission("occurrence.assign");
+  if (!context.ok) return context;
+
+  const updated = await reassignTriad({
+    occurrenceId: toOccurrenceId(input.occurrenceId),
+    ownerId: input.ownerId === null ? null : toProfileId(input.ownerId),
+    deputyId: input.deputyId === null ? null : toProfileId(input.deputyId),
+    validatorId: input.validatorId === null ? null : toProfileId(input.validatorId),
+    reason: input.reason,
+  });
   if (!updated.ok) return updated;
 
   return ok({ updated: updated.value });

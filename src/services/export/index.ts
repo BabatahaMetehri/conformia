@@ -11,6 +11,7 @@ import "server-only";
 
 import type { Json } from "@/types/database.types";
 import { err, ok, type Result } from "@/lib/result";
+import { requirePermission } from "@/services/auth/context";
 import {
   finishExportRun,
   listExportRuns,
@@ -22,7 +23,9 @@ import {
 } from "@/data/queries/export";
 import { buildComplianceReport, type ReportContext } from "./report";
 import {
+  buildRegisterReport,
   buildTabularExport,
+  type RegisterReportLabels,
   type TabularFormat,
   type TabularKind,
   type TabularLabels,
@@ -56,6 +59,69 @@ function scopeJson(filters: ExportScopeFilters): Record<string, Json> {
     domainId: filters.domainId ?? null,
     authorityId: filters.authorityId ?? null,
   };
+}
+
+/**
+ * Produit le rapport « Situation par registre », en le journalisant.
+ *
+ * ⚠️ MESURE EXCLUSIVE : le taux porte sur les seules obligations propres à
+ * chaque établissement. La mention voyage DANS le fichier — un tableau exporté
+ * circule sans son écran, et un chiffre dont on ignore le périmètre finit mal
+ * interprété en réunion.
+ *
+ * ⚠️ La ligne de journal est ouverte AVANT et close APRÈS, y compris en cas
+ * d'échec : un export raté sans trace rendrait incompréhensible la question
+ * « pourquoi ce fichier n'est jamais arrivé ».
+ */
+export async function produceRegisterReport(
+  format: TabularFormat,
+  labels: RegisterReportLabels,
+): Promise<Result<ProducedFile>> {
+  const guard = await requirePermission("export.generate");
+  if (!guard.ok) return guard;
+
+  const run = await startExportRun({ kind: "REGISTERS", format, scope: {} });
+  if (!run.ok) return err(run.error);
+
+  const produced = await buildRegisterReport(format, labels);
+
+  if (!produced.ok) {
+    await finishExportRun({
+      runId: run.value,
+      status: "FAILED",
+      occurrences: 0,
+      documents: 0,
+      sizeBytes: 0,
+      fileName: "",
+      error: produced.error.code,
+    });
+    return err(produced.error);
+  }
+
+  const bytes = Buffer.from(produced.value.contentBase64, "base64").byteLength;
+
+  await finishExportRun({
+    runId: run.value,
+    status: "SUCCEEDED",
+    occurrences: 0,
+    documents: 0,
+    sizeBytes: bytes,
+    fileName: produced.value.fileName,
+  });
+  await logExport("REGISTERS", "commercial_registers", null, {
+    rows: produced.value.rowCount,
+    format,
+  });
+
+  return ok({
+    fileName: produced.value.fileName,
+    contentBase64: produced.value.contentBase64,
+    mimeType: MIME[format] ?? "application/octet-stream",
+    rowCount: produced.value.rowCount,
+    // Le rapport ne compte pas des dossiers mais des établissements : la valeur
+    // reste à zéro plutôt que de laisser croire à un décompte d'occurrences.
+    occurrenceCount: 0,
+  });
 }
 
 /**

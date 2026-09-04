@@ -14,6 +14,7 @@ import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import type { Criticality, OccurrenceStatus, Periodicity } from "@/config/constants";
 import { DueRulePreview } from "@/features/obligations/components/due-rule-preview";
+import { ObligationAssignmentTab } from "@/features/obligations/components/obligation-assignment-tab";
 import {
   ObligationHistory,
   type ObligationHistoryEntry,
@@ -50,6 +51,9 @@ export interface ObligationDetailView {
   readonly requiresProof: boolean;
   readonly defaultOwnerName: string | null;
   readonly defaultValidatorName: string | null;
+  readonly defaultOwnerId: string | null;
+  readonly defaultDeputyId: string | null;
+  readonly defaultValidatorId: string | null;
   readonly dueRule: unknown;
   readonly dependsOn: {
     readonly id: string;
@@ -78,9 +82,13 @@ export interface ObligationDetailView {
 export function ObligationDetailTabs({
   detail,
   holidays,
+  assignees,
+  canManage,
 }: {
   readonly detail: ObligationDetailView;
   readonly holidays: readonly string[];
+  readonly assignees: readonly { readonly id: string; readonly fullName: string }[];
+  readonly canManage: boolean;
 }) {
   const t = useTranslations("obligations");
 
@@ -90,6 +98,7 @@ export function ObligationDetailTabs({
         <TabsTrigger value="general">{t("tabs.general")}</TabsTrigger>
         <TabsTrigger value="documents">{t("tabs.documents")}</TabsTrigger>
         <TabsTrigger value="rule">{t("tabs.rule")}</TabsTrigger>
+        <TabsTrigger value="assignment">{t("assignment.tab")}</TabsTrigger>
         <TabsTrigger value="occurrences">{t("tabs.occurrences")}</TabsTrigger>
         <TabsTrigger value="history">{t("tabs.history")}</TabsTrigger>
       </TabsList>
@@ -218,6 +227,19 @@ export function ObligationDetailTabs({
       </TabsContent>
 
       {/* ── Occurrences ─────────────────────────────────────────────────── */}
+      <TabsContent value="assignment" className="mt-6">
+        <ObligationAssignmentTab
+          obligationTypeId={detail.id}
+          defaults={{
+            ownerId: detail.defaultOwnerId,
+            deputyId: detail.defaultDeputyId,
+            validatorId: detail.defaultValidatorId,
+          }}
+          assignees={assignees}
+          canManage={canManage}
+        />
+      </TabsContent>
+
       <TabsContent value="occurrences" className="pt-4">
         {detail.occurrences.length === 0 ? (
           // « Aucune VISIBLE » : la RLS cloisonne par domaine, l'absence

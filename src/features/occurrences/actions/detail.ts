@@ -25,6 +25,7 @@ import {
   createRectification,
   postComment,
   reassignOccurrence,
+  reassignOccurrenceTriad,
   removeComment,
   transitionOccurrence,
 } from "@/services/occurrences/detail";
@@ -158,6 +159,45 @@ export async function reassignSingleAction(
   if (!parsed.ok) return rejected(toClientError(parsed.error));
 
   const result = await reassignOccurrence(parsed.value.occurrenceId, parsed.value.ownerId);
+  if (result.ok) revalidatePath(DETAIL_PATH, "page");
+
+  return toOutcome(result);
+}
+
+/**
+ * Réaffectation UNITAIRE des trois rôles, motif obligatoire.
+ *
+ * ⚠️ Le motif est exigé ICI par le schéma ET en base par la fonction SQL. Ce
+ * n'est pas une duplication de règle mais une duplication de MESSAGE : le
+ * schéma sert à rendre l'erreur lisible dans le formulaire, la base sert à ce
+ * qu'aucun appel ne s'en dispense — une Server Action est un point d'entrée
+ * HTTP, appelable depuis la console.
+ */
+const ReassignTriadSchema = z.object({
+  occurrenceId: uuidSchema,
+  ownerId: uuidSchema.nullable().default(null),
+  deputyId: uuidSchema.nullable().default(null),
+  validatorId: uuidSchema.nullable().default(null),
+  reason: z
+    .string()
+    .trim()
+    .min(3, { error: "validation.reasonTooShort" })
+    .max(500, { error: "validation.reasonTooLong" }),
+});
+
+export async function reassignTriadAction(
+  input: unknown,
+): Promise<ActionOutcome<{ readonly updated: number }>> {
+  const context = await requirePermission("occurrence.assign");
+  if (!context.ok) return { status: "error", error: toClientError(context.error) };
+
+  const parsed = parseInput(ReassignTriadSchema, input);
+  if (!parsed.ok) return rejected(toClientError(parsed.error));
+
+  const result = await reassignOccurrenceTriad(parsed.value);
+  // ⚠️ `revalidatePath` suffit : pas de `router.refresh()` après un `await` côté
+  // client, motif que le prochain lot doit corriger ailleurs et qu'on
+  // n'introduit pas ici.
   if (result.ok) revalidatePath(DETAIL_PATH, "page");
 
   return toOutcome(result);

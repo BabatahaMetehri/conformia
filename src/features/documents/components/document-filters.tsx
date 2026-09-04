@@ -36,12 +36,15 @@ export function DocumentFilters({
   obligations,
   authorities,
   uploaders,
+  registers,
 }: {
   readonly obligations: readonly { readonly id: string; readonly label: string }[];
   readonly authorities: readonly { readonly id: string; readonly name: string }[];
   readonly uploaders: readonly { readonly id: string; readonly name: string }[];
+  readonly registers: readonly { readonly id: string; readonly label: string }[];
 }) {
   const t = useTranslations("documents.search");
+  const tRegisters = useTranslations("registers");
   const tKind = useTranslations("documents.kind");
   const params = useSearchParams();
 
@@ -93,6 +96,24 @@ export function DocumentFilters({
             />
           </div>
         </div>
+
+        {registers.length > 0 ? (
+          /*
+           * ⚠️ FILTRE INCLUSIF sur cet écran de CONSULTATION : sélectionner un
+           * établissement montre SES pièces PLUS celles des déclarations valant
+           * pour toute l'entreprise. Les masquer donnerait de l'établissement
+           * une image faussement dégarnie. La liste porte la mention « toute
+           * l'entreprise » sur ces lignes, et l'en-tête annonce le périmètre.
+           */
+          <FilterSelect
+            label={tRegisters("filterLabel")}
+            value={value("register")}
+            onChange={(next) => {
+              apply({ register: next });
+            }}
+            options={registers.map((row) => ({ id: row.id, label: row.label }))}
+          />
+        ) : null}
 
         <FilterSelect
           label={t("obligation")}

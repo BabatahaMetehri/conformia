@@ -32,6 +32,7 @@ import { PassThrough, Readable } from "node:stream";
 import { ZipArchive, type Archiver } from "archiver";
 import { renderToBuffer } from "@react-pdf/renderer";
 
+import { getRegister } from "@/data/queries/registers";
 import { buildCsv } from "@/lib/csv";
 import { formatDateFr, formatDateTimeFr } from "@/lib/dates";
 import { logger } from "@/lib/logger";
@@ -73,15 +74,33 @@ export interface DossierSummary {
   readonly bytes: number;
 }
 
-/** `AGROESPACE_G50_2026-01_20260902-1430.zip` */
-export function buildArchiveName(code: string, periodKey: string, now: Date): string {
+/**
+ * `AGROESPACE_G50_2026-01_20260902-1430.zip`, ou
+ * `AGROESPACE_RC-MAJ_16-00-9876543-B-21_2026_20260902-1430.zip` pour un dossier
+ * rattaché à un établissement.
+ *
+ * ⚠️ LE NUMÉRO RC ENTRE DANS LE NOM QUAND LE DOSSIER EST PAR REGISTRE. Une
+ * entreprise à trois établissements produit trois archives par période, portant
+ * le même code d'obligation et la même période : sans le numéro, elles se
+ * distinguent uniquement par l'horodatage, et l'on ne sait plus laquelle
+ * appartient à quel établissement une fois les fichiers rangés côte à côte.
+ */
+export function buildArchiveName(
+  code: string,
+  periodKey: string,
+  now: Date,
+  registerNumber?: string | null,
+): string {
   const stamp = now.toISOString().replaceAll(/[-:]/g, "").slice(0, 13).replace("T", "-");
 
-  // Le code et la période viennent de la base : on ne laisse passer que ce qui
-  // est sûr dans un nom de fichier, sur les trois systèmes d'exploitation.
+  // Le code, la période et le numéro viennent de la base : on ne laisse passer
+  // que ce qui est sûr dans un nom de fichier, sur les trois systèmes.
   const safe = (value: string): string => value.replaceAll(/[^A-Za-z0-9._-]/g, "-");
 
-  return `AGROESPACE_${safe(code)}_${safe(periodKey)}_${stamp}.zip`;
+  const register =
+    registerNumber === undefined || registerNumber === null ? "" : `${safe(registerNumber)}_`;
+
+  return `AGROESPACE_${safe(code)}_${register}${safe(periodKey)}_${stamp}.zip`;
 }
 
 function humanSize(bytes: number): string {
@@ -183,11 +202,19 @@ export async function buildDossierArchive(
   const detail = await getOccurrenceDetail(occurrenceId);
   if (!detail.ok) return err(detail.error);
 
-  const [documents, rectifications, history, submission] = await Promise.all([
+  const occurrenceRegisterId = detail.value.commercialRegisterId;
+
+  const [documents, rectifications, history, submission, register] = await Promise.all([
     listOccurrenceDocuments(occurrenceId),
     listRectifications(occurrenceId),
     loadHistory(occurrenceId),
     loadSubmissionFacts(occurrenceId),
+    /*
+     * Le registre n'est lu que s'il y en a un. Une obligation valant pour toute
+     * l'entreprise n'en porte pas, et une requête qui rendrait `null` coûterait
+     * un aller-retour pour rien sur la majorité des dossiers.
+     */
+    occurrenceRegisterId === null ? Promise.resolve(ok(null)) : getRegister(occurrenceRegisterId),
   ]);
 
   if (!documents.ok) return err(documents.error);
@@ -196,7 +223,13 @@ export async function buildDossierArchive(
   if (!submission.ok) return err(submission.error);
 
   const occurrence = detail.value;
-  const fileName = buildArchiveName(occurrence.obligation.code, occurrence.periodKey, now);
+  const registerNumber = register.ok && register.value !== null ? register.value.rcNumber : null;
+  const fileName = buildArchiveName(
+    occurrence.obligation.code,
+    occurrence.periodKey,
+    now,
+    registerNumber,
+  );
 
   const archive = new ZipArchive({ zlib: { level: COMPRESSION_LEVEL } });
   const output = new PassThrough();
@@ -307,6 +340,15 @@ export async function buildDossierArchive(
               code: occurrence.obligation.code,
               period: occurrence.periodKey,
               status: occurrence.status,
+              /*
+               * ⚠️ LE REGISTRE FIGURE AU MANIFESTE, MÊME QUAND IL EST ABSENT.
+               * `null` dit « cette déclaration vaut pour toute l'entreprise » ;
+               * omettre la clé laisserait croire à un oubli. Un manifeste se lit
+               * des années plus tard, souvent par quelqu'un qui n'a pas l'outil
+               * sous les yeux.
+               */
+              commercialRegisterId: occurrence.commercialRegisterId,
+              commercialRegisterNumber: registerNumber,
             },
             note: labels.manifestNote,
             files: manifest,

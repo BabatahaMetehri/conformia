@@ -28,7 +28,10 @@ import {
 } from "@/data/queries/obligations";
 import {
   applyDueDateRecalculation,
+  countPropagable,
   insertObligationType,
+  propagateAssignment,
+  saveDefaultAssignment,
   replaceRequiredDocuments,
   setObligationActive,
   softDeleteObligationType,
@@ -557,6 +560,81 @@ export const RECALCULATION_PROTECTED_STATUSES = [
   "REJECTED",
   ...CLOSED_STATUSES,
 ] as const;
+
+// ─── Affectations par défaut ─────────────────────────────────────────────────
+
+/**
+ * Combien de dossiers une propagation toucherait.
+ *
+ * ⚠️ Appelé AVANT l'enregistrement, pour que la confirmation annonce un NOMBRE.
+ * « Des occurrences seront modifiées » ne permet de décider de rien ;
+ * « 14 occurrences futures non démarrées seront réaffectées » si.
+ */
+export async function countPropagableOccurrences(
+  obligationTypeId: string,
+): Promise<Result<number>> {
+  const context = await requirePermission("occurrence.assign");
+  if (!context.ok) return context;
+
+  return countPropagable(obligationTypeId);
+}
+
+export interface AssignmentSaveResult {
+  /** Dossiers À FAIRE effectivement réaffectés. `0` si l'on n'a pas propagé. */
+  readonly propagated: number;
+}
+
+/**
+ * Enregistre l'affectation par défaut, et propage éventuellement.
+ *
+ * ⚠️ LA PROPAGATION NE TOUCHE QUE LES DOSSIERS « À FAIRE », et cette règle vit
+ * dans `propagate_default_assignment` — elle n'est pas redite ici. Un dossier
+ * ENGAGÉ a un responsable qui l'a commencé : le lui retirer parce que le
+ * référentiel a changé casserait la séparation des pouvoirs — la trace dirait
+ * qu'il l'a préparé, la ligne dirait qu'il ne s'en occupe pas — et ferait
+ * disparaître un dossier de la liste de quelqu'un qui y travaillait.
+ */
+export async function saveObligationAssignment(input: {
+  readonly obligationTypeId: string;
+  readonly ownerId: string | null;
+  readonly deputyId: string | null;
+  readonly validatorId: string | null;
+  readonly propagate: boolean;
+}): Promise<Result<AssignmentSaveResult>> {
+  const context = await requirePermission("referential.manage");
+  if (!context.ok) return context;
+
+  /*
+   * ⚠️ TROIS PERSONNES DISTINCTES. Le même compte responsable ET validateur
+   * viderait la séparation des pouvoirs de son contenu, et le blocage ne se
+   * découvrirait qu'au moment de valider — trop tard, et sans explication.
+   */
+  const assigned = [input.ownerId, input.deputyId, input.validatorId].filter(
+    (value): value is string => value !== null,
+  );
+  if (new Set(assigned).size !== assigned.length) {
+    return err(AppError.validationFailed({ reason: "ASSIGNEES_NOT_DISTINCT" }));
+  }
+
+  const saved = await saveDefaultAssignment(
+    toObligationTypeId(input.obligationTypeId),
+    { ownerId: input.ownerId, deputyId: input.deputyId, validatorId: input.validatorId },
+    context.value.userId,
+  );
+  if (!saved.ok) return saved;
+
+  if (!input.propagate) return ok({ propagated: 0 });
+
+  const propagated = await propagateAssignment({
+    obligationTypeId: input.obligationTypeId,
+    ownerId: input.ownerId,
+    deputyId: input.deputyId,
+    validatorId: input.validatorId,
+  });
+  if (!propagated.ok) return propagated;
+
+  return ok({ propagated: propagated.value });
+}
 
 export async function currentUserCanManageReferential(): Promise<boolean> {
   const context = await requireAuthContext();

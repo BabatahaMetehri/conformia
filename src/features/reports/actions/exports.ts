@@ -19,6 +19,7 @@ import {
   loadExportHistory,
   planPeriodicExport,
   produceReport,
+  produceRegisterReport,
   produceTabular,
   type ExportScopeFilters,
   type TabularLabels,
@@ -202,6 +203,49 @@ export async function exportTabularAction(input: unknown): Promise<DownloadOutco
 
   const { kind, format, ...rest } = parsed.data;
   const produced = await produceTabular(kind, format, toFilters(rest), tabularLabels());
+
+  return produced.ok
+    ? { status: "success", data: produced.value }
+    : { status: "error", error: toClientError(produced.error) };
+}
+
+/**
+ * Rapport « Situation par registre ».
+ *
+ * ⚠️ AUCUN FILTRE DE PÉRIMÈTRE, et c'est cohérent : le rapport porte sur TOUS
+ * les registres visibles de l'appelant, un par ligne. Le filtrer par domaine ou
+ * par période reviendrait à mesurer autre chose que ce qu'il annonce.
+ *
+ * ⚠️ MESURE EXCLUSIVE : le taux de chaque établissement écarte les obligations
+ * valant pour toute l'entreprise. La mention est portée DANS le fichier.
+ */
+const registerReportSchema = z.object({ format: z.enum(["CSV", "XLSX"]) });
+
+export async function exportRegisterReportAction(input: unknown): Promise<DownloadOutcome> {
+  const parsed = registerReportSchema.safeParse(input);
+  if (!parsed.success) {
+    return {
+      status: "error",
+      error: toClientError(AppError.validationFailed({ field: "format" })),
+    };
+  }
+
+  const t = appTranslator(DEFAULT_LOCALE);
+  const produced = await produceRegisterReport(parsed.data.format, {
+    sheetName: t("registers.title"),
+    headers: [
+      t("registers.columns.rcNumber"),
+      t("registers.columns.label"),
+      t("registers.columns.wilaya"),
+      t("registers.columns.status"),
+      t("registers.compliance.total"),
+      t("registers.compliance.submitted"),
+      t("dashboard.overdue"),
+      t("registers.compliance.rate"),
+      t("registers.columns.expiresAt"),
+    ],
+    scopeNotice: t("registers.scope.exclusive"),
+  });
 
   return produced.ok
     ? { status: "success", data: produced.value }

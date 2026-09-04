@@ -11,9 +11,12 @@ import { OccurrenceChecklist } from "@/features/occurrences/components/occurrenc
 import { OccurrenceDetailTabs } from "@/features/occurrences/components/occurrence-detail-tabs";
 import { OccurrenceDiscussion } from "@/features/occurrences/components/occurrence-discussion";
 import { OccurrenceDocuments } from "@/features/occurrences/components/occurrence-documents";
+import { OccurrenceAssignment } from "@/features/occurrences/components/occurrence-assignment";
 import { OccurrenceHeader } from "@/features/occurrences/components/occurrence-header";
 import { OccurrencePreviousPeriods } from "@/features/occurrences/components/occurrence-previous-periods";
 import { OccurrenceTimeline } from "@/features/occurrences/components/occurrence-timeline";
+import { getCurrentAbsences } from "@/services/absences";
+import { requireAuthContext } from "@/services/auth/context";
 import { requireSectionAccess } from "@/services/navigation/guard";
 import { getOccurrenceDetail } from "@/services/occurrences/detail";
 
@@ -42,7 +45,17 @@ export default async function Page({ params }: { params: Promise<{ occurrenceId:
   // L'annuaire sert deux usages sur cet écran : la réaffectation et la
   // reconnaissance des mentions @ dans la discussion. Un annuaire vide dégrade
   // ces deux fonctions sans casser l'écran — d'où le repli sur une liste vide.
-  const directory = await listAssignableProfiles();
+  /*
+   * Les deux lectures partent ENSEMBLE : l'annuaire sert la réaffectation et les
+   * mentions de la discussion, les absences renseignent la disponibilité des
+   * trois personnes. Enchaînées, elles ajouteraient leurs latences pour un écran
+   * qui ne s'affiche qu'une fois les deux arrivées.
+   */
+  const [directory, absences, context] = await Promise.all([
+    listAssignableProfiles(),
+    getCurrentAbsences(),
+    requireAuthContext(),
+  ]);
   const assignees = directory.ok ? directory.value : [];
 
   return (
@@ -50,6 +63,16 @@ export default async function Page({ params }: { params: Promise<{ occurrenceId:
       <OccurrenceHeader detail={view} />
       <OccurrenceBanners detail={view} />
       <OccurrenceActionBar detail={view} assignees={assignees} />
+
+      {context.ok ? (
+        <OccurrenceAssignment
+          detail={view}
+          assignees={assignees}
+          absences={absences.ok ? absences.value : []}
+          currentUserId={context.value.userId}
+          canAssign={context.value.permissions.has("occurrence.assign")}
+        />
+      ) : null}
 
       <OccurrenceDetailTabs
         counts={{

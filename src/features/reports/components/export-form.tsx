@@ -17,6 +17,7 @@ import {
 } from "@/components/ui/select";
 import {
   exportReportAction,
+  exportRegisterReportAction,
   exportTabularAction,
   planPeriodExportAction,
 } from "@/features/reports/actions/exports";
@@ -35,13 +36,22 @@ import type { DownloadPayload } from "@/features/reports/actions/types";
  * dans une réponse d'action.
  */
 
-type ExportType = "OCCURRENCES" | "COMPLIANCE" | "WORKLOAD" | "LATE_REASONS" | "REPORT" | "PERIOD";
+type ExportType =
+  "OCCURRENCES" | "COMPLIANCE" | "WORKLOAD" | "LATE_REASONS" | "REGISTERS" | "REPORT" | "PERIOD";
 
+/**
+ * Genres qui offrent un choix de FORMAT (CSV ou classeur).
+ *
+ * ⚠️ `REGISTERS` en fait partie bien qu'il ne prenne pas les filtres de l'écran :
+ * les deux notions sont indépendantes. Le format est une question de fichier, le
+ * périmètre une question de mesure.
+ */
 const TABULAR: ReadonlySet<string> = new Set([
   "OCCURRENCES",
   "COMPLIANCE",
   "WORKLOAD",
   "LATE_REASONS",
+  "REGISTERS",
 ]);
 
 /** Déclenche l'enregistrement d'un fichier reçu en base64. */
@@ -108,10 +118,20 @@ export function ExportForm({
           return;
         }
 
+        /*
+         * ⚠️ « Situation par registre » NE PREND PAS LES FILTRES DE L'ÉCRAN.
+         *
+         * C'est un écran de MESURE : le rapport porte sur TOUS les registres
+         * visibles, un par ligne, et son taux écarte les obligations valant pour
+         * toute l'entreprise. Lui appliquer un filtre de domaine ou de période
+         * lui ferait mesurer autre chose que ce qu'il annonce.
+         */
         const outcome =
-          type === "REPORT"
-            ? await exportReportAction(filters)
-            : await exportTabularAction({ ...filters, kind: type, format });
+          type === "REGISTERS"
+            ? await exportRegisterReportAction({ format })
+            : type === "REPORT"
+              ? await exportReportAction(filters)
+              : await exportTabularAction({ ...filters, kind: type, format });
 
         if (outcome.status === "error") {
           toast.error(
@@ -151,6 +171,7 @@ export function ExportForm({
                   "COMPLIANCE",
                   "WORKLOAD",
                   "LATE_REASONS",
+                  "REGISTERS",
                   "REPORT",
                   "PERIOD",
                 ] as const

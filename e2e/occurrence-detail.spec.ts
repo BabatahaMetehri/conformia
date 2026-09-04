@@ -239,8 +239,16 @@ test.describe("en-tête et bandeaux", () => {
     );
     await expect(page.getByText("15/02/2099")).toBeVisible();
     await expect(page.getByText("20/02/2099")).toBeVisible();
-    await expect(page.getByText("Agent Fiche")).toBeVisible();
-    await expect(page.getByText("Responsable Fiche")).toBeVisible();
+
+    /*
+     * ⚠️ `.first()` PARCE QUE LE NOM FIGURE MAINTENANT DEUX FOIS, et c'est
+     * voulu : l'en-tête nomme le responsable, et le bloc d'affectation le
+     * reprend avec sa QUALITÉ et sa disponibilité. Le test porte sur l'en-tête —
+     * quelle échéance domine — pas sur le nombre d'endroits où un nom apparaît ;
+     * exiger l'unicité le ferait échouer à chaque enrichissement de la fiche.
+     */
+    await expect(page.getByText("Agent Fiche").first()).toBeVisible();
+    await expect(page.getByText("Responsable Fiche").first()).toBeVisible();
   });
 
   test("le bandeau de dépendance informe sans bloquer", async ({ page }) => {

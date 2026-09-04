@@ -498,7 +498,8 @@
       "loadFailed": "La recherche a échoué.",
       "previous": "Page précédente",
       "next": "Page suivante",
-      "page": "Page {page} sur {total}"
+      "page": "Page {page} sur {total}",
+      "scopeInclusive": "{total, plural, =0 {Aucune pièce} =1 {# pièce} other {# pièces}} — dont {entityWide, plural, =0 {aucune concernant} =1 {# concernant} other {# concernant}} toute l'entreprise."
     },
     "columns": {
       "document": "Pièce",
@@ -926,7 +927,24 @@
       "EXTERNAL_SERVICE_FAILED": "Un service externe n'a pas répondu."
     },
     "periodicityColumn": "Périodicité",
-    "criticalityColumn": "Criticité"
+    "criticalityColumn": "Criticité",
+    "assignment": {
+      "tab": "Affectations",
+      "description": "Qui prend en charge cette obligation par défaut. Les nouveaux dossiers générés reprendront ces affectations.",
+      "unassigned": "Non affecté",
+      "notDistinct": "Les trois rôles doivent être des personnes distinctes. Un même compte responsable et validateur viderait la séparation des pouvoirs de son contenu.",
+      "noDeputy": "Aucun suppléant n'est désigné. L'obligation fonctionnera ; le jour où le responsable est absent, personne ne reprendra le dossier.",
+      "save": "Enregistrer",
+      "saved": "Affectation par défaut enregistrée.",
+      "savedWithPropagation": "{count, plural, =0 {Affectation enregistrée. Aucun dossier n'a été réaffecté.} =1 {Affectation enregistrée. # dossier réaffecté.} other {Affectation enregistrée. # dossiers réaffectés.}}",
+      "confirmTitle": "Propager aux dossiers existants ?",
+      "confirmBody": "{count, plural, =0 {Aucune occurrence future non démarrée n'est concernée.} =1 {# occurrence future non démarrée sera réaffectée.} other {# occurrences futures non démarrées seront réaffectées.}}",
+      "confirmUnknown": "Le nombre d'occurrences concernées n'a pas pu être établi. Vous pouvez enregistrer sans propager.",
+      "confirmUntouched": "Les dossiers déjà en cours de traitement ne seront pas touchés : leur responsable les a commencés, et la trace le dit.",
+      "saveOnly": "Enregistrer seulement",
+      "saveAndPropagate": "Enregistrer et propager",
+      "cancel": "Annuler"
+    }
   },
   "occurrences": {
     "title": "Échéances",
@@ -1174,7 +1192,30 @@
         "discussion": "Discussion",
         "history": "Historique",
         "previousPeriods": "Périodes précédentes"
-      }
+      },
+      "filterActor": "Intervenant",
+      "filterQuality": "Qualité",
+      "filterAll": "Tous",
+      "noHistoryForFilter": "Aucune entrée ne correspond à ce filtre."
+    },
+    "actedAs": {
+      "RESPONSABLE": "responsable",
+      "SUPPLEANT": "suppléant",
+      "SUPERVISEUR": "superviseur",
+      "DIRECTION": "direction"
+    },
+    "assignment": {
+      "title": "Affectation",
+      "unassigned": "Non affecté",
+      "reassign": "Réaffecter",
+      "reassignHint": "Les trois rôles doivent être des personnes distinctes. Un motif est requis : c'est lui qui expliquera, plus tard, pourquoi ce dossier a changé de mains.",
+      "reason": "Motif",
+      "reasonHint": "Trois caractères au minimum. Le motif est consigné dans la chronologie du dossier.",
+      "save": "Enregistrer",
+      "cancel": "Annuler",
+      "saved": "Affectation mise à jour.",
+      "absentUntil": "absent jusqu'au {date}",
+      "deputyBanner": "Vous intervenez en tant que suppléant de {owner}. Vos actions seront enregistrées à ce titre."
     }
   },
   "routing": {
@@ -1716,7 +1757,8 @@
         "LATE_REASONS": "Analyse des motifs de retard",
         "REPORT": "Rapport de conformité (PDF)",
         "PERIOD": "Dossier consolidé sur une période (ZIP)",
-        "DOSSIER": "Dossier unitaire (ZIP)"
+        "DOSSIER": "Dossier unitaire (ZIP)",
+        "REGISTERS": "Situation par registre de commerce"
       },
       "statuses": {
         "RUNNING": "En cours",
@@ -1904,7 +1946,18 @@
     "filterLabel": "Registre de commerce",
     "filterAll": "Tous les registres",
     "entityWide": "Toute l'entreprise",
-    "entityWideHint": "Cette obligation vaut pour l'ensemble de l'entreprise, quel que soit le registre sélectionné."
+    "entityWideHint": "Cette obligation vaut pour l'ensemble de l'entreprise, quel que soit le registre sélectionné.",
+    "scope": {
+      "inclusive": "{total, plural, =0 {Aucun dossier} =1 {# dossier} other {# dossiers}} — dont {entityWide, plural, =0 {aucun concernant} =1 {# concernant} other {# concernant}} toute l'entreprise.",
+      "exclusive": "Conformité propre à ce registre — obligations d'entreprise exclues.",
+      "exclusiveHint": "Les obligations valant pour toute l'entreprise sont écartées de cette mesure : les inclure donnerait à tous les registres pratiquement le même taux, et le filtre ne servirait plus à rien."
+    },
+    "compliance": {
+      "rate": "Taux de conformité",
+      "total": "Dossiers",
+      "submitted": "Déposés",
+      "noData": "—"
+    }
   },
   "absences": {
     "title": "Absences",

@@ -219,3 +219,92 @@ export async function softDeleteObligationType(
   if (data === null) return err(AppError.notFound("obligation_type", id));
   return ok(data);
 }
+
+// ─── Affectations par défaut ─────────────────────────────────────────────────
+
+/**
+ * Nombre de dossiers qu'une propagation TOUCHERAIT — pour le DIRE avant de le
+ * faire.
+ *
+ * ⚠️ CÂBLE `count_propagable_occurrences()`, il ne la réécrit pas. La règle
+ * « seulement les dossiers À FAIRE » vit en base, à un seul endroit ; la
+ * recopier ici ferait deux définitions du même périmètre, et la confirmation
+ * annoncerait un nombre que la propagation ne respecterait plus.
+ */
+export async function countPropagable(obligationTypeId: string): Promise<Result<number>> {
+  const supabase = await createSupabaseServerClient();
+  const { data, error } = await supabase.rpc("count_propagable_occurrences", {
+    p_obligation_type_id: obligationTypeId,
+  });
+
+  if (error !== null) return err(mapPostgrestError(error));
+  return ok(data);
+}
+
+/** Applique l'affectation par défaut aux dossiers À FAIRE. Câble la fonction SQL. */
+export async function propagateAssignment(input: {
+  readonly obligationTypeId: string;
+  readonly ownerId: string | null;
+  readonly deputyId: string | null;
+  readonly validatorId: string | null;
+}): Promise<Result<number>> {
+  const supabase = await createSupabaseServerClient();
+
+  /*
+   * ⚠️ TRANSTYPAGE ASSUMÉ, ET LA RAISON TIENT AU GÉNÉRATEUR, PAS AU MÉTIER.
+   *
+   * `propagate_default_assignment` accepte NULL sur les trois rôles — retirer un
+   * suppléant est une opération légitime. Mais `supabase gen types` produit
+   * `string` pour tout paramètre `uuid`, sans savoir dire qu'il est nullable :
+   * le type déclaré est plus étroit que la fonction.
+   *
+   * On ne CORRIGE PAS la fonction pour contourner le générateur : elle est
+   * livrée par la migration 0020, elle porte la règle « seulement les dossiers À
+   * FAIRE », et la réécrire pour un confort de typage créerait exactement la
+   * seconde définition qu'on cherche à éviter. Le transtypage est donc borné à
+   * ce seul appel, et il est exact : NULL est bien ce que la base attend.
+   */
+  const args = {
+    p_obligation_type_id: input.obligationTypeId,
+    p_owner_id: input.ownerId,
+    p_deputy_id: input.deputyId,
+    p_validator_id: input.validatorId,
+  } as unknown as {
+    p_obligation_type_id: string;
+    p_owner_id: string;
+    p_deputy_id: string;
+    p_validator_id: string;
+  };
+
+  const { data, error } = await supabase.rpc("propagate_default_assignment", args);
+
+  if (error !== null) return err(mapPostgrestError(error));
+  return ok(data);
+}
+
+/** Enregistre les trois affectations par défaut sur l'obligation. */
+export async function saveDefaultAssignment(
+  id: ObligationTypeId,
+  input: {
+    readonly ownerId: string | null;
+    readonly deputyId: string | null;
+    readonly validatorId: string | null;
+  },
+  actorId: string,
+): Promise<Result<null>> {
+  const supabase = await createSupabaseServerClient();
+
+  const { error } = await supabase
+    .from("obligation_types")
+    .update({
+      default_owner_id: input.ownerId,
+      default_deputy_id: input.deputyId,
+      default_validator_id: input.validatorId,
+      updated_by: actorId,
+      updated_at: new Date().toISOString(),
+    })
+    .eq("id", id);
+
+  if (error !== null) return err(mapPostgrestError(error));
+  return ok(null);
+}

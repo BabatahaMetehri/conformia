@@ -14,8 +14,9 @@
  */
 
 import { revalidatePath } from "next/cache";
+import { z } from "zod";
 
-import { toClientError } from "@/lib/errors";
+import { AppError, toClientError } from "@/lib/errors";
 import type { Result } from "@/lib/result";
 import {
   applyRuleChange,
@@ -23,12 +24,15 @@ import {
   deactivateObligationType,
   deleteObligationType,
   duplicateObligationType,
+  countPropagableOccurrences,
   previewRuleChange,
   reactivateObligationType,
+  saveObligationAssignment,
   updateObligationType,
   DuplicateObligationSchema,
   ToggleActiveSchema,
 } from "@/services/obligations";
+import { uuidSchema } from "@/lib/schemas";
 import { requirePermission } from "@/services/auth/context";
 import type {
   ActionOutcome,
@@ -161,5 +165,67 @@ export async function applyRuleChangeAction(
 
   const result = await applyRuleChange(id, rule, periodicity);
   if (result.ok) revalidateReferential();
+  return toOutcome(result);
+}
+
+// ─── Affectations par défaut ─────────────────────────────────────────────────
+
+const AssignmentSchema = z.object({
+  obligationTypeId: uuidSchema,
+  ownerId: uuidSchema.nullable().default(null),
+  deputyId: uuidSchema.nullable().default(null),
+  validatorId: uuidSchema.nullable().default(null),
+  propagate: z.boolean().default(false),
+});
+
+/**
+ * Nombre de dossiers qu'une propagation toucherait.
+ *
+ * ⚠️ Appelée AVANT l'enregistrement, pour que la confirmation annonce un nombre
+ * exact. Elle ne modifie rien : c'est une lecture, et son échec ne doit pas
+ * empêcher d'enregistrer sans propager.
+ */
+export async function countPropagableAction(
+  obligationTypeId: unknown,
+): Promise<ActionOutcome<{ readonly count: number }>> {
+  const guard = await requirePermission("occurrence.assign");
+  if (!guard.ok) return { status: "error", error: toClientError(guard.error) };
+
+  const parsed = uuidSchema.safeParse(obligationTypeId);
+  if (!parsed.success) {
+    return {
+      status: "error",
+      error: toClientError(AppError.validationFailed({ id: "MALFORMED" })),
+    };
+  }
+
+  const result = await countPropagableOccurrences(parsed.data);
+  return result.ok
+    ? { status: "success", data: { count: result.value } }
+    : { status: "error", error: toClientError(result.error) };
+}
+
+export async function saveAssignmentAction(
+  input: unknown,
+): Promise<ActionOutcome<{ readonly propagated: number }>> {
+  const guard = await requirePermission("referential.manage");
+  if (!guard.ok) return { status: "error", error: toClientError(guard.error) };
+
+  const parsed = AssignmentSchema.safeParse(input);
+  if (!parsed.success) {
+    return {
+      status: "error",
+      error: toClientError(AppError.validationFailed({ reason: "ASSIGNMENT_MALFORMED" })),
+    };
+  }
+
+  const result = await saveObligationAssignment(parsed.data);
+  if (result.ok) {
+    revalidateReferential();
+    // L'échéancier porte les affectations : une propagation qui n'y apparaît pas
+    // ferait douter qu'elle ait eu lieu.
+    revalidatePath("/[locale]/(app)/echeancier", "page");
+  }
+
   return toOutcome(result);
 }

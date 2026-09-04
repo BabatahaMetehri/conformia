@@ -38,6 +38,7 @@ export function DocumentsTable({
 }) {
   const t = useTranslations("documents");
   const tSearch = useTranslations("documents.search");
+  const tRegisters = useTranslations("registers");
   const params = useSearchParams();
   const { navigate } = useQueryNavigation();
 
@@ -97,6 +98,18 @@ export function DocumentsTable({
                   <span className="block text-text-primary">{row.obligationName}</span>
                   <span className="block text-xs text-text-muted" data-numeric>
                     {row.obligationCode}
+                    {/*
+                     * ⚠️ « toute l'entreprise » N'EST PAS DÉCORATIF. Sous un
+                     * filtre par registre, les pièces des déclarations valant
+                     * pour toute l'entreprise restent affichées ; sans cette
+                     * mention, on les croirait rattachées à l'établissement
+                     * sélectionné.
+                     */}
+                    {row.obligationScope === "ENTITY" ? (
+                      <span className="ms-1.5">· {tRegisters("entityWide")}</span>
+                    ) : row.registerNumber === null ? null : (
+                      <span className="ms-1.5">· {row.registerNumber}</span>
+                    )}
                   </span>
                 </td>
                 <td className="px-3 py-2" data-numeric>

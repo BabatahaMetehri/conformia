@@ -155,6 +155,7 @@ export interface ObligationDetailRow {
   readonly requiredDocuments: readonly RequiredDocumentRow[];
   readonly dependsOn: Pick<ObligationTypeRow, "id" | "code" | "name" | "is_active"> | null;
   readonly defaultOwnerName: string | null;
+  readonly defaultDeputyName: string | null;
   readonly defaultValidatorName: string | null;
 }
 
@@ -166,7 +167,7 @@ export async function getObligationType(
   const { data, error } = await supabase
     .from("obligation_types")
     .select(
-      "id, entity_id, code, name, domain_id, authority_id, periodicity, due_rule, internal_lead_days, procedure_md, legal_basis, portal_url, default_owner_id, default_deputy_id, default_validator_id, scope, criticality, requires_validation, validation_levels, requires_proof, allow_self_validation, depends_on_obligation_type_id, generation_horizon_months, retention_years, effective_from, effective_to, is_active, created_by, created_at, updated_by, updated_at, deleted_at, domains(id, code, label), authorities(id, code, name, portal_url), obligation_required_documents(id, obligation_type_id, label, description, is_mandatory, document_kind, accepted_mime_types, max_size_mb, order_index, created_at), owner:profiles!obligation_types_default_owner_id_fkey(id, full_name), validator:profiles!obligation_types_default_validator_id_fkey(id, full_name)",
+      "id, entity_id, code, name, domain_id, authority_id, periodicity, due_rule, internal_lead_days, procedure_md, legal_basis, portal_url, default_owner_id, default_deputy_id, default_validator_id, scope, criticality, requires_validation, validation_levels, requires_proof, allow_self_validation, depends_on_obligation_type_id, generation_horizon_months, retention_years, effective_from, effective_to, is_active, created_by, created_at, updated_by, updated_at, deleted_at, domains(id, code, label), authorities(id, code, name, portal_url), obligation_required_documents(id, obligation_type_id, label, description, is_mandatory, document_kind, accepted_mime_types, max_size_mb, order_index, created_at), owner:profiles!obligation_types_default_owner_id_fkey(id, full_name), deputy:profiles!obligation_types_default_deputy_id_fkey(id, full_name), validator:profiles!obligation_types_default_validator_id_fkey(id, full_name)",
     )
     .eq("id", id)
     .is("deleted_at", null)
@@ -182,6 +183,7 @@ export async function getObligationType(
     authorities,
     obligation_required_documents: requiredDocuments,
     owner,
+    deputy,
     validator,
     ...obligationType
   } = data;
@@ -203,6 +205,7 @@ export async function getObligationType(
     requiredDocuments: [...requiredDocuments].sort((a, b) => a.order_index - b.order_index),
     dependsOn: dependsOn.value,
     defaultOwnerName: owner?.full_name ?? null,
+    defaultDeputyName: deputy?.full_name ?? null,
     defaultValidatorName: validator?.full_name ?? null,
   });
 }

@@ -3,6 +3,7 @@ import { getTranslations } from "next-intl/server";
 import { SectionHeader } from "@/components/layout/section";
 import { ErrorState } from "@/components/shared/states";
 import { DocumentFilters } from "@/features/documents/components/document-filters";
+import { listCommercialRegisters } from "@/services/registers";
 import { DocumentsTable } from "@/features/documents/components/documents-table";
 import { IntegrityAlerts } from "@/features/documents/components/integrity-alerts";
 import { requirePermission } from "@/services/auth/context";
@@ -44,7 +45,7 @@ export default async function Page({
 
   const page = Number.parseInt(first("page") ?? "1", 10);
 
-  const [results, options, alerts, canAcknowledge] = await Promise.all([
+  const [results, options, alerts, canAcknowledge, registers] = await Promise.all([
     findDocuments({
       search: first("q"),
       obligationTypeId: first("obligation"),
@@ -53,6 +54,7 @@ export default async function Page({
       uploadedBy: first("uploader"),
       from: first("from"),
       to: first("to"),
+      registerId: first("register"),
       page: Number.isInteger(page) && page > 0 ? page : 1,
     }),
     getDocumentFilterOptions(),
@@ -60,6 +62,7 @@ export default async function Page({
     // Le droit d'acquitter une alerte : on n'affiche pas un geste qui serait
     // refusé. Ce n'est pas la protection — la Server Action revérifie.
     requirePermission("audit.read"),
+    listCommercialRegisters(),
   ]);
 
   if (!results.ok) {
@@ -81,7 +84,27 @@ export default async function Page({
         obligations={options.ok ? options.value.obligations : []}
         authorities={options.ok ? options.value.authorities : []}
         uploaders={options.ok ? options.value.uploaders : []}
+        registers={
+          registers.ok
+            ? registers.value.map((r) => ({ id: r.id, label: `${r.rcNumber} — ${r.label}` }))
+            : []
+        }
       />
+
+      {/*
+       * ⚠️ L'ÉCRAN ANNONCE SON PÉRIMÈTRE. Un chiffre dont on ignore le mode de
+       * filtrage finit mal interprété en réunion : « 40 pièces » ne veut pas
+       * dire la même chose selon qu'on a inclus ou exclu ce qui vaut pour toute
+       * l'entreprise. Ici, INCLUSIF, et l'écran le dit.
+       */}
+      {first("register") === undefined ? null : (
+        <p className="mb-3 text-sm text-text-secondary">
+          {t("search.scopeInclusive", {
+            total: results.value.total,
+            entityWide: results.value.rows.filter((row) => row.obligationScope === "ENTITY").length,
+          })}
+        </p>
+      )}
 
       <DocumentsTable
         rows={results.value.rows}
