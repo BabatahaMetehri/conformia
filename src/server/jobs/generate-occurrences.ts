@@ -30,6 +30,7 @@ import {
   type GenerationClient,
 } from "@/data/queries/generation";
 import { DEFAULT_HORIZON_MONTHS, generateAllActive } from "@/services/scheduling/generator";
+import { ensureHolidayCalendarTask } from "@/server/jobs/holiday-calendar-reminder";
 
 export const JOB_NAME = "generate-occurrences";
 
@@ -51,6 +52,12 @@ export interface JobOutcome {
 export async function runGenerationJob(
   client: GenerationClient = createSupabaseAdminClient(),
   horizonMonths: number = DEFAULT_HORIZON_MONTHS,
+  /*
+   * ⚠️ PARAMÈTRE, ET NON `new Date()` à l'intérieur. Le rappel de calendrier ne
+   * s'arme qu'un jour par an ; sans instant injectable, l'éprouver demanderait
+   * d'attendre le 1er décembre.
+   */
+  now: Date = new Date(),
 ): Promise<JobOutcome> {
   const lock = await tryLockJob(client, JOB_NAME);
 
@@ -96,7 +103,38 @@ export async function runGenerationJob(
      */
     const status = report.value.failed > 0 ? "PARTIAL" : "SUCCEEDED";
 
+    /*
+     * ⚠️ LE RAPPEL DE MAINTENANCE DU CALENDRIER, GREFFÉ ICI — ET IL NE L'ÉTAIT
+     * NULLE PART.
+     *
+     * `ensureHolidayCalendarTask` existait, elle était testée, et AUCUN appelant ne
+     * la déclenchait : ni pg_cron, ni route, ni tâche. Le dispositif qui devait
+     * rappeler de saisir les fêtes religieuses de l'année suivante — fixées par
+     * décret, donc impossibles à calculer — ne se serait jamais manifesté. Le
+     * calendrier serait resté vide, et les échéances seraient tombées des jours
+     * chômés sans que rien ne le signale : exactement le silence que cette tâche
+     * existe pour rompre.
+     *
+     * Greffée sur la génération quotidienne plutôt que dotée de son propre
+     * ordonnanceur, pour la raison qui vaut déjà pour l'alerte de sauvegarde
+     * périmée : un second dispositif est un second dispositif dont personne ne
+     * surveille la santé. Elle n'agit que le 1er décembre et reste idempotente ;
+     * les 364 autres jours, elle ne coûte qu'une comparaison de date.
+     *
+     * Son échec ne fait pas échouer la génération : les échéances du jour comptent
+     * davantage qu'un rappel qui repassera demain.
+     */
+    let holidayReminder: { year: number; created: boolean } | { error: string };
+    try {
+      const reminder = await ensureHolidayCalendarTask(now);
+      holidayReminder = { year: reminder.year, created: reminder.created };
+    } catch (cause) {
+      holidayReminder = { error: cause instanceof Error ? cause.message : String(cause) };
+      logger.error("Rappel de calendrier des jours fériés en échec", holidayReminder);
+    }
+
     await finishJobRun(client, run.value, status, report.value.created, report.value.failed, {
+      holidayReminder,
       obligations: report.value.obligations,
       created: report.value.created,
       skipped: report.value.skipped,

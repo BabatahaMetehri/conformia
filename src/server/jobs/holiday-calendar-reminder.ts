@@ -35,11 +35,30 @@ export interface HolidayReminderReport {
   readonly occurrenceId: string | null;
 }
 
+/** Le jour où le rappel s'arme. Décembre : le calendrier doit être prêt pour janvier. */
+const REMINDER_MONTH = 12;
+const REMINDER_DAY = 1;
+
 export async function ensureHolidayCalendarTask(
   today: Date = new Date(),
 ): Promise<HolidayReminderReport> {
-  const supabase = createSupabaseAdminClient();
   const targetYear = today.getUTCFullYear() + 1;
+
+  /*
+   * ⚠️ LA DATE EST VÉRIFIÉE ICI, ET ELLE NE L'ÉTAIT NULLE PART.
+   *
+   * La documentation de cette tâche annonçait « chaque 1er décembre » ; la
+   * fonction, elle, créait le dossier quel que soit le jour, et comptait sur un
+   * ordonnanceur pour ne l'appeler qu'une fois l'an — ordonnanceur qui n'a jamais
+   * existé. Greffée sur la génération QUOTIDIENNE, elle aurait recréé un dossier
+   * chaque matin : le rappel serait devenu du bruit, et le vrai dossier de
+   * décembre s'y serait perdu.
+   */
+  if (today.getUTCMonth() + 1 !== REMINDER_MONTH || today.getUTCDate() !== REMINDER_DAY) {
+    return { year: targetYear, created: false, occurrenceId: null };
+  }
+
+  const supabase = createSupabaseAdminClient();
   const periodKey = String(targetYear);
 
   /*
@@ -63,13 +82,36 @@ export async function ensureHolidayCalendarTask(
     throw new Error(`Domaine REGLEMENTAIRE introuvable : ${domainError.message}`);
   }
 
-  // L'obligation interne est créée à la première exécution : elle n'a pas sa
-  // place dans le référentiel réglementaire livré, ce n'est pas une obligation
-  // légale mais une tâche de l'outil.
-  const { data: obligation, error: obligationError } = await supabase
+  /*
+   * ⚠️ LIRE PUIS INSÉRER, PLUTÔT QU'UN `upsert`. Les deux `onConflict` employés
+   * ici — `code` sur l'obligation, `obligation_type_id,period_key` sur
+   * l'occurrence — NE CORRESPONDENT À AUCUNE CONTRAINTE : l'unicité porte sur
+   * `(entity_id, code)` d'un côté, et de l'autre sur deux index PARTIELS que
+   * PostgreSQL n'infère que si la clause `where` reprend leur prédicat. Les deux
+   * appels échouaient donc sur « no unique or exclusion constraint matching the
+   * ON CONFLICT specification » — à la PREMIÈRE exécution réelle, c'est-à-dire
+   * jamais, faute d'appelant.
+   *
+   * Un couple lecture/insertion ne dépend d'aucun index et se lit sans connaître
+   * les prédicats. La course reste couverte : deux exécutions simultanées ne
+   * peuvent pas doubler le dossier — l'index partiel refuserait la seconde — et
+   * la tâche quotidienne prend de toute façon un verrou consultatif.
+   */
+  const { data: existingObligation } = await supabase
     .from("obligation_types")
-    .upsert(
-      {
+    .select("id, domain_id")
+    .eq("code", OBLIGATION_CODE)
+    .maybeSingle();
+
+  let obligation = existingObligation;
+
+  if (obligation === null) {
+    // L'obligation interne naît à la première exécution : elle n'a pas sa place
+    // dans le référentiel réglementaire livré, ce n'est pas une obligation
+    // légale mais une tâche de l'outil.
+    const { data: inserted, error: insertError } = await supabase
+      .from("obligation_types")
+      .insert({
         code: OBLIGATION_CODE,
         domain_id: domain.id,
         name: "Mise à jour du calendrier des jours fériés",
@@ -79,14 +121,14 @@ export async function ensureHolidayCalendarTask(
         criticality: "HIGH",
         legal_basis:
           "Fêtes religieuses fixées par décret chaque année : saisie manuelle obligatoire.",
-      },
-      { onConflict: "code" },
-    )
-    .select("id, domain_id")
-    .single();
+      })
+      .select("id, domain_id")
+      .single();
 
-  if (obligationError !== null) {
-    throw new Error(`Obligation de maintenance indisponible : ${obligationError.message}`);
+    if (insertError !== null) {
+      throw new Error(`Obligation de maintenance indisponible : ${insertError.message}`);
+    }
+    obligation = inserted;
   }
 
   const { data: admins } = await supabase
@@ -105,52 +147,51 @@ export async function ensureHolidayCalendarTask(
     });
   }
 
+  const { data: existingOccurrence } = await supabase
+    .from("obligation_occurrences")
+    .select("id")
+    .eq("obligation_type_id", obligation.id)
+    .eq("period_key", periodKey)
+    .maybeSingle();
+
+  if (existingOccurrence !== null) {
+    logger.info("Tâche de calendrier déjà présente — rien à faire", { year: targetYear });
+    return { year: targetYear, created: false, occurrenceId: existingOccurrence.id };
+  }
+
   const { data: created, error } = await supabase
     .from("obligation_occurrences")
-    .upsert(
-      {
-        obligation_type_id: obligation.id,
-        /*
-         * ⚠️ Fourni pour satisfaire le type, PAS pour décider : le trigger
-         * `trg_occurrences_05_set_domain` réécrit cette colonne depuis
-         * l'obligation parente. La valeur passée ici est déjà celle-là — la
-         * faire diverger ne produirait rien d'autre qu'un écart entre ce qu'on
-         * lit dans ce fichier et ce qui atterrit en base.
-         */
-        domain_id: obligation.domain_id,
-        period_key: periodKey,
-        period_start: `${periodKey}-01-01`,
-        period_end: `${periodKey}-12-31`,
-        // Échéance au 20 janvier : le calendrier doit être à jour avant que la
-        // première échéance de l'année ne tombe.
-        legal_due_date: `${periodKey}-01-20`,
-        internal_due_date: `${periodKey}-01-10`,
-        status: "TODO",
-        owner_id: owner,
-      },
-      { onConflict: "obligation_type_id,period_key", ignoreDuplicates: true },
-    )
+    .insert({
+      obligation_type_id: obligation.id,
+      /*
+       * ⚠️ Fourni pour satisfaire le type, PAS pour décider : le trigger
+       * `trg_occurrences_05_set_domain` réécrit cette colonne depuis
+       * l'obligation parente. La valeur passée ici est déjà celle-là — la faire
+       * diverger ne produirait rien d'autre qu'un écart entre ce qu'on lit dans
+       * ce fichier et ce qui atterrit en base.
+       */
+      domain_id: obligation.domain_id,
+      period_key: periodKey,
+      period_start: `${periodKey}-01-01`,
+      period_end: `${periodKey}-12-31`,
+      // Échéance au 20 janvier : le calendrier doit être à jour avant que la
+      // première échéance de l'année ne tombe.
+      legal_due_date: `${periodKey}-01-20`,
+      internal_due_date: `${periodKey}-01-10`,
+      status: "TODO",
+      owner_id: owner,
+    })
     .select("id")
-    .maybeSingle();
+    .single();
 
   if (error !== null) {
     throw new Error(`Création de la tâche de calendrier impossible : ${error.message}`);
   }
 
-  const report: HolidayReminderReport = {
+  logger.info("Tâche de mise à jour du calendrier créée", {
     year: targetYear,
-    created: created !== null,
-    occurrenceId: created?.id ?? null,
-  };
+    occurrenceId: created.id,
+  });
 
-  if (report.created) {
-    logger.info("Tâche de mise à jour du calendrier créée", {
-      year: report.year,
-      occurrenceId: report.occurrenceId,
-    });
-  } else {
-    logger.info("Tâche de calendrier déjà présente — rien à faire", { year: targetYear });
-  }
-
-  return report;
+  return { year: targetYear, created: true, occurrenceId: created.id };
 }
