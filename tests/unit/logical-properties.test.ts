@@ -118,7 +118,18 @@ describe("propriétés logiques", () => {
     expect(FILES.length).toBeGreaterThan(100);
   });
 
-  it("AUCUNE classe Tailwind physique dans les sources", () => {
+  /*
+   * ⚠️ BUDGET DE TEMPS EXPLICITE. Ce test LIT ET ANALYSE tout `src/` — plus de
+   * trois cents fichiers, ligne par ligne, contre une douzaine d'expressions
+   * rationnelles. Il tient en une seconde sur une machine au repos, et dépassait
+   * les cinq secondes par défaut de Vitest sur une machine chargée : la suite
+   * devenait rouge par intermittence, pour une raison qui n'a rien à voir avec ce
+   * qu'elle éprouve.
+   *
+   * Trente secondes ne relâchent aucune garantie — le test vérifie un RÉSULTAT,
+   * pas une durée — et évitent qu'on finisse par ignorer ses échecs.
+   */
+  it("AUCUNE classe Tailwind physique dans les sources", { timeout: 30_000 }, () => {
     const violations = FILES.flatMap(violationsOf);
 
     const report = violations
