@@ -127,7 +127,12 @@ insert into public.departments (id, code, name)
 values ('${DEPARTMENT}', 'NOTIF-TEST', 'Service de test')
 on conflict (id) do nothing;
 
--- Le responsable de service : sans lui, le palier J+3 n'aurait aucun destinataire.
+-- ⚠️ LE SERVICE NE DÉSIGNE PLUS AUCUN DESTINATAIRE. Depuis 0022, l'audience
+-- SUPERVISOR — et l'ancienne DEPARTMENT_HEAD, qui y est redirigée — désigne le
+-- VALIDATEUR DU DOSSIER, non le responsable du service du porteur. La hiérarchie
+-- de service n'était tenue à jour par personne : une escalade qui en dépendait
+-- n'atteignait plus personne EN SILENCE. La colonne head_id reste posée ici parce que
+-- d'autres écrans le lisent ; il ne joue plus aucun rôle dans les alertes.
 update public.departments set head_id = '${USER.head}' where id = '${DEPARTMENT}';
 update public.profiles set department_id = '${DEPARTMENT}' where id = '${USER.owner}';
 
@@ -160,18 +165,22 @@ values
    7, 'CRITICAL', 1, true, '2020-01-01', true)
 on conflict (id) do nothing;
 
+-- ⚠️ La colonne validator_id EST CE QUI FAIT LE SUPERVISEUR. C'est une colonne du
+-- DOSSIER, et non un rôle dans un organigramme : chaque occurrence sait qui la
+-- valide, donc qui l'escalade doit prévenir. Seul le dossier critique en porte
+-- un ici — celui qui éprouve la chaîne accélérée.
 insert into public.obligation_occurrences
   (id, obligation_type_id, period_key, period_start, period_end,
-   legal_due_date, internal_due_date, status, owner_id)
+   legal_due_date, internal_due_date, status, owner_id, validator_id)
 values
   ('${OCCURRENCE.upcoming}', '${OBLIGATION.standard}', '2099-01', '2099-01-01', '2099-01-31',
-   '${isoDate(37)}', '${isoDate(30)}', 'TODO', '${USER.owner}'),
+   '${isoDate(37)}', '${isoDate(30)}', 'TODO', '${USER.owner}', null),
   ('${OCCURRENCE.overdue}', '${OBLIGATION.standard}', '2099-02', '2099-02-01', '2099-02-28',
-   '${isoDate(6)}', '${isoDate(-1)}', 'TODO', '${USER.owner}'),
+   '${isoDate(6)}', '${isoDate(-1)}', 'TODO', '${USER.owner}', null),
   ('${OCCURRENCE.criticalDue}', '${OBLIGATION.critical}', '2099-03', '2099-03-01', '2099-03-31',
-   '${isoDate(7)}', '${isoDate(0)}', 'TODO', '${USER.owner}'),
+   '${isoDate(7)}', '${isoDate(0)}', 'TODO', '${USER.owner}', '${USER.head}'),
   ('${OCCURRENCE.submitted}', '${OBLIGATION.standard}', '2099-04', '2099-04-01', '2099-04-30',
-   '${isoDate(37)}', '${isoDate(30)}', 'SUBMITTED', '${USER.owner}')
+   '${isoDate(37)}', '${isoDate(30)}', 'SUBMITTED', '${USER.owner}', null)
 on conflict (id) do nothing;
 
 insert into public.calendar_feed_tokens (user_id)
@@ -356,10 +365,15 @@ describe("chaîne d'escalade", () => {
     );
 
     /*
-     * ⚠️ Le responsable ET le responsable de service, le jour même — là où la
+     * ⚠️ Le responsable ET le superviseur du dossier, le jour même — là où la
      * chaîne standard aurait attendu J+1 puis J+3. C'est le seul comportement
      * qui distingue une obligation critique d'une autre, et il est en données :
      * aucune ligne de TypeScript ne mentionne « CRITICAL ».
+     *
+     * ⚠️ LE SUPERVISEUR EST CELUI DU DOSSIER — `validator_id` — depuis 0022.
+     * Auparavant l'escalade interrogeait `departments.head_id` : une hiérarchie
+     * que plus personne ne tenait à jour, et dont la moindre lacune rendait
+     * l'escalade muette sans rien signaler.
      */
     expect(rows.rows.map((row) => row.recipient_id).toSorted()).toEqual(
       [USER.owner, USER.head].toSorted(),

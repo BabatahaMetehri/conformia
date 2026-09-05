@@ -89,6 +89,64 @@ export default defineConfig({
       TZ: "UTC",
       NEXT_PUBLIC_SUPABASE_URL: process.env["NEXT_PUBLIC_SUPABASE_URL"] ?? "",
       SUPABASE_SERVICE_ROLE_KEY: process.env["SUPABASE_SERVICE_ROLE_KEY"] ?? "",
+
+      /*
+       * ⚠️ ENVOI DE COURRIEL : les deux fournisseurs pointent sur Mailpit.
+       *
+       * `SMTP_*` vise la boîte locale de Supabase (54325 par défaut, l'interface
+       * web étant sur 54324). `RESEND_API_KEY` n'a pas besoin d'être une vraie
+       * clé : le SDK exige seulement qu'elle existe, et `RESEND_BASE_URL` — posé
+       * à l'exécution par le scénario, sur un port éphémère — le détourne vers un
+       * relais local qui remet le message à ce même Mailpit.
+       *
+       * Les valeurs de `.env.local` l'emportent : sur un poste où les ports ont
+       * été décalés, la configuration du développeur reste la bonne.
+       */
+      SMTP_HOST: process.env["SMTP_HOST"] ?? "127.0.0.1",
+      SMTP_PORT: process.env["SMTP_PORT"] ?? "54325",
+      SMTP_USER: process.env["SMTP_USER"] ?? "dev",
+      SMTP_PASSWORD: process.env["SMTP_PASSWORD"] ?? "dev",
+      SMTP_FROM: process.env["SMTP_FROM"] ?? "conformia@example.test",
+      RESEND_API_KEY: process.env["RESEND_API_KEY"] ?? "re_test_relais_local",
+    },
+
+    /*
+     * ⚠️ COUVERTURE MESURÉE ICI, ET NON DANS LA SUITE UNITAIRE. Les deux
+     * fournisseurs d'envoi ne se couvrent pas à coups de doublures : leur seul
+     * comportement intéressant est ce qu'ils font d'un vrai serveur — celui qui
+     * accepte, celui qui refuse, celui qui ne répond pas. `tests/integration/
+     * notification-delivery.test.ts` les exerce contre Mailpit ; c'est donc ici
+     * que le chiffre a un sens.
+     *
+     * N'entre en vigueur qu'avec `--coverage` : `npm run test:integration:coverage`.
+     */
+    coverage: {
+      provider: "v8",
+      reporter: ["text-summary", "html"],
+      include: [
+        "src/services/notifications/providers/resend.ts",
+        "src/services/notifications/providers/smtp.ts",
+      ],
+      thresholds: {
+        /*
+         * 90 % sur chacun. Le reste — la fabrique et les canaux dormants — est
+         * volontairement hors périmètre : la première a une branche qui dépend
+         * d'une variable d'environnement figée au chargement du module, les
+         * seconds sont couverts par la suite unitaire, où ils sont à leur place.
+         */
+        "src/services/notifications/providers/resend.ts": {
+          statements: 90,
+          branches: 90,
+          functions: 90,
+          lines: 90,
+        },
+        "src/services/notifications/providers/smtp.ts": {
+          statements: 90,
+          branches: 80,
+          functions: 90,
+          lines: 90,
+        },
+      },
     },
   },
 });

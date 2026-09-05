@@ -28,6 +28,10 @@ function candidate(overrides: Partial<NotificationCandidate> = {}): Notification
     obligationName: "Déclaration mensuelle G50",
     authorityName: "DGI",
     criticality: "HIGH",
+    // ⚠️ `null` par défaut : le cas ORDINAIRE est celui d'un destinataire
+    // présent. Un test qui partirait d'une alerte déroutée mesurerait
+    // l'exception en croyant mesurer la règle.
+    absentRecipientName: null,
     periodKey: "2026-09",
     internalDueDate: "2026-10-13",
     legalDueDate: "2026-10-20",

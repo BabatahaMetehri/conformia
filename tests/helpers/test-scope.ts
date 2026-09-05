@@ -566,6 +566,20 @@ async function purgeEntity(pool: Pool, entityId: string, users: readonly string[
       "delete from public.document_upload_tickets where entity_id = $1",
       `delete from public.notifications n
         using public.profiles p where p.id = n.recipient_id and p.entity_id = $1`,
+      /*
+       * ⚠️ ET CELLES QUI VISENT MES DOSSIERS SANS VISER MES COMPTES.
+       *
+       * La ligne précédente efface par DESTINATAIRE ; elle ne suffit pas. Une
+       * escalade J+7 prévient l'audience `DIRECTION`, c'est-à-dire les porteurs
+       * du rôle dans TOUTE la base — des comptes qui n'appartiennent pas à
+       * l'entité de test. Leur notification référence pourtant une occurrence
+       * qui, elle, lui appartient : la supprimer plus bas violait
+       * `notifications_occurrence_id_fkey`, et le nettoyage échouait à
+       * mi-course en laissant l'entité orpheline.
+       */
+      `delete from public.notifications n
+        using public.obligation_occurrences oc
+        where oc.id = n.occurrence_id and oc.entity_id = $1`,
       "delete from public.obligation_occurrences where entity_id = $1",
       `delete from public.obligation_required_documents rd
         using public.obligation_types ot
