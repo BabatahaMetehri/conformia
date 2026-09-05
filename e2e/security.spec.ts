@@ -412,6 +412,132 @@ test.describe("routes handler : trois situations, trois réponses", () => {
     expect(response.status()).toBe(404);
   });
 
+  test("une fiche INEXISTANTE et une fiche INTERDITE sont indiscernables", async ({ page }) => {
+    /*
+     * ⚠️ L'INDISCERNABILITÉ EST LA PROPRIÉTÉ, PAS LE CODE DE STATUT. Répondre
+     * pareil dans les deux cas ne suffit pas si l'un répond plus vite, plus
+     * court, ou avec un mot de plus : chacune de ces différences est un ORACLE.
+     * On devine alors, identifiant par identifiant, quels dossiers existent dans
+     * les domaines qu'on n'a pas le droit de voir — et la liste des obligations
+     * d'une entreprise en dit long sur ses ennuis.
+     *
+     * On compare donc les deux réponses terme à terme : même statut, même corps.
+     */
+    await signIn(page, USERS.social);
+
+    const inexistante = await page.request.get(
+      "/fr/echeancier/00000000-0000-0000-0000-000000000000",
+      { failOnStatusCode: false },
+    );
+    const interdite = await page.request.get(`/fr/echeancier/${occurrenceId}`, {
+      failOnStatusCode: false,
+    });
+
+    expect(interdite.status()).toBe(inexistante.status());
+
+    /*
+     * ⚠️ ON COMPARE CE QUI SE LIT, PAS L'OCTET. Le flux HTML de Next porte deux
+     * sortes de bruit qui varient d'un appel à l'autre SANS rien dire de la
+     * ressource : le nonce de la politique de sécurité, tiré au sort à chaque
+     * réponse, et l'échafaudage de streaming — selon l'instant où les métadonnées
+     * se résolvent, un même écran arrive d'un bloc ou en deux morceaux recollés
+     * par un `<template>`. Mesuré : deux appels à la MÊME adresse diffèrent déjà
+     * par là.
+     *
+     * Comparer les octets bruts reviendrait donc à éprouver l'ordonnanceur de
+     * Next. On retient le TEXTE RENDU : c'est ce qu'un humain lit, c'est ce qu'un
+     * moteur d'indexation garde, et c'est le seul endroit où une différence
+     * apprendrait quelque chose à qui devine des identifiants.
+     */
+    const lisible = (corps: string): string =>
+      corps
+        .replaceAll(/<script[\s\S]*?<\/script>/g, " ")
+        .replaceAll(/<style[\s\S]*?<\/style>/g, " ")
+        .replaceAll(/<[^>]+>/g, " ")
+        /*
+         * ⚠️ L'IDENTIFIANT DEMANDÉ EST NEUTRALISÉ, et lui seul. Le fil d'Ariane le
+         * répète — « Échéancier / ee9f5ec4… » — et les deux réponses diffèrent
+         * donc par là. Ce n'est PAS un oracle : celui qui devine un identifiant
+         * le connaît déjà, puisqu'il vient de le taper. Ce qui serait un oracle,
+         * c'est tout le reste — un mot, un libellé, une section de plus d'un côté
+         * que de l'autre. C'est ce que la comparaison retient.
+         */
+        .replaceAll(/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/g, "<uuid>")
+        .replaceAll(/\s+/g, " ")
+        .trim();
+
+    expect(lisible(await interdite.text())).toBe(lisible(await inexistante.text()));
+  });
+
+  test("l'écran rendu est bien celui d'une ressource introuvable", async ({ page }) => {
+    /*
+     * ⚠️ LE STATUT RESTE 200, ET C'EST UN COMPORTEMENT DE NEXT, PAS UN OUBLI.
+     *
+     * `notFound()` ne fixe le code de réponse que s'il est lancé AVANT que le
+     * rendu n'ait commencé à s'écrire. L'attrape-tout de la zone authentifiée
+     * (`(app)/[...rest]/page.tsx`) y parvient : c'est un composant SYNCHRONE, il
+     * lève avant tout. Une fiche, elle, doit d'abord lire la session puis la base
+     * pour savoir si la ressource existe et si l'appelant y a droit — et sur une
+     * route rendue dynamiquement, ces attentes suffisent à engager la réponse.
+     * Vérifié : la suppression des `loading.tsx` du segment ET de son parent n'y
+     * change rien, et il n'existe aucune autre frontière de suspension dans la
+     * coquille.
+     *
+     * Ce que cela coûte est réel mais borné — un moteur d'indexation garde la
+     * page, une sonde de supervision ne voit pas l'incident. Ce que cela ne coûte
+     * PAS : la confidentialité. Les deux cas répondent à l'identique, c'est ce que
+     * vérifie le test précédent, et aucun oracle n'en sort.
+     *
+     * Le rendre étanche demanderait de porter le contrôle dans le middleware,
+     * avec une lecture de base par requête : la décision appartient au projet.
+     */
+    await signIn(page, USERS.social);
+
+    const reponse = await page.request.get(`/fr/echeancier/${occurrenceId}`, {
+      failOnStatusCode: false,
+    });
+
+    const corps = await reponse.text();
+    expect(corps).toContain("introuvable");
+    // Et surtout : jamais le contenu du dossier, ni un mot qui en confirme l'existence.
+    expect(corps).not.toContain("accès refusé");
+    expect(corps).not.toContain("interdit");
+  });
+
+  test("une fiche inexistante et une fiche interdite répondent en un temps COMPARABLE", async ({
+    page,
+  }) => {
+    await signIn(page, USERS.social);
+
+    /*
+     * ⚠️ UN ÉCART DE TEMPS EST UN ORACLE, au même titre qu'un écart de corps. Si
+     * la fiche interdite coûtait systématiquement une lecture de plus, la mesure
+     * la trahirait sans qu'aucun octet ne diffère.
+     *
+     * On mesure plusieurs fois et l'on compare les MINIMUMS : la moyenne est
+     * polluée par l'ordonnanceur de la machine, le minimum ne l'est pas. La
+     * tolérance est large — on cherche un écart STRUCTUREL, pas une signature
+     * temporelle au millimètre, et un test trop serré clignoterait sans rien
+     * apprendre.
+     */
+    const mesurer = async (url: string): Promise<number> => {
+      let minimum = Number.POSITIVE_INFINITY;
+      for (let essai = 0; essai < 5; essai += 1) {
+        const debut = Date.now();
+        await page.request.get(url, { failOnStatusCode: false });
+        minimum = Math.min(minimum, Date.now() - debut);
+      }
+      return minimum;
+    };
+
+    const inexistante = await mesurer("/fr/echeancier/00000000-0000-0000-0000-000000000000");
+    const interdite = await mesurer(`/fr/echeancier/${occurrenceId}`);
+
+    const ecart = Math.abs(interdite - inexistante);
+    const reference = Math.max(inexistante, interdite, 1);
+    expect(ecart / reference).toBeLessThan(0.5);
+  });
+
   test("le déclencheur de génération refuse un secret erroné", async ({ request }) => {
     const response = await request.post("/api/cron/generate", {
       headers: { authorization: "Bearer manifestement-faux" },

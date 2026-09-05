@@ -255,6 +255,29 @@ for (const file of SOURCES.filter((path) => path.includes(join("src", "services"
     const guarded = mentionsGuard(bodyOf(source, match.index));
     SERVICE_GUARDS.set(name, (SERVICE_GUARDS.get(name) ?? false) || guarded);
   }
+
+  /*
+   * ⚠️ LES SERVICES MÉMOÏSÉS PAR REQUÊTE ÉCHAPPAIENT AU BALAYAGE, et le défaut
+   * était silencieux dans le mauvais sens : la fonction disparaît de l'index, et
+   * toute action qui lui délègue sa garde est dénoncée comme non gardée. On aurait
+   * pu croire à une régression de sécurité là où il n'y avait qu'un changement de
+   * forme.
+   *
+   * `export const nom = cache(_nom);` déplace le corps dans une fonction non
+   * exportée. On suit donc l'indirection : la garde se lit dans l'implantation,
+   * et s'attribue au nom public.
+   */
+  const memoised = /export\s+const\s+([A-Za-z0-9_]+)\s*=\s*cache\(\s*([A-Za-z0-9_]+)\s*\)/g;
+  let wrapper: RegExpExecArray | null;
+  while ((wrapper = memoised.exec(source)) !== null) {
+    const publicName = wrapper[1] ?? "";
+    const implementation = wrapper[2] ?? "";
+    const declaration = new RegExp(`function\\s+${implementation}\\s*\\(`).exec(source);
+    if (declaration === null) continue;
+
+    const guarded = mentionsGuard(bodyOf(source, declaration.index));
+    SERVICE_GUARDS.set(publicName, (SERVICE_GUARDS.get(publicName) ?? false) || guarded);
+  }
 }
 
 // ═════════════════════════════════════════════════════════════════════════════

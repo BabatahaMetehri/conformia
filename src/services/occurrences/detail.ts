@@ -1,5 +1,7 @@
 import "server-only";
 
+import { cache } from "react";
+
 /**
  * Fiche d'occurrence — orchestration.
  *
@@ -205,7 +207,20 @@ export interface OccurrenceDetailView {
  * précédentes et l'occurrence d'origine suivent, faute de connaître leurs clés
  * avant la première réponse.
  */
-export async function getOccurrenceDetail(id: string): Promise<Result<OccurrenceDetailView>> {
+/**
+ * ⚠️ MÉMOÏSÉ PAR REQUÊTE. La fiche est désormais lue DEUX fois par rendu : une
+ * première dans `generateMetadata`, qui décide de l'existence et du droit d'accès
+ * avant toute frontière de suspension — c'est ce qui permet de rendre un vrai
+ * 404 plutôt qu'un 200 portant un écran d'erreur — et une seconde par la page
+ * elle-même. Sans `cache`, cela doublerait six requêtes.
+ *
+ * `cache` est la SEULE primitive React autorisée dans un service (voir la règle
+ * ESLint `NO_REACT_IN_SERVICES`) : ce n'est pas une primitive d'interface, mais
+ * de mémoïsation par requête côté serveur.
+ */
+export const getOccurrenceDetail = cache(_getOccurrenceDetail);
+
+async function _getOccurrenceDetail(id: string): Promise<Result<OccurrenceDetailView>> {
   const context = await requireAuthContext();
   if (!context.ok) return context;
 

@@ -1,3 +1,4 @@
+import type { Metadata } from "next";
 import { ExternalLink } from "lucide-react";
 import { notFound } from "next/navigation";
 import { getTranslations } from "next-intl/server";
@@ -31,6 +32,40 @@ import { getOccurrenceDetail } from "@/services/occurrences/detail";
  * bandeaux, procédure, historique, périodes précédentes — est rendu ici et ne
  * traverse pas le bundle client.
  */
+/**
+ * ⚠️ L'EXISTENCE ET LE DROIT D'ACCÈS SE DÉCIDENT ICI, ET NON DANS LE CORPS DE LA
+ * PAGE. Next rend les métadonnées AVANT d'ouvrir la moindre frontière de
+ * suspension : un `notFound()` lancé depuis cet endroit produit une vraie
+ * réponse 404. Lancé depuis le corps de la page, il arrivait après le premier
+ * envoi — le segment porte un `loading.tsx`, donc une frontière — et le
+ * navigateur recevait un 200 affichant un écran d'erreur.
+ *
+ * Ce que coûtait ce 200 : un moteur d'indexation garde la page, un client HTTP
+ * la tient pour valide, une sonde de supervision ne voit aucun incident, et un
+ * lien mort ne se signale nulle part.
+ *
+ * La lecture n'est pas dédoublée pour autant : `getOccurrenceDetail` est
+ * mémoïsée par requête, et la page réutilise le résultat déjà obtenu ici.
+ *
+ * ⚠️ LE STREAMING DU RESTE N'EST PAS TOUCHÉ : `loading.tsx` demeure, et la page
+ * continue de s'afficher par morceaux.
+ */
+export async function generateMetadata({
+  params,
+}: {
+  readonly params: Promise<{ occurrenceId: string }>;
+}): Promise<Metadata> {
+  await requireSectionAccess("/echeancier");
+  const { occurrenceId } = await params;
+
+  const detail = await getOccurrenceDetail(occurrenceId);
+  // ⚠️ Une fiche interdite et une fiche inexistante prennent la MÊME sortie :
+  // les distinguer permettrait d'énumérer les dossiers des autres domaines.
+  if (!detail.ok) notFound();
+
+  return { title: `${detail.value.obligation.code} — ${detail.value.periodKey}` };
+}
+
 export default async function Page({ params }: { params: Promise<{ occurrenceId: string }> }) {
   await requireSectionAccess("/echeancier");
 
