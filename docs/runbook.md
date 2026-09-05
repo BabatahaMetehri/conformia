@@ -167,6 +167,23 @@ un dispositif de sauvegarde absent ne doit pas ressembler à un dispositif silen
 Épreuve de restauration mensuelle : `npm run restore:test`. C'est **la seule chose qui
 transforme « on a des sauvegardes » en fait** ; le reste dit qu'un fichier existe.
 
+### Durée de restauration — à remplir après la première restauration réelle
+
+⚠️ **Une durée inconnue est une durée qu'on découvrira le jour de l'incident**,
+devant quelqu'un qui attend une réponse. Le chiffre ci-dessous se mesure une fois,
+puis se vérifie à chaque épreuve mensuelle.
+
+| Mesuré le   | Volume base | Volume pièces | Durée totale | Par qui |
+| ----------- | ----------- | ------------- | ------------ | ------- |
+| _à remplir_ |             |               |              |         |
+
+Ce qu'il faut chronométrer : **de la décision de restaurer à l'application qui
+répond**, pas la seule commande. Le téléchargement de l'archive depuis le NAS et
+la remise en route en font partie — ce sont eux qui surprennent.
+
+⚠️ Reporter aussi cette durée dans le plan de retour arrière
+(`docs/go-live.md`, section G) : c'est là qu'on la cherchera.
+
 ## Diagnostiquer avec l'audit
 
 Toute écriture métier laisse une ligne. Depuis la migration 0016, elle porte
