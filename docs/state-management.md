@@ -65,6 +65,58 @@ L'invalidation se fait par `revalidatePath` / `revalidateTag` côté serveur —
 en écrivant la réponse dans un state client. Le serveur reste la seule source de
 vérité, y compris juste après une écriture.
 
+### 3 bis. Lancer une mutation depuis un clic → `useActionRunner`
+
+```tsx
+const [pending, run] = useActionRunner();
+
+function submit(): void {
+  run(async () => {
+    const outcome = await declareAbsenceAction(input);
+    if (outcome.status === "success") {
+      toast.success(t("created"));
+      setOpen(false);
+      return;
+    }
+    toast.error(outcome.error.message);
+  });
+}
+```
+
+⚠️ **Aucun `router.refresh()` dans la tâche.** La Server Action appelle
+`revalidatePath` ; Next renvoie l'instruction de revalidation AVEC la réponse de
+l'action et rejoue la route lui-même. Un rafraîchissement client fait double
+emploi. Si l'écran ne se met pas à jour, ce n'est pas un rafraîchissement qui
+manque côté client : c'est un `revalidatePath` qui manque côté action.
+
+#### Les trois formes interdites, et ce que chacune perd
+
+Une règle ESLint (`conformia/no-async-transition`) les refuse, et le build
+échoue dessus.
+
+| Forme                                              | Ce qu'elle perd                                                                                                                                                              |
+| -------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `startTransition(async () => { … })`               | Les mises à jour qui suivent un `await` ne sont plus des mises à jour de transition (React le documente). Et deux exécutions lancées coup sur coup partent **en parallèle**. |
+| `startTransition(() => { void action().then(…) })` | La transition se referme avant le premier résultat : l'état d'attente **retombe aussitôt**, les boutons redeviennent cliquables pendant l'envoi.                             |
+| `router.refresh()` après un `await`                | Le rafraîchissement n'appartient plus à aucune transition et peut être annulé — mesuré en production sur le dépôt de pièces : `net::ERR_ABORTED`.                            |
+
+⚠️ **Ce que `startTransition(async …)` NE perd PAS**, contrairement à ce qu'on a
+cru : l'état d'attente. React 19 tient la transition ouverte jusqu'au bout de la
+fonction asynchrone. La mesure est dans
+`tests/unit/hooks/use-action-runner.test.tsx` — deux tentatives de test de bout
+en bout ont passé sur l'ancien code avant qu'elle ne dise pourquoi. Ce qui se
+perd vraiment est la MISE EN FILE : `useActionState` sérialise les envois,
+`useTransition` non.
+
+#### La seule exception, et pourquoi elle en est une
+
+`occurrence-checklist.tsx` conserve un `router.refresh()`. Le dépôt d'une pièce
+ne suit pas le cycle « clic → Server Action → revalidation » : le fichier part
+vers le Stockage, PUIS une action le confirme, et la page a déjà rendu. Le
+rafraîchissement y est déclenché par un effet dont la condition d'arrêt est un
+fait — la page a vu la pièce — et non enchaîné sur la fin d'une action, ce qui
+est précisément ce qui le rendait annulable.
+
 ### 4. État d'interface éphémère → `useState`
 
 Ouverture d'un menu, onglet actif, brouillon de champ non soumis, position d'un

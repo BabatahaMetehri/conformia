@@ -4,6 +4,13 @@ Chaque entrée dit **ce qui a été décidé**, **ce que cela coûte** et **ce q
 ferait reconsidérer**. Une décision dont on ne sait pas dire le prix n'a pas été prise,
 elle a été subie.
 
+## Écarts assumés
+
+Certaines entrées ne décrivent pas un choix d'architecture mais un **écart connu**,
+mesuré, dont on a décidé qu'il ne valait pas son correctif. Les taire les
+transformerait en dette invisible ; les corriger coûterait plus que ce qu'ils
+coûtent. Elles portent la mention en tête. À ce jour : § 15 (statut 404).
+
 ---
 
 ## 1 · La base est l'autorité, l'application explique
@@ -263,3 +270,55 @@ qu'un clic, et c'est le but.
 **Reconsidérer si.** Le besoin d'ajuster un jalon devient courant. Il faudrait alors
 un formulaire AVEC confirmation explicite et trace d'audit — pas un simple
 interrupteur.
+---
+
+## 15 · Une fiche introuvable répond 200, pas 404
+
+> **Écart assumé.** Ce qui suit n'est pas un choix d'architecture : c'est un défaut
+> connu qu'on garde, avec son prix chiffré.
+
+**Décidé.** `notFound()` sur une fiche — occurrence, document, obligation, registre —
+rend l'écran « ressource introuvable » avec un statut HTTP **200**. On le laisse tel
+quel, et on ne déplace pas le contrôle d'existence dans le middleware.
+
+**Pourquoi.** L'exigence réelle n'était pas le code de statut : c'était
+l'**indistinguabilité** entre « la ressource n'existe pas » et « vous n'y avez pas
+droit ». Distinguer les deux transformerait chaque fiche en oracle : on devine un
+identifiant, on lit la différence, et on apprend quels dossiers existent dans les
+domaines qu'on n'a pas le droit de voir. La liste des obligations d'une entreprise
+en dit long sur ses ennuis.
+
+Cette propriété-là est établie et **testée** — même statut, corps rendu identique,
+temps de réponse comparable (`e2e/security.spec.ts`). Aucune information ne fuit.
+L'objectif de sécurité est atteint.
+
+Ce qui reste est une imprécision de sémantique HTTP, dont les conséquences réelles
+se comptent :
+
+| Conséquence redoutée | Ici                                                                                                         |
+| -------------------- | ----------------------------------------------------------------------------------------------------------- |
+| Référencement        | Application privée, derrière authentification. Aucun moteur n'y entre.                                      |
+| Consommateurs d'API  | Il n'y en a pas.                                                                                            |
+| Cache                | Pages dynamiques authentifiées, jamais mises en cache partagé.                                              |
+| Surveillance externe | Une sonde pointée sur l'URL d'une fiche compterait mal. Ce cas ne se présente pas — voir `docs/runbook.md`. |
+
+**La cause, mesurée.** `notFound()` ne fixe le code que s'il est levé AVANT que la
+réponse ne commence à s'écrire. L'attrape-tout de la zone authentifiée y parvient :
+c'est un composant synchrone, il lève avant tout. Une fiche, elle, doit d'abord lire
+la session puis la base pour savoir si la ressource existe et si l'appelant y a
+droit ; sur une route rendue dynamiquement, ces attentes suffisent à engager la
+réponse. Vérifié : retirer les `loading.tsx` du segment ET de son parent n'y change
+rien, il n'existe aucune autre frontière de suspension dans la coquille, et
+`notFound()` depuis `generateMetadata` échoue aussi — Next 15 diffuse les
+métadonnées.
+
+**Coût.** Le correctif étanche demanderait de porter le contrôle dans le middleware,
+donc **une lecture de base par requête**. C'est précisément le motif qu'on vient de
+retirer des politiques RLS au prix de plusieurs heures de travail. Le réintroduire
+pour une exactitude cosmétique serait un mauvais échange : on paierait à chaque
+requête de chaque écran pour un chiffre que personne ne lit.
+
+**Reconsidérer si.** L'application s'ouvre à des consommateurs d'API, ou une
+surveillance externe doit distinguer « disparu » de « en panne » sur une ressource
+précise. Le premier cas changerait la nature du produit ; le second se règle avec
+`/api/health`, sans toucher au rendu.

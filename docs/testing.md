@@ -273,6 +273,85 @@ second lancement mesurait alors le ballonnement au lieu du coût de la requête 
 18 535 accès au deuxième passage contre moins de 10 000 au premier, sur un code
 identique.
 
+### L'envoi de courriels — vraiment envoyés, vraiment reçus
+
+`tests/integration/notification-delivery.test.ts` fait tourner `runNotificationJob`
+et va **relever la boîte**. Mailpit — la boîte aux lettres locale de Supabase,
+interface sur `54324`, SMTP sur `54325` — reçoit de vrais messages et les rend
+interrogeables par API. `tests/helpers/mailpit.ts` encapsule cet accès.
+
+⚠️ **Aucun `vi.mock` du fournisseur.** Un mock vérifie qu'on a appelé une
+fonction ; il ne vérifie ni que le message part, ni qu'il porte le bon
+destinataire, ni que le corps HTML tient debout, ni que le texte brut existe. Or
+c'est exactement ce qui casse. Avant ce fichier, `runNotificationJob` n'était
+appelé par aucun test, les deux fournisseurs n'étaient jamais instanciés et les
+onze gabarits n'étaient jamais rendus par le chemin qui les rend en production.
+
+#### Les deux fournisseurs, les mêmes scénarios
+
+Le fichier exécute son cœur de scénarios **deux fois**, une par valeur de
+`app_settings.email_provider` :
+
+| Réglage  | Chemin réellement parcouru                                             |
+| -------- | ---------------------------------------------------------------------- |
+| `smtp`   | `SmtpProvider` → nodemailer → SMTP → Mailpit                           |
+| `resend` | `ResendProvider` → SDK `resend` → HTTP → relais local → SMTP → Mailpit |
+
+Le relais est `tests/helpers/resend-shim.ts` : un serveur HTTP qui implémente
+`POST /emails` et remet le message à Mailpit. Le SDK le trouve seul, par la
+variable `RESEND_BASE_URL` qu'il lit à la construction du client — **aucune ligne
+de `resend.ts` ni de la fabrique n'a été modifiée pour le test**. Ce qui est
+éprouvé est donc l'interchangeabilité du code de production, et non celle d'une
+variante écrite pour l'occasion.
+
+Le relais sait aussi **refuser** une adresse (422, comme Resend pour une adresse
+invalide) et **répondre de travers** (200 sans identifiant). C'est ce qui permet
+d'éprouver les reprises, l'échec définitif et le filet de `ResendProvider` sans
+simuler quoi que ce soit de notre côté.
+
+⚠️ Une règle ESLint interdit désormais d'importer `resend` ou `nodemailer`
+ailleurs que dans `providers/{resend,smtp}.ts`. Sans elle, la promesse « changer
+de fournisseur ne touche aucun autre fichier » tenait à la seule discipline.
+
+#### Ce que la suite établit
+
+Volume et destinataires conformes à l'audience ; **déduplication** — deux cycles,
+un seul message, et le test échoue si l'on retire `notifications_rule_dedup_key` ;
+silence sur un dossier déposé, archivé ou sans objet ; **regroupement horaire** ;
+chaîne standard J+1 / J+3 / J+7 et chaîne accélérée `CRITICAL` J+0 / J+2 ;
+**déroutement vers le suppléant** d'un absent, mention comprise, l'in-app restant
+à l'absent ; reprises à temporisation croissante et alerte aux administrateurs
+après épuisement ; cinquante destinataires dont un invalide, quarante-neuf
+servis ; panne totale du fournisseur — les notifications in-app subsistent — puis
+reprise au cycle suivant ; canaux dormants écartés à la source.
+
+#### Couverture
+
+```bash
+npm run test:integration:coverage   # seuils sur resend.ts et smtp.ts
+npm test -- --coverage              # seuils sur src/emails/**
+```
+
+⚠️ **La couverture des fournisseurs se mesure dans la suite d'intégration**, pas
+dans l'unitaire : leur seul comportement intéressant est ce qu'ils font d'un vrai
+serveur. Celle des gabarits se mesure dans l'unitaire, où `renderEmail` est une
+fonction pure.
+
+#### Trois filtres perdus, et ce qu'ils enseignent
+
+La réécriture de `due_notification_candidates` en 0022 — pour y ajouter le
+déroutement — est repartie de la version de 0014 et en a **perdu quatre
+garanties** : la préférence de canal du destinataire, le contrôle de
+`deactivated_at`, l'écart des profils sans adresse, et la révocation de
+`execute` à `authenticated`. Une seule était couverte par un test ; c'est elle
+qui a dénoncé la régression, dès que la suite de diffusion a existé. `0023` les
+rétablit, et les trois premières ont désormais leur scénario.
+
+⚠️ **Une fonction SQL réécrite en entier ne dit pas ce qu'elle a cessé de faire.**
+Relire un `create or replace` de cent lignes ne fait pas apparaître la clause
+absente. Quand une migration réécrit une fonction existante, comparer la liste
+de ses clauses `where` avec la version précédente coûte deux minutes.
+
 ## Bout en bout — les écrans, enchaînés
 
 `e2e/`, Playwright, contre un **build de production**.
@@ -366,8 +445,6 @@ Dit ici pour que personne ne le découvre en production :
 - **Le rendu navigateur mesuré** — LCP, INP, CLS. `npm run load-test` mesure le
   serveur (~100 ms par page seul, p95 2,0 s à cinquante sessions simultanées, 0 échec
   sur 200 requêtes) ; il ne lance aucun navigateur.
-- **L'envoi réel de courriels.** Les fournisseurs sont éprouvés par leur interface,
-  pas par une remise effective.
 - **La restauration en conditions réelles.** `npm run restore:test` restaure dans une
   base jetable — c'est déjà beaucoup plus que rien, ce n'est pas un exercice de
   bascule.
@@ -407,6 +484,39 @@ Depuis, **deux exécutions complètes consécutives passent, 135 sur 135**.
 ⚠️ Ce qui reste vrai : le mécanisme compense un comportement de Next.js qu'il ne
 corrige pas. Si un écran neuf présente le symptôme, la cause est là, pas dans l'écran.
 
+### Windows épuise ses ports éphémères : `net::ERR_NO_BUFFER_SPACE`
+
+⚠️ **Ce n'est pas un défaut de l'application, et il ne faut pas le chercher dedans.**
+
+Le symptôme : un test de bout en bout échoue sur `page.goto: net::ERR_NO_BUFFER_SPACE`,
+souvent après une centaine de tests, jamais deux fois au même endroit. Relancé seul,
+le même test passe.
+
+La cause est système. Windows conserve chaque socket fermée en `TIME_WAIT` pendant
+quatre minutes et n'ouvre par défaut qu'une plage de ports dynamiques étroite. La
+suite en consomme beaucoup : cent trente-neuf tests, chacun avec ses requêtes HTTP,
+sa session et sa réserve de connexions PostgreSQL. Au-delà d'un certain débit, la
+pile réseau refuse d'en ouvrir une de plus.
+
+**Ce qui a été fait**, dans `playwright.config.ts` : une **reprise** sous Windows
+(`retries: 1`). Une seconde tentative repart sur des ports libérés ; un échec
+applicatif, lui, échoue les deux fois — la reprise ne masque donc aucun défaut réel.
+
+⚠️ **Cette reprise absorbe aussi l'intermittence Firefox** décrite plus bas. Deux
+exécutions complètes consécutives donnent désormais « 139 passés, 1 instable » là où
+l'une des deux échouait. Un test rapporté **instable** n'est pas un test vert : il
+signale qu'il a fallu s'y reprendre. Le rapport le nomme, et il faut le lire.
+
+⚠️ **Ce qu'il ne faut PAS faire : augmenter le nombre de travailleurs.** La suite
+tourne déjà sur un seul (`workers: 1`, `fullyParallel: false`), et c'était déjà le
+cas quand l'incident est survenu. En mettre deux doublerait le débit de sockets —
+exactement ce qui manque. Le réglage porte un commentaire en ce sens, pour que
+personne ne le relance à la hausse en croyant gagner du temps.
+
+Si le symptôme devenait fréquent, le remède est côté système et non côté suite :
+élargir la plage dynamique et raccourcir le `TIME_WAIT`
+(`netsh int ipv4 set dynamicport tcp start=10000 num=55000`).
+
 ### Firefox et les navigations interrompues
 
 Firefox signale `NS_BINDING_ABORTED` dès qu'une navigation en remplace une autre ;
@@ -420,4 +530,4 @@ est la page obtenue, vérifiée par les assertions qui suivent.
 npm run typecheck && npm run lint && npm test && npm run test:rls && npm run test:e2e
 ```
 
-Les quatre passent, ou ce n'est pas terminé.
+Les cinq passent, ou ce n'est pas terminé.

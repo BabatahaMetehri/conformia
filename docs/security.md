@@ -99,6 +99,67 @@ La règle vit dans `self_validation_blocked()`, appliquée par le trigger
 `trg_occurrences_25_separation_of_duties` — **c'est lui qui garantit**. La file de
 validation et la barre d'actions ne font que ne pas proposer ce qu'il refusera.
 
+### Ce que la Direction administre — et pourquoi
+
+La DIRECTION détient `referential.manage` et `register.manage`. Ce n'est pas un
+octroi de commodité, et il ne faut pas le « corriger » en le rendant à
+l'administrateur.
+
+**Le référentiel des obligations est du contenu métier, pas de la configuration
+technique.** Ajouter une obligation parce qu'un texte a changé, corriger un délai
+légal, rattacher une base juridique : ce sont des décisions de conformité. Les
+réserver à l'administrateur technique reviendrait à demander à la personne qui gère
+les comptes d'arbitrer une question réglementaire qu'elle n'est pas en position de
+trancher — et, en pratique, à ce que la Direction lui dicte la saisie. Le délai créé
+n'ajoute aucun contrôle : il déplace la décision sans la vérifier.
+
+Ce que la Direction n'a **pas**, et qui trace la frontière : `user.manage`,
+`role.manage`, `settings.manage`. Le pouvoir métier ne s'attribue pas ses propres
+droits.
+
+**Symétriquement, l'ADMIN voit le Référentiel et les Registres sans voir aucun
+dossier.** Il détient `obligation.read`, `referential.manage` et `register.manage`,
+mais ni `occurrence.read` ni `document.read` : son sommaire propose donc
+« Référentiel » et « Registres », jamais « Échéancier », « Documents »,
+« À valider » ni « Tableau de bord ». La distinction tient en une phrase — il
+administre **ce qui décrit** les obligations, il ne lit pas **ce qui les remplit**.
+
+Les deux propriétés sont encodées, rôle par rôle, dans
+`tests/integration/navigation-roles.test.ts`. Ce fichier fait **référence** : ses
+listes sont exhaustives, lues depuis la matrice en base, et une modification de
+permission l'y fait échouer.
+
+### Qui peut déléguer
+
+Une délégation dit « **je** délègue **mon** pouvoir de validation pendant mon
+absence ». La porte est donc `occurrence.validate` — pas `role.manage`.
+
+L'énoncé initial du module de validation la plaçait sous `role.manage`, donc
+réservée à l'administrateur. C'était une erreur, et elle se corrigeait d'elle-même à
+l'usage : le mécanisme existe pour éviter qu'un dossier se bloque pendant un congé,
+et lui imposer un délai administratif produit le contournement qu'on connaît — on
+prête son mot de passe. Exactement ce que la délégation devait remplacer.
+
+**Le périmètre est plus étroit que la porte.** La politique
+`validation_delegations_insert` exige `delegator_id = current_profile_id()` et
+n'ouvre **aucune exception** — ni `user.manage`, ni `absence.manage` :
+
+| Acte                        | Qui                                     |
+| --------------------------- | --------------------------------------- |
+| **Créer** une délégation    | Le délégant, et lui seul                |
+| **Lire** une délégation     | Délégant, délégataire, ou `user.manage` |
+| **Révoquer** une délégation | Délégant, ou `user.manage`              |
+
+⚠️ **Un administrateur ne consent pas à la place d'autrui.** Il peut défaire une
+délégation — révoquer est une mesure de sûreté — jamais la créer. Arranger
+l'autorité d'un tiers sans son geste serait précisément ce que ce mécanisme existe
+pour empêcher, et la trace d'audit désignerait alors le délégant pour un acte qu'il
+n'a pas posé.
+
+Quatre scénarios l'éprouvent dans `tests/integration/navigation-roles.test.ts` :
+la porte vérifiée sur les sept rôles, un SUPERVISEUR qui crée sa propre délégation,
+le même refusé pour autrui, et un ADMIN refusé de la même façon.
+
 ### ⚠️ Pourquoi ADMIN n'a NI `occurrence.read` NI `document.read`
 
 C'est la décision la plus contre-intuitive du modèle, et la plus importante.

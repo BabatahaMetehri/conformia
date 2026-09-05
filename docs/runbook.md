@@ -27,6 +27,23 @@ curl -s -H "x-cron-secret: $CRON_SECRET" http://localhost:3000/api/health | jq .
 L'écran **Administration → Travaux planifiés** (`/fr/admin/jobs`) dit la même chose en
 plus lisible, avec l'historique des exécutions.
 
+### ⚠️ Ce sur quoi une surveillance externe NE DOIT PAS être pointée
+
+Si une sonde externe est mise en place un jour, elle interroge **`/api/health`**, et
+rien d'autre.
+
+En particulier : **ne pas pointer une sonde sur l'URL d'une fiche** —
+`/fr/echeancier/<identifiant>`, `/fr/documents/<identifiant>` — pour détecter la
+disparition d'une ressource. Ces écrans rendent l'état « introuvable » avec un
+statut **200**, délibérément : voir `docs/decisions.md` § 15. Une sonde qui compte
+les codes de statut y verrait toujours un succès, y compris après la suppression de
+la fiche — elle rassurerait au lieu d'alerter, ce qui est pire qu'une absence de
+sonde.
+
+Une fiche exige de surcroît une session valide : sans elle, la réponse est une
+redirection 307 vers la connexion, et la sonde mesurerait l'authentification, pas la
+disponibilité.
+
 ## Les symptômes, et ce qu'ils veulent dire
 
 ### « Les échéances du mois n'apparaissent pas »
