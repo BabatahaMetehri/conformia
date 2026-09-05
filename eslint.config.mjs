@@ -6,6 +6,7 @@ import { createTypeScriptImportResolver } from "eslint-import-resolver-typescrip
 import importPlugin from "eslint-plugin-import";
 import tseslint from "typescript-eslint";
 
+import noAsyncTransition from "./eslint-rules/no-async-transition.mjs";
 import noPhysicalCssProperties from "./eslint-rules/no-physical-css-properties.mjs";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
@@ -83,6 +84,32 @@ const NO_SUPABASE_CLIENT_OUTSIDE_DATA = {
 };
 
 /**
+ * Les SDK d'envoi de courriel ne s'importent que dans leur fournisseur.
+ *
+ * ⚠️ C'EST CETTE RÈGLE QUI REND VRAIE LA PROMESSE « changer de fournisseur ne
+ * touche aucun autre fichier ». Sans elle, la promesse tenait à la discipline :
+ * il suffisait qu'un écran importe `resend` pour envoyer un message de test, et
+ * la bascule vers le SMTP d'entreprise devenait un chantier. Les deux fichiers
+ * `providers/resend.ts` et `providers/smtp.ts` sont exemptés nommément plus bas ;
+ * pour tout le reste de `src/`, l'accès passe par l'interface `EmailProvider`.
+ *
+ * Les tests en sont exempts (bloc `tests/**`) : le relais local qui éprouve le
+ * fournisseur Resend doit bien parler SMTP à Mailpit.
+ */
+const NO_EMAIL_SDK_OUTSIDE_PROVIDER = {
+  /*
+   * ⚠️ `regex` ET NON `group` : les motifs de groupe sont interprétés à la
+   * manière d'un `.gitignore`, où un nom nu correspond à n'importe quel segment
+   * de chemin — `resend` dénonçait donc `./resend`, l'import RELATIF que la
+   * fabrique fait légitimement de son propre voisin. L'expression rationnelle,
+   * ancrée au début, ne vise que le paquet.
+   */
+  regex: "^(resend|nodemailer)(/|$)",
+  message:
+    "Les SDK d'envoi ne s'importent que dans src/services/notifications/providers/{resend,smtp}.ts. Ailleurs, passez par l'interface EmailProvider.",
+};
+
+/**
  * Le client `service_role` contourne la RLS. Seuls les scripts de
  * `src/server/jobs/**` peuvent le charger — partout ailleurs, c'est un défaut.
  * `import 'server-only'` dans admin.ts est la seconde barrière, côté build.
@@ -128,8 +155,13 @@ export default tseslint.config(
     },
     plugins: {
       import: importPlugin,
-      // Plugin local : il ne porte qu'une regle, la contrainte RTL.
-      conformia: { rules: { "no-physical-css-properties": noPhysicalCssProperties } },
+      // Plugin local : deux règles, la contrainte RTL et la garde des transitions.
+      conformia: {
+        rules: {
+          "no-physical-css-properties": noPhysicalCssProperties,
+          "no-async-transition": noAsyncTransition,
+        },
+      },
     },
     settings: {
       "import/resolver-next": [
@@ -142,10 +174,16 @@ export default tseslint.config(
     rules: {
       "@typescript-eslint/no-explicit-any": "error",
       "conformia/no-physical-css-properties": "error",
+      "conformia/no-async-transition": "error",
       "@typescript-eslint/no-restricted-imports": [
         "error",
         {
-          patterns: [NO_SUPABASE_OUTSIDE_DATA, NO_ADMIN_CLIENT, NO_SUPABASE_CLIENT_OUTSIDE_DATA],
+          patterns: [
+            NO_SUPABASE_OUTSIDE_DATA,
+            NO_ADMIN_CLIENT,
+            NO_SUPABASE_CLIENT_OUTSIDE_DATA,
+            NO_EMAIL_SDK_OUTSIDE_PROVIDER,
+          ],
         },
       ],
       "import/no-restricted-paths": ["error", { basePath: __dirname, zones: layerZones }],
@@ -159,6 +197,31 @@ export default tseslint.config(
   // `src/lib/supabase/**`, à qui l'accès à @supabase/* est justement nécessaire.
   {
     files: ["src/services/**", "src/lib/**", "src/config/**"],
+    rules: {
+      "@typescript-eslint/no-restricted-imports": [
+        "error",
+        {
+          patterns: [
+            NO_SUPABASE_OUTSIDE_DATA,
+            NO_REACT_IN_SERVICES,
+            NO_ADMIN_CLIENT,
+            NO_SUPABASE_CLIENT_OUTSIDE_DATA,
+            NO_EMAIL_SDK_OUTSIDE_PROVIDER,
+          ],
+        },
+      ],
+    },
+  },
+
+  /*
+   * Les DEUX SEULS fichiers autorisés à connaître un SDK d'envoi. Ils gardent les
+   * autres interdits : rien ici ne justifie d'ouvrir une connexion Supabase.
+   */
+  {
+    files: [
+      "src/services/notifications/providers/resend.ts",
+      "src/services/notifications/providers/smtp.ts",
+    ],
     rules: {
       "@typescript-eslint/no-restricted-imports": [
         "error",
