@@ -5,6 +5,7 @@ import { BackupFailureAlert, IntegrityAlert } from "@/emails/ops-emails";
 import { PasswordReset, UserInvitation } from "@/emails/account-emails";
 import { GroupedAlerts } from "@/emails/grouped-alerts-email";
 import { WeeklyDigest, type DigestSection } from "@/emails/digest-email";
+import { AbsenceRouting, DeputyNotice } from "@/emails/triad-emails";
 import {
   EscalationNotice,
   OverdueAlert,
@@ -49,6 +50,18 @@ export type EmailPayload =
       readonly daysAfter: number;
       readonly ownerName: string;
     } & OccurrenceFacts)
+  /*
+   * ⚠️ Alerte DÉROUTÉE vers un suppléant, le destinataire prévu étant absent.
+   * `absentName` n'est pas décoratif : sans lui, la mention « vous recevez cette
+   * alerte en tant que suppléant » ne dit pas de qui, et le suppléant cherche
+   * d'abord ce qu'il aurait lui-même oublié.
+   */
+  | ({
+      readonly template: "AbsenceRouting";
+      readonly absentName: string;
+      readonly offsetDays: number;
+    } & OccurrenceFacts)
+  | ({ readonly template: "DeputyNotice"; readonly ownerName: string } & OccurrenceFacts)
   | {
       readonly template: "WeeklyDigest";
       readonly recipientName: string;
@@ -103,6 +116,9 @@ export const TEMPLATE_KEYS: readonly TemplateKey[] = [
   "BackupFailureAlert",
   // Imposé par la règle de regroupement — voir grouped-alerts-email.tsx.
   "GroupedAlerts",
+  // Introduits par la triade — voir triad-emails.tsx.
+  "AbsenceRouting",
+  "DeputyNotice",
 ];
 
 export function isTemplateKey(value: string): value is TemplateKey {
@@ -169,6 +185,16 @@ function build(payload: EmailPayload, t: EmailTranslator): [string, ReactElement
       return [
         t("emails.backupFailure.subject", { hours: payload.hoursSinceSuccess }),
         BackupFailureAlert({ t, ...payload }),
+      ];
+    case "AbsenceRouting":
+      return [
+        t("emails.absenceRouting.subject", { obligation: payload.obligationName }),
+        AbsenceRouting({ t, ...payload }),
+      ];
+    case "DeputyNotice":
+      return [
+        t("emails.deputyNotice.subject", { obligation: payload.obligationName }),
+        DeputyNotice({ t, ...payload }),
       ];
   }
 }

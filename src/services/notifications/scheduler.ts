@@ -99,6 +99,28 @@ export function toPayload(candidate: NotificationCandidate): Result<EmailPayload
     occurrenceUrl: occurrenceUrl(candidate.occurrenceId),
   };
 
+  /*
+   * ⚠️ LE DÉROUTEMENT PRIME SUR LE GABARIT PRÉVU PAR LA RÈGLE.
+   *
+   * Quand la base a redirigé un courriel vers le suppléant d'un absent, envoyer
+   * l'alerte ordinaire serait exact mais incompréhensible : le suppléant lirait
+   * « votre échéance approche » sur un dossier dont il n'est pas responsable, et
+   * chercherait d'abord ce qu'il a lui-même oublié. Le gabarit `AbsenceRouting`
+   * porte les mêmes faits ET la mention qui les rend lisibles.
+   *
+   * La condition ne peut être vraie que pour le canal COURRIEL : la fonction
+   * SQL ne déroute pas l'in-app, précisément pour que l'absent retrouve le
+   * contexte à son retour.
+   */
+  if (candidate.absentRecipientName !== null) {
+    return ok({
+      template: "AbsenceRouting",
+      absentName: candidate.absentRecipientName,
+      offsetDays: candidate.offsetDays,
+      ...facts,
+    });
+  }
+
   switch (candidate.templateKey) {
     case "UpcomingDeadline":
       // L'offset est négatif avant l'échéance ; le gabarit parle en jours restants.

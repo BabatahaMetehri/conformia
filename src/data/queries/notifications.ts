@@ -53,6 +53,15 @@ export interface NotificationCandidate {
   readonly recipientEmail: string | null;
   readonly recipientName: string | null;
   readonly ownerName: string | null;
+  /**
+   * Nom de la personne INITIALEMENT visée, quand le courriel a été dérouté vers
+   * son suppléant parce qu'elle est absente. `null` dans tous les autres cas.
+   *
+   * ⚠️ C'est ce champ qui déclenche le gabarit `AbsenceRouting` plutôt que
+   * l'alerte ordinaire. Sans lui, le suppléant recevrait une alerte sur un
+   * dossier dont il n'est pas responsable, sans comprendre pourquoi.
+   */
+  readonly absentRecipientName: string | null;
 }
 
 /**
@@ -93,6 +102,15 @@ export async function listDueCandidates(
       recipientEmail: row.recipient_email,
       recipientName: row.recipient_name,
       ownerName: row.owner_name,
+      /*
+       * ⚠️ LE TYPE GÉNÉRÉ MENT ICI, ET LE MODÈLE DIT VRAI. `supabase gen types`
+       * déclare les colonnes d'un `returns table` non nullables, faute de pouvoir
+       * les analyser ; celle-ci vaut NULL dans le cas ordinaire — aucun
+       * déroutement. `NotificationCandidate` la déclare donc `string | null`, et
+       * c'est cette déclaration qui gouverne : le planificateur compare bien à
+       * `null` pour choisir le gabarit.
+       */
+      absentRecipientName: row.absent_recipient_name,
     })),
   );
 }

@@ -6307,6 +6307,7 @@ export type Database = {
       due_notification_candidates: {
         Args: { p_now?: string }
         Returns: {
+          absent_recipient_name: string
           authority_name: string
           channel: Database["public"]["Enums"]["notification_channel"]
           criticality: Database["public"]["Enums"]["criticality"]
@@ -6849,7 +6850,6 @@ export type Database = {
       start_job_run: { Args: { p_job_name: string }; Returns: number }
       start_restore_test: { Args: { p_backup_run: number }; Returns: number }
       storage_path_segment: { Args: { p_value: string }; Returns: string }
-      temoin_refus: { Args: { n: number }; Returns: number }
       try_lock_job: { Args: { p_job_name: string }; Returns: boolean }
       unlock_job: { Args: { p_job_name: string }; Returns: boolean }
       validation_levels_required: {
@@ -6905,7 +6905,10 @@ export type Database = {
         | "VALIDATOR"
         | "DEPARTMENT_HEAD"
         | "DIRECTION"
-      notification_channel: "EMAIL" | "IN_APP" | "SMS"
+        | "RESPONSIBLE"
+        | "DEPUTY"
+        | "SUPERVISOR"
+      notification_channel: "EMAIL" | "IN_APP" | "SMS" | "WHATSAPP"
       occurrence_status:
         | "TODO"
         | "IN_PROGRESS"
@@ -7078,8 +7081,11 @@ export const Constants = {
         "VALIDATOR",
         "DEPARTMENT_HEAD",
         "DIRECTION",
+        "RESPONSIBLE",
+        "DEPUTY",
+        "SUPERVISOR",
       ],
-      notification_channel: ["EMAIL", "IN_APP", "SMS"],
+      notification_channel: ["EMAIL", "IN_APP", "SMS", "WHATSAPP"],
       occurrence_status: [
         "TODO",
         "IN_PROGRESS",
