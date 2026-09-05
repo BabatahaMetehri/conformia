@@ -310,11 +310,22 @@ function satisfies(requirement: NavRequirement, granted: ReadonlySet<Permission>
  * ABSENTE du résultat — elle n'est ni désactivée, ni grisée, ni rendue puis
  * masquée en CSS : la charge envoyée au navigateur ne la mentionne pas.
  *
- * Un groupe reste visible s'il satisfait sa propre condition OU s'il conserve au
- * moins un enfant. Le « ou » est délibéré : la condition d'Administration
- * (`user.manage`, `role.manage`, `settings.manage`) résume ses enfants les plus
- * courants, elle ne s'y superpose pas. Sans lui, la DIRECTION et l'AUDITEUR
- * détiendraient `audit.read` sans qu'aucun lien ne mène au journal.
+ * ⚠️ UN GROUPE EST VISIBLE SI ET SEULEMENT SI L'UN DE SES ENFANTS L'EST.
+ *
+ * La règle précédente disait « s'il satisfait sa propre condition OU s'il garde
+ * un enfant ». Le premier terme rendait un groupe VIDE atteignable : la
+ * condition d'Administration résume ses enfants les plus courants sans se
+ * superposer à eux, et il suffisait d'en détenir une pour voir un dossier qui ne
+ * s'ouvre sur rien. Un sommaire qui propose une porte sans pièce derrière
+ * apprend à se méfier du sommaire.
+ *
+ * ⚠️ ET LE LIEN DU GROUPE MÈNE À SON PREMIER ENFANT ACCESSIBLE. Le `href`
+ * déclaré — `/admin` — est celui du groupe, pas d'une destination que tout
+ * porteur d'un enfant peut atteindre : la DIRECTION ne voit d'Administration que
+ * le journal d'audit, et son lien doit la conduire là, non sur un écran que la
+ * garde de route lui refusera. Le remplacement se fait ICI, sur l'arbre filtré,
+ * de sorte que `requirementForPath` continue de lire l'arbre d'origine et de
+ * rendre la condition RÉELLE de `/admin`.
  */
 export function filterNavigation(
   items: readonly NavItem[],
@@ -323,17 +334,16 @@ export function filterNavigation(
   const visible: NavItem[] = [];
 
   for (const item of items) {
-    const children = item.children === undefined ? [] : filterNavigation(item.children, granted);
-    const allowed = satisfies(item.requires, granted);
-
     if (item.children === undefined) {
-      if (allowed) visible.push(item);
+      if (satisfies(item.requires, granted)) visible.push(item);
       continue;
     }
 
-    if (allowed || children.length > 0) {
-      visible.push({ ...item, children });
-    }
+    const children = filterNavigation(item.children, granted);
+    if (children.length === 0) continue;
+
+    const destination = firstLeafPath(children);
+    visible.push({ ...item, children, href: destination });
   }
 
   return visible;
