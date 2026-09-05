@@ -14,9 +14,22 @@ import { join } from "node:path";
 
 import pg from "pg";
 
+import { refuseProduction } from "./lib/refuse-production.mjs";
+
 const SEED_DIR = "supabase/seed";
 const CONNECTION =
   process.env.SUPABASE_DB_URL ?? "postgresql://postgres:postgres@127.0.0.1:54322/postgres";
+
+/*
+ * ⚠️ LE RÉFÉRENTIEL DE PRODUCTION NE SE CHARGE PAS PAR CE SCRIPT.
+ *
+ * Ce chemin sert à (re)poser un jeu de départ sur une base de TRAVAIL. Sur
+ * l'installation réelle, le référentiel est chargé une seule fois, délibérément,
+ * par la procédure d'amorçage de `docs/go-live.md` — et relu ligne à ligne avant
+ * de l'être. Rejouer un seed sur une base vivante est inoffensif ici (chaque
+ * insertion porte `on conflict do nothing`) ; l'habitude, elle, ne l'est pas.
+ */
+refuseProduction("Le chargement du jeu de départ", CONNECTION);
 
 const files = readdirSync(SEED_DIR)
   .filter((name) => name.endsWith(".sql"))

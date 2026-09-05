@@ -29,6 +29,8 @@
 import { readFileSync } from "node:fs";
 import { Pool } from "pg";
 
+import { refuseProduction } from "./lib/refuse-production.mjs";
+
 function loadEnvLocal() {
   let raw;
   try {
@@ -82,14 +84,7 @@ if (!email || !password || !roleCode) {
 const connectionString =
   process.env.DATABASE_URL ?? "postgresql://postgres:postgres@127.0.0.1:54322/postgres";
 
-const isLocal = /(?:127\.0\.0\.1|localhost)/.test(connectionString);
-if (!isLocal) {
-  console.error(
-    "REFUS : DATABASE_URL ne pointe pas vers une base locale.\n" +
-      "Ce script fabrique des comptes ; il n'a rien à faire sur une installation réelle.",
-  );
-  process.exit(1);
-}
+refuseProduction("Ce script fabrique des comptes ; il", connectionString);
 
 if (password.length < 12) {
   // Le formulaire de l'application impose une longueur minimale : un compte créé
