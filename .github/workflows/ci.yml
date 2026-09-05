@@ -1,0 +1,136 @@
+# =============================================================================
+# INTÉGRATION CONTINUE — bloquante, sans exception
+#
+# ⚠️ AUCUN DÉPLOIEMENT SANS SUITE VERTE. Il n'existe volontairement ni
+# `continue-on-error`, ni étape facultative, ni chemin qui saute une suite. Une
+# vérification qu'on peut ignorer n'est pas une vérification : elle devient un
+# avertissement, puis un bruit, puis rien.
+#
+# ⚠️ POURQUOI UN SEUL TRAVAIL ET NON CINQ EN PARALLÈLE. Les suites d'intégration
+# et de bout en bout exigent toutes deux une base Supabase réelle, migrée et
+# semée. La démarrer cinq fois coûterait plus que la parallélisation ne fait
+# gagner, et surtout : cinq bases distinctes rendraient un échec impossible à
+# reproduire depuis un poste, où il n'y en a qu'une.
+#
+# L'ordre est celui du COÛT CROISSANT. Le typage échoue en quarante secondes ;
+# les parcours de bout en bout prennent sept minutes. Placer le plus cher en
+# dernier fait remonter la faute la plus fréquente le plus vite.
+# =============================================================================
+
+name: CI
+
+on:
+  push:
+    branches: [main, master]
+  pull_request:
+  # Permet de rejouer la suite sans pousser — utile avant un déploiement manuel.
+  workflow_dispatch:
+
+concurrency:
+  # Une exécution par référence : pousser trois fois de suite n'occupe pas trois
+  # agents pour un résultat qui ne servira qu'une fois.
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  # ⚠️ VALEURS DE TEST, PAS DES SECRETS. Ce sont les clés fixes de la pile
+  # Supabase locale, publiées dans sa documentation et identiques sur tous les
+  # postes. Les mettre dans les secrets du dépôt les ferait passer pour ce
+  # qu'elles ne sont pas, et masquerait les vrais.
+  NEXT_PUBLIC_SUPABASE_URL: http://127.0.0.1:54321
+  NEXT_PUBLIC_APP_URL: http://127.0.0.1:3210
+  DATABASE_URL: postgresql://postgres:postgres@127.0.0.1:54322/postgres
+  SUPABASE_DB_URL: postgresql://postgres:postgres@127.0.0.1:54322/postgres
+  SMTP_HOST: 127.0.0.1
+  SMTP_PORT: "54325"
+  SMTP_USER: dev
+  SMTP_PASSWORD: dev
+  SMTP_FROM: conformia@example.test
+  RESEND_API_KEY: re_test_relais_local
+  CRON_SECRET: "0123456789abcdef0123456789abcdef"
+  BACKUP_ENCRYPTION_KEY: "0123456789abcdef0123456789abcdef"
+  LOG_LEVEL: error
+
+jobs:
+  fuites:
+    name: Secrets — gitleaks
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          # ⚠️ L'HISTORIQUE ENTIER. Un secret retiré du dernier commit reste dans
+          # les précédents, et c'est là qu'il se trouve : `fetch-depth: 1`
+          # analyserait l'instantané, pas le dépôt.
+          fetch-depth: 0
+
+      - name: gitleaks
+        uses: gitleaks/gitleaks-action@v2
+        env:
+          GITLEAKS_CONFIG: .gitleaks.toml
+
+  suite:
+    name: Typage, lint, tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+
+      - name: Dépendances
+        run: npm ci
+
+      # ─── Ce qui ne demande aucune base ────────────────────────────────────
+      - name: Typage
+        run: npm run typecheck
+
+      - name: Lint
+        # ⚠️ `--max-warnings=0` est déjà dans le script : un avertissement toléré
+        # aujourd'hui est une règle éteinte demain.
+        run: npm run lint
+
+      - name: Format
+        run: npx prettier --check .
+
+      - name: Tests unitaires
+        run: npm test
+
+      # ─── Ce qui exige la base ─────────────────────────────────────────────
+      - name: Supabase local
+        run: |
+          npx supabase start
+          npx supabase status -o env >> "$GITHUB_ENV"
+
+      - name: Migrations et référentiel
+        run: |
+          npx supabase db reset --no-seed
+          node scripts/wait-db.mjs
+          npm run db:seed
+          node scripts/wait-db.mjs
+
+      - name: Types de base à jour
+        # ⚠️ Le fichier généré doit correspondre aux migrations appliquées. Une
+        # migration livrée sans `db:types` produit un typage qui ment, et le
+        # mensonge ne se voit qu'au premier accès à la colonne absente.
+        run: |
+          npm run db:types
+          git diff --exit-code src/types/database.types.ts
+
+      - name: Tests d'intégration — RLS, politiques, jobs
+        run: npm run test:integration
+
+      - name: Build de production
+        run: npm run build
+
+      - name: Parcours de bout en bout
+        run: |
+          npx playwright install --with-deps chromium firefox
+          npm run test:e2e
+
+      - name: Journaux en cas d'échec
+        if: failure()
+        run: npx supabase status || true
