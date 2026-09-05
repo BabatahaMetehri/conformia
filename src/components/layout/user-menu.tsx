@@ -3,7 +3,7 @@
 import { CalendarDays, Check, Languages, LogOut, Monitor, Moon, Sun, User } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { useTheme } from "next-themes";
-import { useEffect, useState, useTransition } from "react";
+import { useEffect, useState } from "react";
 
 import { UserAvatar } from "@/components/shared/user-avatar";
 import {
@@ -22,6 +22,7 @@ import { logoutAction } from "@/features/auth/actions";
 import { setLocaleAction } from "@/features/auth/actions/locale";
 import { useRequiredCurrentUser } from "@/hooks/use-current-user";
 import { Link, usePathname } from "@/i18n/navigation";
+import { useActionRunner } from "@/hooks/use-action-runner";
 
 /**
  * Menu utilisateur : profil, thème, langue, flux calendrier, déconnexion.
@@ -43,7 +44,13 @@ export function UserMenu({ locale }: { readonly locale: string }) {
    * produirait « /ar/fr/echeancier ».
    */
   const pathname = usePathname();
-  const [, startTransition] = useTransition();
+  /*
+   * ⚠️ L'ATTENTE EST DÉSORMAIS UTILISÉE, là où elle était jetée (`const [,
+   * startTransition]`). Changer de langue redirige : sans désactivation, deux
+   * clics rapides lancent deux redirections concurrentes, et c'est la dernière
+   * arrivée qui gagne — pas forcément celle qu'on a demandée en dernier.
+   */
+  const [switching, run] = useActionRunner();
 
   // Le thème résolu vit dans le navigateur : l'afficher au rendu serveur
   // produirait une coche placée au hasard, corrigée à l'hydratation.
@@ -138,10 +145,10 @@ export function UserMenu({ locale }: { readonly locale: string }) {
                  * lit des caractères arabes avec des règles françaises.
                  */
                 lang={candidate}
-                disabled={candidate === locale}
+                disabled={switching || candidate === locale}
                 onSelect={() => {
                   if (candidate === locale) return;
-                  startTransition(async () => {
+                  run(async () => {
                     await setLocaleAction(candidate, pathname);
                   });
                 }}

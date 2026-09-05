@@ -1,7 +1,7 @@
 "use client";
 
 import { useTranslations } from "next-intl";
-import { useEffect, useId, useState, useTransition } from "react";
+import { useEffect, useId, useState } from "react";
 import { toast } from "sonner";
 
 import { ErrorState, LoadingState } from "@/components/shared/states";
@@ -19,6 +19,7 @@ import {
   savePreferenceAction,
 } from "@/features/notifications/actions/inbox";
 import type { ChannelPreference } from "@/features/notifications/actions/types";
+import { useActionRunner } from "@/hooks/use-action-runner";
 
 const DIGEST_VALUES = ["NONE", "DAILY", "WEEKLY"] as const;
 
@@ -39,7 +40,7 @@ export function PreferencesForm() {
   const groupId = useId();
   const [preferences, setPreferences] = useState<readonly ChannelPreference[] | null>(null);
   const [failed, setFailed] = useState(false);
-  const [pending, startTransition] = useTransition();
+  const [pending, run] = useActionRunner();
 
   useEffect(() => {
     void loadPreferencesAction().then((outcome) => {
@@ -49,15 +50,14 @@ export function PreferencesForm() {
   }, []);
 
   const save = (next: ChannelPreference) => {
-    startTransition(() => {
-      void savePreferenceAction(next).then((outcome) => {
-        if (outcome.status === "success") {
-          setPreferences(outcome.data);
-          toast.success(t("notifications.preferences.saved"));
-        } else {
-          toast.error(t("notifications.errors.updateFailed"));
-        }
-      });
+    run(async () => {
+      const outcome = await savePreferenceAction(next);
+      if (outcome.status === "success") {
+        setPreferences(outcome.data);
+        toast.success(t("notifications.preferences.saved"));
+        return;
+      }
+      toast.error(t("notifications.errors.updateFailed"));
     });
   };
 

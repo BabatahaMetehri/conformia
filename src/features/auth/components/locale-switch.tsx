@@ -2,12 +2,12 @@
 
 import { Languages } from "lucide-react";
 import { useLocale, useTranslations } from "next-intl";
-import { useTransition } from "react";
 
 import { LOCALES } from "@/config/constants";
 import { setLocaleAction } from "@/features/auth/actions/locale";
 import { usePathname } from "@/i18n/navigation";
 import { cn } from "@/lib/utils";
+import { useActionRunner } from "@/hooks/use-action-runner";
 
 /**
  * Choix de langue sur les écrans d'authentification.
@@ -29,7 +29,8 @@ export function LocaleSwitch() {
   const t = useTranslations("layout");
   const current = useLocale();
   const pathname = usePathname();
-  const [, startTransition] = useTransition();
+  // Voir user-menu.tsx : l'attente sert à empêcher deux redirections concurrentes.
+  const [switching, run] = useActionRunner();
 
   return (
     <div className="flex items-center justify-center gap-1 text-sm">
@@ -48,10 +49,10 @@ export function LocaleSwitch() {
            */
           lang={locale}
           aria-current={locale === current ? "true" : undefined}
-          disabled={locale === current}
+          disabled={switching || locale === current}
           onClick={() => {
             if (locale === current) return;
-            startTransition(async () => {
+            run(async () => {
               await setLocaleAction(locale, pathname);
             });
           }}

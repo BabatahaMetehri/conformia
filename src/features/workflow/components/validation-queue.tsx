@@ -2,7 +2,7 @@
 
 import { CheckCheck, ChevronDown, ChevronRight, Loader2, ShieldCheck, X } from "lucide-react";
 import { useTranslations } from "next-intl";
-import { useState, useTransition } from "react";
+import { useState } from "react";
 import { toast } from "sonner";
 
 import { DocumentActions } from "@/components/shared/document-actions";
@@ -29,8 +29,9 @@ import {
 } from "@/features/workflow/actions/validation";
 import type { ReviewOutcome } from "@/features/workflow/actions/types";
 import { formatDateFr, formatDateTimeFr } from "@/lib/dates";
-import { Link, useRouter } from "@/i18n/navigation";
+import { Link } from "@/i18n/navigation";
 import type { ValidationQueueRow } from "@/services/workflow/queue";
+import { useActionRunner } from "@/hooks/use-action-runner";
 
 const MIN_REASON_LENGTH = 10;
 
@@ -54,9 +55,8 @@ export function ValidationQueue({
 }) {
   const t = useTranslations("workflow.queue");
   const tCommon = useTranslations("common.actions");
-  const router = useRouter();
 
-  const [pending, startTransition] = useTransition();
+  const [pending, run] = useActionRunner();
   const [selection, setSelection] = useState<ReadonlySet<string>>(new Set());
   const [expanded, setExpanded] = useState<string | null>(null);
   const [review, setReview] = useState<Review | null>(null);
@@ -87,7 +87,7 @@ export function ValidationQueue({
     setReview(null);
     setLoadingReview(true);
 
-    startTransition(async () => {
+    run(async () => {
       const outcome = await loadReviewAction({ occurrenceId: row.id });
       setLoadingReview(false);
       if (outcome.status === "error") {
@@ -99,7 +99,7 @@ export function ValidationQueue({
   }
 
   function decide(row: ValidationQueueRow, toStatus: "VALIDATED" | "REJECTED"): void {
-    startTransition(async () => {
+    run(async () => {
       const outcome = await decideAction({
         occurrenceId: row.id,
         toStatus,
@@ -130,12 +130,11 @@ export function ValidationQueue({
 
       setRejecting(null);
       setReason("");
-      router.refresh();
     });
   }
 
   function runBulk(): void {
-    startTransition(async () => {
+    run(async () => {
       const outcome = await bulkValidateAction({ occurrenceIds: selected });
       setConfirmBulk(false);
 
@@ -149,7 +148,6 @@ export function ValidationQueue({
         toast.error(t("bulkRefused", { count: outcome.data.refused.length }));
       }
       setSelection(new Set());
-      router.refresh();
     });
   }
 

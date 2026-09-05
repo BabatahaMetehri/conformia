@@ -3,7 +3,7 @@
 import { Check, RefreshCw, Trash2 } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { useRouter } from "next/navigation";
-import { useEffect, useMemo, useState, useTransition } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
 
 import { FileDropzone } from "@/components/shared/file-dropzone";
@@ -31,6 +31,7 @@ import { DocumentActions } from "@/components/shared/document-actions";
 import { formatDateTimeFr } from "@/lib/dates";
 import { cn } from "@/lib/utils";
 import type { OccurrenceDetailView } from "@/services/occurrences/detail";
+import { useActionRunner } from "@/hooks/use-action-runner";
 
 /**
  * Onglet « Dossier » : la liste des pièces attendues, ligne par ligne.
@@ -65,7 +66,7 @@ const MAX_REFRESH_ATTEMPTS = 8;
 export function OccurrenceChecklist({ detail }: { readonly detail: OccurrenceDetailView }) {
   const t = useTranslations("occurrences.detail");
   const router = useRouter();
-  const [isPending, startTransition] = useTransition();
+  const [isPending, run] = useActionRunner();
   const [removing, setRemoving] = useState<{ id: string; label: string } | null>(null);
   const [reason, setReason] = useState("");
 
@@ -134,6 +135,19 @@ export function OccurrenceChecklist({ detail }: { readonly detail: OccurrenceDet
     if (refreshAttempts >= MAX_REFRESH_ATTEMPTS) return;
 
     const timer = window.setTimeout(() => {
+      /*
+       * ⚠️ LE SEUL `router.refresh()` QUI SUBSISTE DANS L'APPLICATION, et il
+       * est ici pour une raison qui ne vaut qu'ici : le dépôt d'une pièce ne
+       * passe pas par le cycle « clic → Server Action → revalidation ». Le
+       * fichier part vers le Stockage, PUIS une action le confirme ; entre les
+       * deux, la page a déjà rendu. La revalidation serveur arrive donc à un
+       * moment où cette page ne l'attend plus.
+       *
+       * Il n'est PAS enchaîné sur la fin d'une action — c'est précisément ce
+       * qui le rendait annulable (`net::ERR_ABORTED`, mesuré). Il est déclenché
+       * par un effet, dont la condition d'arrêt est un FAIT : la page a vu la
+       * pièce. Voir `REFRESH_RETRY_MS`.
+       */
       router.refresh();
       // Incrémenter RELANCE cet effet : c'est ce qui permet de réessayer même
       // quand le rafraîchissement précédent a été annulé sans rien changer.
@@ -295,7 +309,7 @@ export function OccurrenceChecklist({ detail }: { readonly detail: OccurrenceDet
               variant="destructive"
               disabled={isPending || reason.trim().length < MIN_REASON_LENGTH}
               onClick={() => {
-                startTransition(async () => {
+                run(async () => {
                   if (removing === null) return;
                   const outcome = await removeDocumentAction({
                     documentId: removing.id,
@@ -308,7 +322,6 @@ export function OccurrenceChecklist({ detail }: { readonly detail: OccurrenceDet
                   setRemoving(null);
                   setReason("");
                   toast.success(t("removed"));
-                  router.refresh();
                 });
               }}
             >

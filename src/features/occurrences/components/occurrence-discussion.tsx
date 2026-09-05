@@ -2,8 +2,7 @@
 
 import { AtSign, Loader2, Trash2 } from "lucide-react";
 import { useTranslations } from "next-intl";
-import { useRouter } from "next/navigation";
-import { useMemo, useState, useTransition } from "react";
+import { useMemo, useState } from "react";
 import { toast } from "sonner";
 
 import { EmptyState } from "@/components/shared/states";
@@ -16,6 +15,7 @@ import { postCommentAction, removeCommentAction } from "@/features/occurrences/a
 import type { AssignableProfile } from "@/features/occurrences/components/types";
 import { formatDateTimeFr } from "@/lib/dates";
 import type { OccurrenceDetailView } from "@/services/occurrences/detail";
+import { useActionRunner } from "@/hooks/use-action-runner";
 
 /**
  * Onglet « Discussion ».
@@ -37,8 +37,7 @@ export function OccurrenceDiscussion({
   readonly directory: readonly AssignableProfile[];
 }) {
   const t = useTranslations("occurrences.detail");
-  const router = useRouter();
-  const [isPending, startTransition] = useTransition();
+  const [isPending, run] = useActionRunner();
   const [body, setBody] = useState("");
 
   /**
@@ -57,7 +56,7 @@ export function OccurrenceDiscussion({
     const trimmed = body.trim();
     if (trimmed.length === 0) return;
 
-    startTransition(async () => {
+    run(async () => {
       const outcome = await postCommentAction({
         occurrenceId: detail.id,
         body: trimmed,
@@ -69,7 +68,6 @@ export function OccurrenceDiscussion({
         return;
       }
       setBody("");
-      router.refresh();
     });
   }
 
@@ -107,13 +105,12 @@ export function OccurrenceDiscussion({
                   disabled={isPending}
                   aria-label={t("removeComment")}
                   onClick={() => {
-                    startTransition(async () => {
+                    run(async () => {
                       const outcome = await removeCommentAction(comment.id);
                       if (outcome.status === "error") {
                         toast.error(t("commentFailed"));
                         return;
                       }
-                      router.refresh();
                     });
                   }}
                 >

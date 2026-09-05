@@ -4,7 +4,7 @@ import type { SortingState } from "@tanstack/react-table";
 import { ChevronLeft, ChevronRight, Download, UserCog } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { useSearchParams } from "next/navigation";
-import { useEffect, useRef, useState, useTransition } from "react";
+import { useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
@@ -24,7 +24,7 @@ import {
 import { OccurrencesTable } from "@/features/occurrences/components/occurrences-table";
 import type { AssignableProfile, OccurrenceRowView } from "@/features/occurrences/components/types";
 import { useQueryNavigation } from "@/hooks/use-query-navigation";
-import { useRouter } from "@/i18n/navigation";
+import { useActionRunner } from "@/hooks/use-action-runner";
 
 /**
  * Enveloppe interactive de la liste : tri, pagination, sélection, export.
@@ -55,12 +55,11 @@ export function OccurrenceListView({
   const t = useTranslations("occurrences");
   const tCriticality = useTranslations("obligations.criticality");
   const params = useSearchParams();
-  const router = useRouter();
   const { navigate: replaceQuery } = useQueryNavigation();
 
   const [selection, setSelection] = useState<ReadonlySet<string>>(new Set());
   const [assignee, setAssignee] = useState<string>("");
-  const [pending, startTransition] = useTransition();
+  const [pending, run] = useActionRunner();
 
   /*
    * Mémorisation des filtres.
@@ -142,7 +141,7 @@ export function OccurrenceListView({
                 size="sm"
                 disabled={pending || selected.length === 0 || assignee === ""}
                 onClick={() => {
-                  startTransition(async () => {
+                  run(async () => {
                     const outcome = await reassignOccurrencesAction({
                       occurrenceIds: selected,
                       ownerId: assignee,
@@ -150,7 +149,6 @@ export function OccurrenceListView({
                     if (outcome.status === "success") {
                       toast.success(t("reassigned", { count: outcome.data.updated }));
                       setSelection(new Set());
-                      router.refresh();
                     } else {
                       toast.error(t(`errors.${outcome.error.code}`));
                     }
@@ -171,7 +169,7 @@ export function OccurrenceListView({
               className="ms-auto"
               disabled={pending}
               onClick={() => {
-                startTransition(async () => {
+                run(async () => {
                   await runExport(params, t, tCriticality);
                 });
               }}

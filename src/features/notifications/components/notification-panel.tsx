@@ -1,7 +1,7 @@
 "use client";
 
 import { useTranslations } from "next-intl";
-import { useCallback, useEffect, useState, useTransition } from "react";
+import { useCallback, useEffect, useState } from "react";
 
 import { EmptyState, ErrorState, LoadingState } from "@/components/shared/states";
 import { Button } from "@/components/ui/button";
@@ -15,6 +15,7 @@ import {
 import type { InboxItem } from "@/features/notifications/actions/types";
 import { NotificationItem } from "@/features/notifications/components/notification-item";
 import { Link } from "@/i18n/navigation";
+import { useActionRunner } from "@/hooks/use-action-runner";
 
 /**
  * Contenu du panneau déroulant.
@@ -28,7 +29,7 @@ export function NotificationPanel({ open }: { readonly open: boolean }) {
   const t = useTranslations();
   const [items, setItems] = useState<readonly InboxItem[] | null>(null);
   const [failed, setFailed] = useState(false);
-  const [pending, startTransition] = useTransition();
+  const [pending, run] = useActionRunner();
 
   const load = useCallback(() => {
     void loadPanelAction().then((outcome) => {
@@ -45,11 +46,17 @@ export function NotificationPanel({ open }: { readonly open: boolean }) {
     if (open && items === null && !failed) load();
   }, [open, items, failed, load]);
 
-  const act = (run: () => Promise<unknown>) => {
-    startTransition(() => {
-      void run().then(() => {
-        load();
-      });
+  /*
+   * ⚠️ LE TRAVAIL ASYNCHRONE EST REMIS AU LANCEUR, il n'est plus jeté dans une
+   * transition synchrone sous la forme `void mutate().then(...)`. Cette forme-là
+   * refermait la transition AVANT le premier résultat : le drapeau d'attente
+   * retombait aussitôt, les boutons redevenaient cliquables, et la relecture qui
+   * suivait s'exécutait hors de tout suivi.
+   */
+  const act = (mutate: () => Promise<unknown>) => {
+    run(async () => {
+      await mutate();
+      load();
     });
   };
 

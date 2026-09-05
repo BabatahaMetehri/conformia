@@ -2,7 +2,7 @@
 
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useTranslations } from "next-intl";
-import { useState, useTransition } from "react";
+import { useState } from "react";
 import { useForm, type Resolver } from "react-hook-form";
 import { toast } from "sonner";
 
@@ -40,6 +40,7 @@ import {
   type CreateObligationTypeInput,
 } from "@/services/obligations/schema";
 import { defaultDueRule } from "@/services/scheduling";
+import { useActionRunner } from "@/hooks/use-action-runner";
 
 /**
  * Formulaire du référentiel : création et modification.
@@ -83,7 +84,7 @@ export function ObligationForm({
   const tCommon = useTranslations("common.actions");
   const router = useRouter();
 
-  const [pending, startTransition] = useTransition();
+  const [pending, run] = useActionRunner();
   const [recalculationOpen, setRecalculationOpen] = useState(false);
 
   const schema = mode === "create" ? CreateObligationTypeSchema : UpdateObligationTypeSchema;
@@ -101,7 +102,7 @@ export function ObligationForm({
   const leadDays = form.watch("internal_lead_days") ?? 0;
 
   function submit(values: CreateObligationTypeInput): void {
-    startTransition(async () => {
+    run(async () => {
       const outcome =
         mode === "create"
           ? await createObligationAction(values)

@@ -2,7 +2,7 @@
 
 import { Copy, RefreshCw } from "lucide-react";
 import { useTranslations } from "next-intl";
-import { useState, useTransition } from "react";
+import { useState } from "react";
 import { toast } from "sonner";
 
 import { ConfirmDialog } from "@/components/shared/confirm-dialog";
@@ -10,6 +10,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { regenerateCalendarTokenAction } from "@/features/notifications/actions/inbox";
+import { useActionRunner } from "@/hooks/use-action-runner";
 
 /**
  * Abonnement iCalendar : adresse, copie, rotation, mode d'emploi.
@@ -33,7 +34,7 @@ export function CalendarFeedCard({
 }) {
   const t = useTranslations();
   const [url, setUrl] = useState(initialUrl);
-  const [pending, startTransition] = useTransition();
+  const [pending, run] = useActionRunner();
 
   const copy = () => {
     void navigator.clipboard.writeText(url).then(
@@ -49,15 +50,14 @@ export function CalendarFeedCard({
   };
 
   const regenerate = () => {
-    startTransition(() => {
-      void regenerateCalendarTokenAction().then((outcome) => {
-        if (outcome.status === "success") {
-          setUrl(outcome.data.url);
-          toast.success(t("calendar.page.regenerated"));
-        } else {
-          toast.error(t("notifications.errors.updateFailed"));
-        }
-      });
+    run(async () => {
+      const outcome = await regenerateCalendarTokenAction();
+      if (outcome.status === "success") {
+        setUrl(outcome.data.url);
+        toast.success(t("calendar.page.regenerated"));
+        return;
+      }
+      toast.error(t("notifications.errors.updateFailed"));
     });
   };
 

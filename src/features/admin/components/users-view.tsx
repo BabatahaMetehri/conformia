@@ -2,7 +2,7 @@
 
 import { KeyRound, ShieldOff, UserPlus, X } from "lucide-react";
 import { useTranslations } from "next-intl";
-import { useState, useTransition } from "react";
+import { useState } from "react";
 import { toast } from "sonner";
 
 import { EmptyState } from "@/components/shared/states";
@@ -35,8 +35,8 @@ import {
   revokeRoleAction,
 } from "@/features/admin/actions/admin";
 import { formatDateTimeFr } from "@/lib/dates";
-import { useRouter } from "@/i18n/navigation";
 import type { InvitationRow, UserRow } from "@/services/admin";
+import { useActionRunner } from "@/hooks/use-action-runner";
 
 const MIN_REASON = 10;
 
@@ -75,9 +75,8 @@ export function UsersView({
 }) {
   const t = useTranslations("admin.users");
   const tActions = useTranslations("common.actions");
-  const router = useRouter();
 
-  const [pending, startTransition] = useTransition();
+  const [pending, runAction] = useActionRunner();
   const [inviting, setInviting] = useState(false);
   const [granting, setGranting] = useState<UserRow | null>(null);
   const [deactivating, setDeactivating] = useState<UserRow | null>(null);
@@ -105,7 +104,7 @@ export function UsersView({
   const grantNeedsExpiry = (grantRole?.maxDurationDays ?? null) !== null;
 
   function run(action: Promise<{ status: string }>, success: string, done?: () => void): void {
-    startTransition(async () => {
+    runAction(async () => {
       const outcome = await action;
       if (outcome.status === "error") {
         toast.error(t("failed"));
@@ -113,7 +112,6 @@ export function UsersView({
       }
       toast.success(success);
       done?.();
-      router.refresh();
     });
   }
 

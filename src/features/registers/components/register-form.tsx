@@ -2,7 +2,6 @@
 
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useTranslations } from "next-intl";
-import { useTransition } from "react";
 import { useForm, type Resolver } from "react-hook-form";
 import { toast } from "sonner";
 
@@ -19,6 +18,7 @@ import {
 import { Textarea } from "@/components/ui/textarea";
 import { createRegisterAction, updateRegisterAction } from "@/features/registers/actions";
 import { useRouter } from "@/i18n/navigation";
+import { useActionRunner } from "@/hooks/use-action-runner";
 import {
   REGISTER_STATUSES,
   REGISTER_TYPES,
@@ -48,7 +48,7 @@ export function RegisterForm({
   const tType = useTranslations("registers.type");
   const tStatus = useTranslations("registers.status");
   const router = useRouter();
-  const [pending, startTransition] = useTransition();
+  const [pending, run] = useActionRunner();
 
   /*
    * ⚠️ RÉSOLVEUR TYPÉ EXPLICITEMENT. Le schéma porte des `.default()` et un
@@ -68,7 +68,7 @@ export function RegisterForm({
   };
 
   function onSubmit(values: RegisterInput): void {
-    startTransition(async () => {
+    run(async () => {
       const outcome =
         registerId === undefined
           ? await createRegisterAction(values)

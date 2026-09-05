@@ -356,6 +356,56 @@ test.describe("page Rapports", () => {
   });
 });
 
+/*
+ * ════════════════════════════════════════════════════════════════════════════
+ * DEUX GESTES ENCHAÎNÉS — L'ÉTAT D'ATTENTE, DANS UN VRAI NAVIGATEUR
+ *
+ * ⚠️ CE QUE CE TEST ÉTABLIT, ET CE QU'IL N'ÉTABLIT PAS. Il constate que pendant
+ * la production d'un export, le bouton ANNONCE son travail et refuse le geste
+ * suivant. Il ne prétend PAS distinguer l'ancien motif du nouveau : la
+ * distinction se mesure au niveau du hook, où elle est déterministe — voir
+ * `tests/unit/hooks/use-action-runner.test.tsx`, bloc « ce que les motifs
+ * remplacés perdaient ».
+ *
+ * La raison est instructive. L'état d'attente de l'ancien motif retombait dans
+ * la même image que le clic ; un relevé de navigateur, qui interroge le DOM
+ * quelques millisecondes plus tard et réessaie, attrapait parfois l'image
+ * précédente. Un test de bout en bout bâti là-dessus aurait été vert un jour
+ * sur deux — c'est-à-dire pire qu'absent.
+ *
+ * Ce test garde donc le CONTRAT VISIBLE : l'écran dit qu'il travaille. Il
+ * échouerait si le bouton cessait d'être gouverné par l'état d'attente.
+ * ════════════════════════════════════════════════════════════════════════════
+ */
+test.describe("enchaînement de deux gestes — exports", () => {
+  test("pendant la production, le geste suivant est HORS D'ATTEINTE", async ({ page }) => {
+    await page.goto("/fr/rapports");
+
+    /*
+     * ⚠️ LE SÉLECTEUR NE PEUT PAS DÉPENDRE DU LIBELLÉ : le bouton s'intitule
+     * « Produire l'export » au repos et « Production en cours… » pendant le
+     * travail. Le viser par son nom au repos le ferait disparaître au moment
+     * précis où l'on veut l'observer, et le test échouerait sur un élément
+     * introuvable en laissant croire à un défaut de l'écran.
+     */
+    const bouton = page.getByRole("button", { name: /produire l'export|production en cours/i });
+    await expect(bouton).toBeEnabled({ timeout: 20_000 });
+
+    const telechargement = page.waitForEvent("download", { timeout: 60_000 });
+    await bouton.click();
+
+    // Le bouton DIT qu'il travaille, et refuse le geste suivant.
+    await expect(bouton).toBeDisabled();
+    await expect(bouton).toHaveText(/production en cours/i);
+
+    await telechargement;
+
+    // Puis il rend la main, l'export produit.
+    await expect(bouton).toBeEnabled({ timeout: 20_000 });
+    await expect(bouton).toHaveText(/produire l'export/i);
+  });
+});
+
 test.describe("accessibilité", () => {
   test("aucune violation axe sur la page Rapports", async ({ page }) => {
     await page.goto("/fr/rapports");

@@ -2,7 +2,7 @@
 
 import { Trash2 } from "lucide-react";
 import { useTranslations } from "next-intl";
-import { useState, useTransition } from "react";
+import { useState } from "react";
 import { toast } from "sonner";
 
 import { DocumentActions } from "@/components/shared/document-actions";
@@ -19,8 +19,8 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { removeDocumentAction } from "@/features/documents/actions/upload";
 import { formatDateFr } from "@/lib/dates";
-import { useRouter } from "@/i18n/navigation";
 import type { PurgeCandidateRow } from "@/services/documents/search";
+import { useActionRunner } from "@/hooks/use-action-runner";
 
 const MIN_REASON_LENGTH = 10;
 
@@ -37,9 +37,8 @@ export function PurgeQueueTable({ rows }: { readonly rows: readonly PurgeCandida
   const tDocuments = useTranslations("documents");
   const tCommon = useTranslations("common");
   const tActions = useTranslations("common.actions");
-  const router = useRouter();
 
-  const [pending, startTransition] = useTransition();
+  const [pending, run] = useActionRunner();
   const [target, setTarget] = useState<PurgeCandidateRow | null>(null);
   const [reason, setReason] = useState("");
 
@@ -47,7 +46,7 @@ export function PurgeQueueTable({ rows }: { readonly rows: readonly PurgeCandida
     const candidate = target;
     if (candidate === null) return;
 
-    startTransition(async () => {
+    run(async () => {
       const outcome = await removeDocumentAction({ documentId: candidate.id, reason });
       if (outcome.status === "error") {
         toast.error(tDocuments("actions.remove"));
@@ -55,7 +54,6 @@ export function PurgeQueueTable({ rows }: { readonly rows: readonly PurgeCandida
       }
       setTarget(null);
       setReason("");
-      router.refresh();
     });
   }
 

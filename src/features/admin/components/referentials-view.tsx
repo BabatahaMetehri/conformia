@@ -2,7 +2,7 @@
 
 import { CalendarPlus, Trash2, Upload } from "lucide-react";
 import { useTranslations } from "next-intl";
-import { useState, useTransition } from "react";
+import { useState } from "react";
 import { toast } from "sonner";
 
 import { Badge } from "@/components/ui/badge";
@@ -16,8 +16,8 @@ import {
   saveHolidayAction,
 } from "@/features/admin/actions/admin";
 import { formatDateFr } from "@/lib/dates";
-import { useRouter } from "@/i18n/navigation";
 import type { HolidayRow, Referentials } from "@/services/admin";
+import { useActionRunner } from "@/hooks/use-action-runner";
 
 /**
  * Référentiels : organismes, domaines, services, jours fériés.
@@ -44,9 +44,8 @@ export function ReferentialsView({
   readonly currentYear: number;
 }) {
   const t = useTranslations("admin.referentials");
-  const router = useRouter();
 
-  const [pending, startTransition] = useTransition();
+  const [pending, run] = useActionRunner();
   const [form, setForm] = useState({ date: "", label: "", isRecurring: false });
 
   function report(data: {
@@ -63,11 +62,10 @@ export function ReferentialsView({
       });
     }
     toast.success(t("saved", { count: data.imported, moved: data.recalculated }));
-    router.refresh();
   }
 
   function submit(): void {
-    startTransition(async () => {
+    run(async () => {
       const outcome = await saveHolidayAction(form);
       if (outcome.status === "error") {
         toast.error(t("failed"));
@@ -79,7 +77,7 @@ export function ReferentialsView({
   }
 
   function importCsv(file: File): void {
-    startTransition(async () => {
+    run(async () => {
       const content = await file.text();
       const outcome = await importHolidaysAction({ content });
       if (outcome.status === "error") {
@@ -91,7 +89,7 @@ export function ReferentialsView({
   }
 
   function remove(holiday: HolidayRow): void {
-    startTransition(async () => {
+    run(async () => {
       const outcome = await deleteHolidayAction({
         holidayId: holiday.id,
         label: holiday.label,

@@ -3,7 +3,7 @@
 import type { ColumnDef } from "@tanstack/react-table";
 import { Copy, MoreHorizontal, Pencil, Power, PowerOff } from "lucide-react";
 import { useTranslations } from "next-intl";
-import { useMemo, useTransition } from "react";
+import { useMemo } from "react";
 import { toast } from "sonner";
 
 import { DataTable } from "@/components/shared/data-table";
@@ -24,6 +24,7 @@ import {
 } from "@/features/obligations/actions";
 import { Link, useRouter } from "@/i18n/navigation";
 import { formatDateFr } from "@/lib/dates";
+import { useActionRunner } from "@/hooks/use-action-runner";
 
 /**
  * Tableau du référentiel.
@@ -60,7 +61,7 @@ export function ObligationsTable({
   readonly canManage: boolean;
 }) {
   const t = useTranslations("obligations");
-  const [pending, startTransition] = useTransition();
+  const [pending, run] = useActionRunner();
 
   const columns = useMemo<ColumnDef<ObligationRowView>[]>(
     () => [
@@ -141,14 +142,12 @@ export function ObligationsTable({
             {
               id: "actions",
               header: () => <span className="sr-only">{t("actions")}</span>,
-              cell: ({ row }) => (
-                <RowActions row={row.original} pending={pending} onRun={startTransition} />
-              ),
+              cell: ({ row }) => <RowActions row={row.original} pending={pending} onRun={run} />,
             } satisfies ColumnDef<ObligationRowView>,
           ]
         : []),
     ],
-    [t, canManage, pending],
+    [t, canManage, pending, run],
   );
 
   return (
@@ -168,7 +167,13 @@ function RowActions({
 }: {
   readonly row: ObligationRowView;
   readonly pending: boolean;
-  readonly onRun: (action: () => void) => void;
+  /*
+   * ⚠️ LE LANCEUR PREND UNE TÂCHE ASYNCHRONE, là où il prenait un rappel
+   * synchrone dans lequel on jetait une promesse (`void action().then(...)`).
+   * La transition se refermait alors immédiatement : le menu redevenait
+   * cliquable pendant la duplication, et la suite s'exécutait hors de tout suivi.
+   */
+  readonly onRun: (task: () => Promise<void>) => void;
 }) {
   const t = useTranslations("obligations");
   const router = useRouter();
@@ -191,21 +196,20 @@ function RowActions({
         <DropdownMenuItem
           disabled={pending}
           onSelect={() => {
-            onRun(() => {
-              void duplicateObligationAction({
+            onRun(async () => {
+              const outcome = await duplicateObligationAction({
                 id: row.id,
                 // Suffixe explicite : une copie doit se repérer dans la liste
                 // sans avoir à l'ouvrir. Le code reste modifiable ensuite.
                 code: `${row.code}-COPIE`,
                 name: `${row.name} (copie)`,
-              }).then((outcome) => {
-                if (outcome.status === "success") {
-                  toast.success(t("duplicated"));
-                  router.push(`/referentiel/${outcome.data.id}/modifier`);
-                } else {
-                  toast.error(t(`errors.${outcome.error.code}`));
-                }
               });
+              if (outcome.status === "success") {
+                toast.success(t("duplicated"));
+                router.push(`/referentiel/${outcome.data.id}/modifier`);
+                return;
+              }
+              toast.error(t(`errors.${outcome.error.code}`));
             });
           }}
         >
@@ -216,19 +220,20 @@ function RowActions({
         <DropdownMenuItem
           disabled={pending}
           onSelect={() => {
-            onRun(() => {
-              void toggleObligationActiveAction({ id: row.id, is_active: !row.isActive }).then(
-                (outcome) => {
-                  if (outcome.status === "success") {
-                    toast.success(row.isActive ? t("deactivated") : t("reactivated"));
-                    router.refresh();
-                  } else {
-                    // Le refus le plus fréquent est « une obligation active en
-                    // dépend » : le message doit le dire, pas parler d'erreur.
-                    toast.error(t(`errors.${outcome.error.code}`));
-                  }
-                },
-              );
+            onRun(async () => {
+              const outcome = await toggleObligationActiveAction({
+                id: row.id,
+                is_active: !row.isActive,
+              });
+              if (outcome.status === "success") {
+                // Aucun rafraîchissement client : l'action appelle
+                // `revalidateReferential()`, et Next rejoue la route lui-même.
+                toast.success(row.isActive ? t("deactivated") : t("reactivated"));
+                return;
+              }
+              // Le refus le plus fréquent est « une obligation active en
+              // dépend » : le message doit le dire, pas parler d'erreur.
+              toast.error(t(`errors.${outcome.error.code}`));
             });
           }}
         >

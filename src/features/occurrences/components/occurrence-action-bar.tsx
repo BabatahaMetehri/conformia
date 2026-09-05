@@ -3,7 +3,7 @@
 import { AlertTriangle, CopyPlus, Loader2, UserCog } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { useRouter } from "next/navigation";
-import { useOptimistic, useState, useTransition } from "react";
+import { useOptimistic, useState } from "react";
 import { toast } from "sonner";
 
 import { StatusBadge } from "@/components/shared/status-badge";
@@ -35,6 +35,7 @@ import {
 } from "@/features/occurrences/actions/detail";
 import type { AssignableProfile } from "@/features/occurrences/components/types";
 import type { OccurrenceDetailView } from "@/services/occurrences/detail";
+import { useActionRunner } from "@/hooks/use-action-runner";
 
 /**
  * Barre d'actions du dossier.
@@ -77,7 +78,7 @@ export function OccurrenceActionBar({
   const tStatus = useTranslations("occurrences.status");
   const tErrors = useTranslations("occurrences.detail.outcomes");
   const router = useRouter();
-  const [isPending, startTransition] = useTransition();
+  const [isPending, runAction] = useActionRunner();
 
   const [optimisticStatus, setOptimisticStatus] = useOptimistic(detail.status);
   const [pending, setPending] = useState<PendingTransition | null>(null);
@@ -108,7 +109,7 @@ export function OccurrenceActionBar({
   }
 
   function run(transition: PendingTransition, extra: Record<string, unknown> = {}): void {
-    startTransition(async () => {
+    runAction(async () => {
       setOptimisticStatus(transition.toStatus);
 
       const outcome = await transitionOccurrenceAction({
@@ -129,7 +130,6 @@ export function OccurrenceActionBar({
       if (result.outcome === "APPLIED" || result.outcome === "NO_CHANGE") {
         toast.success(t("transitionApplied", { status: tStatus(transition.toStatus) }));
         reset();
-        router.refresh();
         return;
       }
 
@@ -138,7 +138,6 @@ export function OccurrenceActionBar({
         toast.error(tErrors("incomplete"), { description: result.missing.join(" · ") });
       } else if (result.outcome === "VERSION_CONFLICT") {
         toast.error(tErrors("versionConflict"), { description: tErrors("versionConflictHint") });
-        router.refresh();
       } else if (result.outcome === "LATE_REASON_REQUIRED") {
         setPending(transition);
         toast.error(tErrors("lateReasonRequired"));
@@ -383,7 +382,7 @@ export function OccurrenceActionBar({
             <Button
               disabled={isPending || reason.trim().length < MIN_REASON_LENGTH}
               onClick={() => {
-                startTransition(async () => {
+                runAction(async () => {
                   const outcome = await createRectificationAction({
                     occurrenceId: detail.id,
                     reason: reason.trim(),
@@ -441,7 +440,7 @@ export function OccurrenceActionBar({
             <Button
               disabled={isPending || newOwner === null || newOwner === detail.ownerId}
               onClick={() => {
-                startTransition(async () => {
+                runAction(async () => {
                   if (newOwner === null) return;
                   const outcome = await reassignSingleAction({
                     occurrenceId: detail.id,
@@ -453,7 +452,6 @@ export function OccurrenceActionBar({
                   }
                   setReassigning(false);
                   toast.success(t("reassigned"));
-                  router.refresh();
                 });
               }}
             >

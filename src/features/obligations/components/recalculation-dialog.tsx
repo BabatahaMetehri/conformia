@@ -2,7 +2,7 @@
 
 import { Info, TriangleAlert } from "lucide-react";
 import { useTranslations } from "next-intl";
-import { useEffect, useState, useTransition } from "react";
+import { useEffect, useState } from "react";
 
 import {
   AlertDialog,
@@ -18,6 +18,7 @@ import { Badge } from "@/components/ui/badge";
 import { applyRuleChangeAction, previewRuleChangeAction } from "@/features/obligations/actions";
 import type { RecalculationImpact } from "@/services/obligations";
 import { formatDateFr } from "@/lib/dates";
+import { useActionRunner } from "@/hooks/use-action-runner";
 
 /**
  * Confirmation du recalcul après modification d'une règle.
@@ -53,7 +54,7 @@ export function RecalculationDialog({
 
   const [impact, setImpact] = useState<RecalculationImpact | null>(null);
   const [failed, setFailed] = useState(false);
-  const [pending, startTransition] = useTransition();
+  const [pending, run] = useActionRunner();
 
   useEffect(() => {
     if (!open) return;
@@ -177,7 +178,7 @@ export function RecalculationDialog({
               // Le dialogue se referme de lui-même au clic : on l'en empêche
               // pour garder l'état « en cours » visible jusqu'à la réponse.
               event.preventDefault();
-              startTransition(async () => {
+              run(async () => {
                 const outcome = await applyRuleChangeAction(obligationId, rule, periodicity);
                 if (outcome.status === "success") {
                   onApplied(outcome.data.updated);

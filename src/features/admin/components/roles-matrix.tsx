@@ -2,7 +2,7 @@
 
 import { Info, Lock, TriangleAlert } from "lucide-react";
 import { useTranslations } from "next-intl";
-import { useMemo, useState, useTransition } from "react";
+import { useMemo, useState } from "react";
 import { toast } from "sonner";
 
 import { Badge } from "@/components/ui/badge";
@@ -24,8 +24,8 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { toggleRolePermissionAction } from "@/features/admin/actions/admin";
-import { useRouter } from "@/i18n/navigation";
 import type { RoleMatrix } from "@/services/admin";
+import { useActionRunner } from "@/hooks/use-action-runner";
 
 /**
  * Matrice rôles × permissions.
@@ -41,9 +41,8 @@ import type { RoleMatrix } from "@/services/admin";
 export function RolesMatrix({ matrix }: { readonly matrix: RoleMatrix }) {
   const t = useTranslations("admin.roles");
   const tActions = useTranslations("common.actions");
-  const router = useRouter();
 
-  const [pending, startTransition] = useTransition();
+  const [pending, run] = useActionRunner();
   const [granted, setGranted] = useState<ReadonlySet<string>>(matrix.granted);
   const [confirming, setConfirming] = useState<{
     roleId: string;
@@ -63,7 +62,7 @@ export function RolesMatrix({ matrix }: { readonly matrix: RoleMatrix }) {
   }, [matrix]);
 
   function apply(roleId: string, permissionId: string, next: boolean): void {
-    startTransition(async () => {
+    run(async () => {
       const outcome = await toggleRolePermissionAction({ roleId, permissionId, granted: next });
       if (outcome.status === "error") {
         toast.error(t("failed"));
@@ -77,7 +76,6 @@ export function RolesMatrix({ matrix }: { readonly matrix: RoleMatrix }) {
         return updated;
       });
       setConfirming(null);
-      router.refresh();
     });
   }
 

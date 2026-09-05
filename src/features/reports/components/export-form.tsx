@@ -2,7 +2,7 @@
 
 import { Download } from "lucide-react";
 import { useTranslations } from "next-intl";
-import { useId, useState, useTransition } from "react";
+import { useId, useState } from "react";
 import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
@@ -22,6 +22,7 @@ import {
   planPeriodExportAction,
 } from "@/features/reports/actions/exports";
 import type { DownloadPayload } from "@/features/reports/actions/types";
+import { useActionRunner } from "@/hooks/use-action-runner";
 
 /**
  * Formulaire d'export.
@@ -89,7 +90,7 @@ export function ExportForm({
   const [to, setTo] = useState("");
   const [domainId, setDomainId] = useState("ALL");
   const [authorityId, setAuthorityId] = useState("ALL");
-  const [pending, startTransition] = useTransition();
+  const [pending, run] = useActionRunner();
 
   const filters = {
     ...(from.length === 0 ? {} : { from }),
@@ -99,52 +100,56 @@ export function ExportForm({
   };
 
   const submit = () => {
-    startTransition(() => {
-      void (async () => {
-        if (type === "PERIOD") {
-          const planned = await planPeriodExportAction(filters);
-          if (planned.status === "error") {
-            toast.error(t("exports.page.failed"));
-            return;
-          }
-          if (planned.data.mode === "ASYNC") {
-            // Au-delà du seuil : on le DIT. Un écran qui laisserait attendre un
-            // téléchargement qui ne vient pas serait pire que l'attente.
-            toast.info(t("exports.page.asyncQueued"));
-          } else {
-            toast.success(t("exports.page.generate"));
-          }
-          onProduced();
+    /*
+     * ⚠️ LA FONCTION ANONYME AUTO-APPELÉE A DISPARU. `startTransition(() => {
+     * void (async () => { ... })(); })` refermait la transition sur place :
+     * l'export partait, le drapeau d'attente retombait, et le bouton
+     * « Générer » redevenait cliquable pendant la production du fichier.
+     */
+    run(async () => {
+      if (type === "PERIOD") {
+        const planned = await planPeriodExportAction(filters);
+        if (planned.status === "error") {
+          toast.error(t("exports.page.failed"));
           return;
         }
-
-        /*
-         * ⚠️ « Situation par registre » NE PREND PAS LES FILTRES DE L'ÉCRAN.
-         *
-         * C'est un écran de MESURE : le rapport porte sur TOUS les registres
-         * visibles, un par ligne, et son taux écarte les obligations valant pour
-         * toute l'entreprise. Lui appliquer un filtre de domaine ou de période
-         * lui ferait mesurer autre chose que ce qu'il annonce.
-         */
-        const outcome =
-          type === "REGISTERS"
-            ? await exportRegisterReportAction({ format })
-            : type === "REPORT"
-              ? await exportReportAction(filters)
-              : await exportTabularAction({ ...filters, kind: type, format });
-
-        if (outcome.status === "error") {
-          toast.error(
-            outcome.error.details?.["reason"] === "EXPORT_EMPTY"
-              ? t("exports.page.empty")
-              : t("exports.page.failed"),
-          );
-          return;
+        if (planned.data.mode === "ASYNC") {
+          // Au-delà du seuil : on le DIT. Un écran qui laisserait attendre un
+          // téléchargement qui ne vient pas serait pire que l'attente.
+          toast.info(t("exports.page.asyncQueued"));
+        } else {
+          toast.success(t("exports.page.generate"));
         }
-
-        saveFile(outcome.data);
         onProduced();
-      })();
+        return;
+      }
+
+      /*
+       * ⚠️ « Situation par registre » NE PREND PAS LES FILTRES DE L'ÉCRAN.
+       *
+       * C'est un écran de MESURE : le rapport porte sur TOUS les registres
+       * visibles, un par ligne, et son taux écarte les obligations valant pour
+       * toute l'entreprise. Lui appliquer un filtre de domaine ou de période
+       * lui ferait mesurer autre chose que ce qu'il annonce.
+       */
+      const outcome =
+        type === "REGISTERS"
+          ? await exportRegisterReportAction({ format })
+          : type === "REPORT"
+            ? await exportReportAction(filters)
+            : await exportTabularAction({ ...filters, kind: type, format });
+
+      if (outcome.status === "error") {
+        toast.error(
+          outcome.error.details?.["reason"] === "EXPORT_EMPTY"
+            ? t("exports.page.empty")
+            : t("exports.page.failed"),
+        );
+        return;
+      }
+
+      saveFile(outcome.data);
+      onProduced();
     });
   };
 

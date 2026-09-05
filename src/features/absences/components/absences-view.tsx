@@ -2,7 +2,7 @@
 
 import { Info, Plus } from "lucide-react";
 import { useTranslations } from "next-intl";
-import { useState, useTransition } from "react";
+import { useState } from "react";
 import { toast } from "sonner";
 
 import { EmptyState } from "@/components/shared/states";
@@ -35,9 +35,9 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { declareAbsenceAction, revokeAbsenceAction } from "@/features/absences/actions";
-import { useRouter } from "@/i18n/navigation";
 import { formatDateFr } from "@/lib/dates";
 import type { AbsenceRow, AssignableProfileRow } from "@/services/absences";
+import { useActionRunner } from "@/hooks/use-action-runner";
 
 /**
  * Écran des absences.
@@ -70,8 +70,7 @@ export function AbsencesView({
   readonly today: string;
 }) {
   const t = useTranslations("absences");
-  const router = useRouter();
-  const [pending, startTransition] = useTransition();
+  const [pending, run] = useActionRunner();
   const [open, setOpen] = useState(false);
 
   const [userId, setUserId] = useState(currentUserId);
@@ -86,7 +85,7 @@ export function AbsencesView({
   }
 
   function submit(): void {
-    startTransition(async () => {
+    run(async () => {
       const outcome = await declareAbsenceAction({
         user_id: userId,
         starts_at: startsAt,
@@ -98,7 +97,6 @@ export function AbsencesView({
         toast.success(t("form.created"));
         setOpen(false);
         setReason("");
-        router.refresh();
         return;
       }
       toast.error(outcome.error?.message ?? "errors.internal");
@@ -106,11 +104,10 @@ export function AbsencesView({
   }
 
   function revoke(id: string): void {
-    startTransition(async () => {
+    run(async () => {
       const outcome = await revokeAbsenceAction(id);
       if (outcome.status === "success") {
         toast.success(t("revoke.done"));
-        router.refresh();
         return;
       }
       toast.error(outcome.error?.message ?? "errors.internal");

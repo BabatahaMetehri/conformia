@@ -2,7 +2,7 @@
 
 import { ChevronDown, ChevronRight, Download } from "lucide-react";
 import { useTranslations } from "next-intl";
-import { useState, useTransition } from "react";
+import { useState } from "react";
 import { toast } from "sonner";
 
 import { EmptyState } from "@/components/shared/states";
@@ -14,6 +14,7 @@ import { exportAuditAction } from "@/features/audit/actions/export";
 import { formatDateTimeFr } from "@/lib/dates";
 import { useQueryNavigation } from "@/hooks/use-query-navigation";
 import type { AuditEntryRow } from "@/services/admin";
+import { useActionRunner } from "@/hooks/use-action-runner";
 
 interface Filters {
   readonly from: string;
@@ -55,7 +56,7 @@ export function AuditView({
   const t = useTranslations("audit");
   const { navigate } = useQueryNavigation();
 
-  const [pending, startTransition] = useTransition();
+  const [pending, run] = useActionRunner();
   const [draft, setDraft] = useState<Filters>(filters);
   const [expanded, setExpanded] = useState<number | null>(null);
 
@@ -70,7 +71,7 @@ export function AuditView({
   }
 
   function exportCsv(): void {
-    startTransition(async () => {
+    run(async () => {
       const outcome = await exportAuditAction({
         ...(draft.from === "" ? {} : { from: draft.from }),
         ...(draft.to === "" ? {} : { to: draft.to }),

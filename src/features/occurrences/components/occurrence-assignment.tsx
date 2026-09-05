@@ -2,7 +2,7 @@
 
 import { CalendarOff, ShieldCheck, UserRound, Users } from "lucide-react";
 import { useTranslations } from "next-intl";
-import { useState, useTransition } from "react";
+import { useState } from "react";
 import { toast } from "sonner";
 
 import { UserAvatar } from "@/components/shared/user-avatar";
@@ -28,6 +28,7 @@ import { reassignTriadAction } from "@/features/occurrences/actions/detail";
 import { formatDateFr } from "@/lib/dates";
 import type { AbsenceRow } from "@/services/absences";
 import type { OccurrenceDetailView } from "@/services/occurrences/detail";
+import { useActionRunner } from "@/hooks/use-action-runner";
 
 /**
  * Bloc d'affectation d'un dossier : les trois personnes et leur qualité.
@@ -70,7 +71,7 @@ export function OccurrenceAssignment({
 }) {
   const t = useTranslations("occurrences.assignment");
   const tQuality = useTranslations("occurrences.actedAs");
-  const [pending, startTransition] = useTransition();
+  const [pending, run] = useActionRunner();
   const [open, setOpen] = useState(false);
 
   const [ownerId, setOwnerId] = useState(detail.ownerId ?? NOBODY);
@@ -98,7 +99,7 @@ export function OccurrenceAssignment({
   }
 
   function submit(): void {
-    startTransition(async () => {
+    run(async () => {
       const outcome = await reassignTriadAction({
         occurrenceId: detail.id,
         ownerId: ownerId === NOBODY ? null : ownerId,

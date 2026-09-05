@@ -238,6 +238,57 @@ test.describe("centre de notifications", () => {
   });
 });
 
+/*
+ * ════════════════════════════════════════════════════════════════════════════
+ * DEUX GESTES ENCHAÎNÉS — L'ÉCRAN CONTRE LA BASE
+ *
+ * ⚠️ L'ASSERTION NE COMPARE PAS L'ÉCRAN À LUI-MÊME. Un instantané périmé est
+ * parfaitement cohérent avec lui-même ; c'est l'écart avec ce qui est ENREGISTRÉ
+ * qui définit la donnée périmée. On régénère donc le jeton, on enchaîne
+ * immédiatement un second geste, et l'on exige que l'adresse affichée soit celle
+ * que la base détient — celle qu'un agenda pourra réellement interroger.
+ *
+ * Ce test ne prétend pas distinguer l'ancien motif du nouveau : la course que
+ * l'ancien rendait possible — deux envois concurrents sur la même ressource —
+ * se mesure au niveau du hook, où elle est déterministe. Voir
+ * `tests/unit/hooks/use-action-runner.test.tsx`.
+ * ════════════════════════════════════════════════════════════════════════════
+ */
+test.describe("enchaînement de deux gestes — jeton de calendrier", () => {
+  test("l'adresse AFFICHÉE est celle de la base, même après deux clics", async ({ page }) => {
+    await page.goto("/fr/profile/calendar");
+
+    const champ = page.getByLabel(/adresse du flux/i);
+    await expect(champ).toHaveValue(/\/api\/calendar\/[0-9a-f-]{36}$/, { timeout: 20_000 });
+
+    const bouton = page.getByRole("button", { name: /régénérer/i });
+
+    /*
+     * Deux gestes enchaînés. Le second est FORCÉ : on veut savoir ce que fait
+     * l'écran quand l'utilisateur clique alors que le premier envoi n'est pas
+     * revenu, et non ce que fait Playwright quand il attend poliment. Sur le
+     * bouton désactivé de la version corrigée, le navigateur ignore le clic —
+     * c'est précisément la protection qu'on éprouve.
+     */
+    await bouton.click();
+    await bouton.click({ force: true, timeout: 2_000 }).catch(() => undefined);
+
+    await expect(bouton).toBeEnabled({ timeout: 20_000 });
+
+    await expect(async () => {
+      const { rows } = await pool.query<{ token: string }>(
+        `select token::text as token from public.calendar_feed_tokens
+          where user_id = (select id from auth.users where email = $1)`,
+        [AGENT],
+      );
+      const enBase = rows[0]?.token ?? "";
+      expect(enBase).not.toBe("");
+      // ⚠️ L'écart entre l'affiché et l'enregistré EST la donnée périmée.
+      await expect(champ).toHaveValue(new RegExp(`${enBase}$`));
+    }).toPass({ timeout: 20_000 });
+  });
+});
+
 test.describe("flux calendrier", () => {
   test("affiche l'adresse, l'avertissement et le mode d'emploi", async ({ page }) => {
     await page.goto("/fr/profile/calendar");

@@ -2,7 +2,7 @@
 
 import { AlertTriangle, ShieldCheck, UserRound, Users } from "lucide-react";
 import { useTranslations } from "next-intl";
-import { useState, useTransition } from "react";
+import { useState } from "react";
 import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
@@ -23,6 +23,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { countPropagableAction, saveAssignmentAction } from "@/features/obligations/actions";
+import { useActionRunner } from "@/hooks/use-action-runner";
 
 /**
  * Onglet « Affectations » du référentiel : qui prend en charge cette obligation
@@ -65,7 +66,7 @@ export function ObligationAssignmentTab({
 }) {
   const t = useTranslations("obligations.assignment");
   const tQuality = useTranslations("occurrences.actedAs");
-  const [pending, startTransition] = useTransition();
+  const [pending, run] = useActionRunner();
 
   const [ownerId, setOwnerId] = useState(defaults.ownerId ?? NOBODY);
   const [deputyId, setDeputyId] = useState(defaults.deputyId ?? NOBODY);
@@ -92,7 +93,7 @@ export function ObligationAssignmentTab({
 
   /** Première étape : compter, puis demander. Jamais l'inverse. */
   function askConfirmation(): void {
-    startTransition(async () => {
+    run(async () => {
       const counted = await countPropagableAction(obligationTypeId);
       // Un comptage indisponible ne doit pas empêcher d'enregistrer sans
       // propager : on ouvre la fenêtre en le disant plutôt qu'en le taisant.
@@ -102,7 +103,7 @@ export function ObligationAssignmentTab({
   }
 
   function save(propagate: boolean): void {
-    startTransition(async () => {
+    run(async () => {
       const outcome = await saveAssignmentAction({ ...payload, propagate });
 
       if (outcome.status === "success") {

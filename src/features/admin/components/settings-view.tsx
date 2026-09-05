@@ -1,7 +1,7 @@
 "use client";
 
 import { useTranslations } from "next-intl";
-import { useState, useTransition } from "react";
+import { useState } from "react";
 import { toast } from "sonner";
 
 import { Badge } from "@/components/ui/badge";
@@ -9,8 +9,8 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { saveSettingAction } from "@/features/admin/actions/admin";
 import { formatDateTimeFr } from "@/lib/dates";
-import { useRouter } from "@/i18n/navigation";
 import type { SettingRow } from "@/services/admin";
+import { useActionRunner } from "@/hooks/use-action-runner";
 
 /**
  * Réglages de l'installation.
@@ -26,15 +26,14 @@ import type { SettingRow } from "@/services/admin";
 export function SettingsView({ settings }: { readonly settings: readonly SettingRow[] }) {
   const t = useTranslations("admin.settings");
   const tActions = useTranslations("common.actions");
-  const router = useRouter();
 
-  const [pending, startTransition] = useTransition();
+  const [pending, run] = useActionRunner();
   const [drafts, setDrafts] = useState<Readonly<Record<string, string>>>(() =>
     Object.fromEntries(settings.map((setting) => [setting.key, serialise(setting.value)])),
   );
 
   function save(key: string): void {
-    startTransition(async () => {
+    run(async () => {
       const outcome = await saveSettingAction({ key, value: drafts[key] ?? "" });
       if (outcome.status === "error") {
         // Le message porte la raison du refus : « entier attendu » se corrige,
@@ -43,7 +42,6 @@ export function SettingsView({ settings }: { readonly settings: readonly Setting
         return;
       }
       toast.success(t("saved", { key }));
-      router.refresh();
     });
   }
 

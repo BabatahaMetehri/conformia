@@ -2,7 +2,7 @@
 
 import { ShieldAlert } from "lucide-react";
 import { useTranslations } from "next-intl";
-import { useState, useTransition } from "react";
+import { useState } from "react";
 import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
@@ -18,8 +18,8 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { acknowledgeIntegrityAlertAction } from "@/features/documents/actions/upload";
 import { formatDateTimeFr } from "@/lib/dates";
-import { useRouter } from "@/i18n/navigation";
 import type { IntegrityAlertRow } from "@/services/documents/integrity";
+import { useActionRunner } from "@/hooks/use-action-runner";
 
 const MIN_NOTE_LENGTH = 10;
 
@@ -44,8 +44,7 @@ export function IntegrityAlerts({
 }) {
   const t = useTranslations("documents.integrity");
   const tCommon = useTranslations("common.actions");
-  const router = useRouter();
-  const [pending, startTransition] = useTransition();
+  const [pending, run] = useActionRunner();
   const [target, setTarget] = useState<IntegrityAlertRow | null>(null);
   const [note, setNote] = useState("");
 
@@ -55,7 +54,7 @@ export function IntegrityAlerts({
     const alert = target;
     if (alert === null) return;
 
-    startTransition(async () => {
+    run(async () => {
       const outcome = await acknowledgeIntegrityAlertAction({ checkId: alert.id, note });
       if (outcome.status === "error") {
         toast.error(t("alertsTitle"));
@@ -64,7 +63,6 @@ export function IntegrityAlerts({
       toast.success(t("acknowledged"));
       setTarget(null);
       setNote("");
-      router.refresh();
     });
   }
 

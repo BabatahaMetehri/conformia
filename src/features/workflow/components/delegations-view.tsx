@@ -2,7 +2,7 @@
 
 import { Ban, UserCheck } from "lucide-react";
 import { useTranslations } from "next-intl";
-import { useState, useTransition } from "react";
+import { useState } from "react";
 import { toast } from "sonner";
 
 import { EmptyState } from "@/components/shared/states";
@@ -32,8 +32,8 @@ import {
   revokeDelegationAction,
 } from "@/features/workflow/actions/validation";
 import { formatDateFr } from "@/lib/dates";
-import { useRouter } from "@/i18n/navigation";
 import type { DelegationRow } from "@/services/workflow/delegations";
+import { useActionRunner } from "@/hooks/use-action-runner";
 
 const MIN_REASON_LENGTH = 10;
 
@@ -68,9 +68,8 @@ export function DelegationsView({
 }) {
   const t = useTranslations("workflow.delegations");
   const tActions = useTranslations("common.actions");
-  const router = useRouter();
 
-  const [pending, startTransition] = useTransition();
+  const [pending, run] = useActionRunner();
   const [open, setOpen] = useState(false);
   const [revoking, setRevoking] = useState<DelegationRow | null>(null);
   const [revokeReason, setRevokeReason] = useState("");
@@ -88,7 +87,7 @@ export function DelegationsView({
   const maxEnd = new Date(Date.now() + MAX_DELEGATION_DAYS * 86_400_000).toISOString().slice(0, 10);
 
   function submit(): void {
-    startTransition(async () => {
+    run(async () => {
       const outcome = await createDelegationAction({
         delegatorId: form.delegatorId,
         delegateId: form.delegateId,
@@ -105,7 +104,6 @@ export function DelegationsView({
       toast.success(t("created"));
       setOpen(false);
       setForm({ ...form, delegateId: "", endsAt: "", reason: "" });
-      router.refresh();
     });
   }
 
@@ -113,7 +111,7 @@ export function DelegationsView({
     const target = revoking;
     if (target === null) return;
 
-    startTransition(async () => {
+    run(async () => {
       const outcome = await revokeDelegationAction({
         delegationId: target.id,
         reason: revokeReason,
@@ -125,7 +123,6 @@ export function DelegationsView({
       toast.success(t("revoked"));
       setRevoking(null);
       setRevokeReason("");
-      router.refresh();
     });
   }
 
