@@ -1,0 +1,29 @@
+# =============================================================================
+# gitleaks — configuration du dépôt
+#
+# ⚠️ TROIS CONSTANTES DE TEST SONT AUTORISÉES NOMMÉMENT, et aucune autre.
+#
+# Une analyse qui rend trois faux positifs à chaque exécution finit ignorée, puis
+# désactivée, et le jour où elle trouve un vrai secret personne ne lit sa sortie.
+# On nomme donc les trois valeurs connues — toutes des clés de test évidentes,
+# `0123456789abcdef…`, présentes dans le lanceur de tests et dans l'aller-retour
+# de chiffrement d'archive — plutôt que d'assouplir une règle entière.
+#
+# ⚠️ CE N'EST PAS UNE PORTE OUVERTE. L'autorisation porte sur la VALEUR exacte,
+# pas sur le fichier ni sur la règle : un vrai secret glissé dans le même fichier
+# serait dénoncé comme ailleurs.
+# =============================================================================
+
+[extend]
+useDefault = true
+
+[allowlist]
+description = "Constantes de test, jamais des secrets réels"
+
+# La clé de chiffrement d'essai : trente-deux caractères, motif visible à l'œil.
+# Employée par vitest.config.mts et par tests/unit/archive-crypto.test.ts.
+regexes = ['''0123456789abcdef0123456789abcdef''']
+
+# Le gabarit d'environnement ne porte que des valeurs vides ou d'exemple ; il est
+# relu à la main, et son rôle est précisément de montrer la forme attendue.
+paths = ['''\.env\.example$''']
