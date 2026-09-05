@@ -69,6 +69,32 @@ function wait(ms: number): Promise<void> {
   });
 }
 
+/**
+ * Motif d'échec consigné sur la ligne.
+ *
+ * ⚠️ LE CODE SEUL NE DIAGNOSTIQUE RIEN. « EXTERNAL_SERVICE_FAILED :
+ * errors.externalServiceFailed » se lit exactement pareil pour une adresse
+ * invalide, une clé révoquée et un serveur injoignable — trois incidents dont
+ * les remèdes n'ont rien à voir. On y joint donc ce que le FOURNISSEUR a dit :
+ * c'est la seule information qui distingue « corriger l'adresse » de
+ * « prévenir l'hébergeur », et elle n'est disponible qu'ici, au moment où la
+ * ligne est marquée en échec.
+ *
+ * Le second membre reste borné par le SQL, qui tronque à 500 caractères : un
+ * fournisseur bavard ne remplit pas la table.
+ */
+function failureReason(error: AppError): string {
+  const reported = error.details?.["reason"];
+  const detail =
+    typeof reported === "string" && reported.length > 0
+      ? reported
+      : error.cause instanceof Error
+        ? error.cause.message
+        : "";
+
+  return `${error.code}: ${detail.length > 0 ? detail : error.message}`;
+}
+
 /** Un envoi et ses lignes : une seule ligne, ou plusieurs si elles sont fusionnées. */
 interface OutgoingMessage {
   readonly ids: readonly number[];
@@ -259,7 +285,7 @@ export async function dispatchNotifications(
       const marked = await markSent(client, message.ids);
       sent += marked.ok ? marked.value : 0;
     } else {
-      await markFailed(client, message.ids, `${outcome.error.code}: ${outcome.error.message}`);
+      await markFailed(client, message.ids, failureReason(outcome.error));
       failed += message.ids.length;
     }
 
