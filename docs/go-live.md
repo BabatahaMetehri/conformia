@@ -166,22 +166,39 @@ Le référentiel livré compte **23** obligations (et non 22). Pour chacune :
 - **l'échéance est-elle la bonne ?** L'écran affiche les six prochaines dates
   calculées : c'est là qu'une règle fausse se voit.
 
-### 4. ⚠️ Les deux échéances à faire confirmer — **avant que quiconque en dépende**
+### 4. Échéances — une corrigée, une encore ouverte
 
-Ce sont les deux dernières questions ouvertes du projet. Elles sont déjà
-signalées en tête du fichier de référentiel, et elles doivent être tranchées par
-le cabinet comptable, **par écrit**, avant l'ouverture au responsable.
+**CNAS-DAS — CORRIGÉ.** La valeur de départ était le **31 mars** ; c'est le
+**31 janvier**. ⚠️ L'erreur allait dans le sens qui coûte : elle faisait croire
+qu'il restait deux mois. Le référentiel livré porte désormais la bonne date, et
+l'échéance interne tombe quinze jours ouvrés plus tôt — vérifié : période 2026,
+échéance légale au 31/01/2027, interne au 10/01/2027.
 
-| Obligation                                     | Valeur retenue | Doute                                         |
-| ---------------------------------------------- | -------------- | --------------------------------------------- |
-| `CNAS-DAS` — déclaration annuelle des salaires | **31 mars**    | Plusieurs sources indiquent le **31 janvier** |
-| `CASNOS` — cotisation annuelle du gérant       | **30 juin**    | Faiblement sourcé                             |
+**CASNOS — PARTIELLEMENT RÉSOLU. C'est la dernière question ouverte du projet.**
 
-⚠️ Une échéance fausse ne produit aucune erreur visible : elle produit un rappel
-au mauvais moment, et une pénalité au bon.
+L'obligation se dédouble, et le référentiel n'en portait qu'une moitié :
 
-Les deux se corrigent dans l'interface, avec prévisualisation immédiate. Un
-recalcul des occurrences futures est proposé après modification.
+| Étape                         | Date                           | État                                                          |
+| ----------------------------- | ------------------------------ | ------------------------------------------------------------- |
+| **Paiement** de la cotisation | 30 juin                        | **Confirmé.** C'est la ligne `CASNOS`, renommée pour le dire. |
+| **Déclaration** préalable     | fin janvier **ou** fin février | ⚠️ **Non confirmée. Aucune obligation n'est créée.**          |
+
+⚠️ **L'obligation manquante n'a volontairement pas été créée.** La créer avec
+une date devinée serait pire que son absence : une échéance fausse ne produit
+aucune erreur visible, seulement un rappel au mauvais moment — et l'équipe
+prendrait l'habitude de s'y fier. Une obligation absente, au moins, se remarque.
+
+**À faire, dès que la date est confirmée :** Référentiel → Nouvelle obligation,
+domaine SOCIAL, organisme CASNOS, périodicité annuelle, ancre à date fixe. Les
+six prochaines dates s'affichent avant l'enregistrement : c'est là qu'une erreur
+de saisie se voit.
+
+**Restent à confirmer par ailleurs :** les trois acomptes IBS (20/03, 20/06,
+20/11), retenus sans source ferme.
+
+Toute correction se fait dans l'interface, avec prévisualisation immédiate. Un
+recalcul des occurrences **futures** est proposé après modification ; les
+dossiers passés ne bougent jamais.
 
 ### 5. Rattrapage historique
 

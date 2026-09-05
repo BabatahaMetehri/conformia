@@ -3,10 +3,12 @@
 -- =============================================================================
 --
 -- ⚠️ Les dates de ce référentiel sont des valeurs de départ à faire confirmer
--- par le cabinet comptable. Points à vérifier en priorité :
---   CNAS-DAS : 31 mars retenu, certaines sources indiquent le 31 janvier
---   CASNOS   : 30 juin retenu, à vérifier impérativement
---   IBS-ACOMPTE : 20/03, 20/06, 20/11 retenus
+-- par le cabinet comptable. État de la vérification :
+--   CNAS-DAS    : CONFIRMÉ au 31 janvier (la valeur de départ, 31 mars, était fausse)
+--   CASNOS      : paiement au 30 juin CONFIRMÉ. Une DÉCLARATION le précède,
+--                 janvier ou février selon les sources — date NON confirmée,
+--                 obligation volontairement non créée. Dernière question ouverte.
+--   IBS-ACOMPTE : 20/03, 20/06, 20/11 retenus, non confirmés
 -- Toutes ces valeurs sont modifiables dans l'interface, avec prévisualisation
 -- immédiate des six prochaines échéances calculées.
 --
@@ -200,17 +202,31 @@ from (values
    7, 'CRITICAL', 2, true,
    'Loi n° 83-14 relative aux obligations des assujettis en matière de sécurité sociale.'),
 
+  -- CONFIRMÉ : 31 janvier, et non 31 mars. La valeur de départ était fausse de
+  -- deux mois — dans le sens qui coûte, celui qui fait croire qu'il reste du temps.
   ('CNAS-DAS', 'Déclaration annuelle des salaires (DAS)',
    'SOCIAL', 'CNAS', 'ANNUAL',
-   '{"anchor":"FIXED_DATE","fixed_month":3,"fixed_day":31,"year_offset":1,"weekend_shift":"NEXT_BUSINESS_DAY","holiday_shift":"NEXT_BUSINESS_DAY"}',
+   '{"anchor":"FIXED_DATE","fixed_month":1,"fixed_day":31,"year_offset":1,"weekend_shift":"NEXT_BUSINESS_DAY","holiday_shift":"NEXT_BUSINESS_DAY"}',
    15, 'CRITICAL', 2, true,
-   'Déclaration annuelle des salaires. ⚠️ Échéance à confirmer : 31 mars ou 31 janvier.'),
+   'Déclaration annuelle des salaires, à déposer le 31 janvier de l''année suivante.'),
 
-  ('CASNOS', 'Cotisation annuelle CASNOS (gérant non salarié)',
+  /*
+   * ⚠️ CASNOS SE DÉDOUBLE : une DÉCLARATION, puis un PAIEMENT.
+   *
+   * Le 30 juin porte le PAIEMENT de la cotisation — c'est confirmé, et c'est ce
+   * que cette ligne suit. Une DÉCLARATION la précède, en janvier ou en février
+   * selon les sources ; sa date n'est pas établie, et elle n'est donc PAS créée
+   * ici. Inventer une échéance réglementaire produirait un rappel au mauvais
+   * moment et une pénalité au bon.
+   *
+   * Voir `docs/go-live.md`, section « Les échéances à confirmer » : c'est la
+   * dernière question ouverte du référentiel.
+   */
+  ('CASNOS', 'Paiement de la cotisation annuelle CASNOS (gérant non salarié)',
    'SOCIAL', 'CASNOS', 'ANNUAL',
    '{"anchor":"FIXED_DATE","fixed_month":6,"fixed_day":30,"weekend_shift":"NEXT_BUSINESS_DAY","holiday_shift":"NEXT_BUSINESS_DAY"}',
    7, 'HIGH', 1, true,
-   'Cotisation des travailleurs non salariés. ⚠️ Échéance à vérifier impérativement.'),
+   'Paiement de la cotisation des travailleurs non salariés, au 30 juin. ⚠️ Une déclaration préalable existe (janvier ou février) : date non confirmée, obligation non créée.'),
 
   ('CNAS-MVT', 'Déclaration de mouvement de personnel (embauche, départ)',
    'SOCIAL', 'CNAS', 'ON_EVENT',

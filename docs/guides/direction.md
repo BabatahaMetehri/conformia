@@ -64,19 +64,21 @@ jamais.
 
 ---
 
-## Deux questions ouvertes, à trancher avec le cabinet comptable
+## La question encore ouverte, à trancher avec le cabinet comptable
 
-⚠️ Ces deux échéances sont des **valeurs de départ**, retenues faute de source
-ferme. Elles doivent être confirmées **par écrit** avant que quiconque s'y fie :
+**CASNOS se dédouble**, et le référentiel n'en suit aujourd'hui qu'une moitié :
 
-| Obligation                                       | Retenu  | Doute                          |
-| ------------------------------------------------ | ------- | ------------------------------ |
-| **CNAS-DAS** — déclaration annuelle des salaires | 31 mars | Certaines sources : 31 janvier |
-| **CASNOS** — cotisation du gérant                | 30 juin | Faiblement sourcé              |
+- le **paiement** de la cotisation, au **30 juin** — confirmé, c'est la ligne
+  présente dans le référentiel ;
+- une **déclaration** préalable, fin janvier ou fin février selon les sources —
+  ⚠️ **date non confirmée, obligation volontairement non créée**.
 
-Les deux se corrigent dans l'écran Référentiel, en trente secondes.
+La créer avec une date devinée serait pire que son absence : une échéance fausse
+ne produit aucune erreur visible, seulement un rappel au mauvais moment — et
+l'équipe prendrait l'habitude de s'y fier. Dès que la date est confirmée :
+**Référentiel → Nouvelle obligation**, trois minutes.
 
----
+_(CNAS-DAS est corrigée : 31 janvier, et non 31 mars comme retenu au départ.)_
 
 ## Ce que vous ne voyez pas, et pourquoi
 
