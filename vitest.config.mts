@@ -85,6 +85,17 @@ export default defineConfig({
         "src/services/scheduling/**/*.ts",
         "src/services/workflow/state-machine.ts",
         "src/services/occurrences/completeness.ts",
+        /*
+         * ⚠️ LES GABARITS DE COURRIEL Y FIGURENT, bien qu'ils rendent du JSX.
+         * Ce ne sont pas des écrans : ils n'ont ni état, ni interaction, ni accès
+         * aux données — une charge utile entre, deux chaînes sortent. C'est donc
+         * bien du calcul pur, et une régression y est invisible partout ailleurs :
+         * un gabarit qui casse ne fait échouer ni la compilation ni le build, il
+         * lève à l'exécution dans une tâche horaire, et l'échéance passe.
+         */
+        "src/emails/**/*.{ts,tsx}",
+        // Canaux déclarés et dormants : un refus, rien d'autre à orchestrer.
+        "src/services/notifications/providers/dormant-channels.ts",
       ],
       exclude: [
         // Fabriques de clients : trois lignes de configuration, rien à éprouver.
@@ -148,6 +159,20 @@ export default defineConfig({
           functions: 100,
           lines: 100,
         },
+
+        /*
+         * ⚠️ 90 % SUR LES GABARITS DE COURRIEL. Le seuil garde deux choses que
+         * rien d'autre ne garde : que CHAQUE gabarit soit rendu au moins une
+         * fois — sans quoi il ne se casse qu'en production — et que les
+         * variantes où une donnée MANQUE le soient aussi. Ce sont elles qui
+         * produisent les « null » et les blocs vides, et elles n'apparaissent
+         * jamais dans le jeu de données complet qu'on emploie pour relire.
+         *
+         * Une branche reste découverte, et c'est assumé : la coquille sait se
+         * rendre SANS lien d'action, alors qu'aucun gabarit n'en omet. La
+         * défense est légitime, l'atteindre demanderait un gabarit fictif.
+         */
+        "src/emails/**": { statements: 95, branches: 90, functions: 95, lines: 95 },
 
         /*
          * Plancher GLOBAL sur l'ensemble ci-dessus. Il ne récompense rien : il
