@@ -8,8 +8,12 @@ import { SmtpProvider } from "./smtp";
 import type { EmailProvider } from "./types";
 
 export type { EmailMessage, EmailProvider, ProviderConfig } from "./types";
-export { UnconfiguredSmsProvider, SMS_NOT_CONFIGURED } from "./sms";
-export type { SmsMessage, SmsProvider } from "./sms";
+export {
+  DORMANT_CHANNELS,
+  UnconfiguredChannelProvider,
+  CHANNEL_NOT_CONFIGURED,
+} from "./dormant-channels";
+export type { DormantChannel, DormantMessage, DormantChannelProvider } from "./dormant-channels";
 
 /**
  * Fabrique de fournisseur.

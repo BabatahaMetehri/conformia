@@ -684,7 +684,7 @@
       "body": "Un ou plusieurs messages ont épuisé leurs tentatives d'envoi. Vérifiez la configuration du fournisseur de courriel."
     },
     "errors": {
-      "smsNotConfigured": "Canal SMS non configuré.",
+      "channelNotConfigured": "Canal de notification non configuré.",
       "loadFailed": "Impossible de charger les notifications.",
       "updateFailed": "La notification n'a pas pu être mise à jour."
     },
@@ -1586,6 +1586,20 @@
       "lastSuccess": "Dernière sauvegarde réussie",
       "never": "jamais",
       "openReport": "Ouvrir le rapport"
+    },
+    "absenceRouting": {
+      "subject": "{obligation} — vous recevez cette alerte en tant que suppléant",
+      "preview": "Alerte redirigée vers vous en tant que suppléant.",
+      "heading": "Alerte redirigée",
+      "notice": "{absent} est absent, vous recevez cette alerte en tant que suppléant.",
+      "inAppNote": "La notification reste également visible dans l'application pour la personne absente, afin qu'elle retrouve le contexte à son retour."
+    },
+    "deputyNotice": {
+      "subject": "{obligation} — vous êtes désigné suppléant",
+      "preview": "Vous êtes désigné suppléant sur un dossier.",
+      "heading": "Désignation comme suppléant",
+      "lead": "Vous êtes désigné suppléant de {owner} sur ce dossier.",
+      "rights": "Vous disposez dès maintenant des mêmes droits que le responsable, sans attendre aucune absence. Vos actions seront enregistrées en tant que suppléant."
     }
   },
   "calendar": {
