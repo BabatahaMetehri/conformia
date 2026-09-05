@@ -51,10 +51,33 @@ function loadEnvLocal(): void {
 
 loadEnvLocal();
 
+/**
+ * ⚠️ WINDOWS ÉPUISE SES PORTS ÉPHÉMÈRES, ET CE N'EST PAS UN DÉFAUT DE
+ * L'APPLICATION.
+ *
+ * `net::ERR_NO_BUFFER_SPACE` apparaît au bout de quelques centaines de
+ * connexions courtes : Windows garde chaque socket fermée en `TIME_WAIT` quatre
+ * minutes et n'ouvre par défaut qu'une plage dynamique étroite. La suite en ouvre
+ * beaucoup — cent trente-neuf tests, chacun avec ses requêtes et sa réserve de
+ * connexions PostgreSQL.
+ *
+ * ⚠️ LA SUITE TOURNE DÉJÀ SUR UN SEUL TRAVAILLEUR, et il ne faut pas l'augmenter :
+ * l'arbitrage supposait un défaut de parallélisme, mais `workers: 1` était en
+ * place avant l'incident. Passer à deux DOUBLERAIT le débit de sockets —
+ * exactement ce qui manque. Le nombre est donc laissé à un, et rendu explicite
+ * ici pour que personne ne le relance à la hausse en croyant gagner du temps.
+ *
+ * Ce qui reste à faire face à une saturation de l'OS est de la RÉESSAYER : une
+ * seconde tentative repart sur des ports libérés. Un échec applicatif, lui,
+ * échoue les deux fois — la reprise ne masque donc aucun défaut réel.
+ */
+const WINDOWS = process.platform === "win32";
+
 export default defineConfig({
   testDir: "./e2e",
   fullyParallel: false,
   workers: 1,
+  retries: WINDOWS ? 1 : 0,
   timeout: 60_000,
   reporter: [["list"]],
   use: {
