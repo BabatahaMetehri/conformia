@@ -114,7 +114,25 @@ export async function transitionOccurrenceAction(input: unknown): Promise<Transi
   if (!context.ok) return { status: "error", error: toClientError(context.error) };
 
   const result = await transitionOccurrence(parsed.value);
-  if (result.ok && result.value.outcome === "APPLIED") {
+
+  /*
+   * ⚠️ TROIS ISSUES REVALIDENT, ET NON UNE SEULE. `APPLIED` était la seule
+   * listée ; les deux autres laissaient l'écran sur des données fausses :
+   *
+   *   • `PARTIALLY_VALIDATED` — la première des deux validations EST écrite,
+   *     même si l'état du dossier ne bouge pas. Sans revalidation, le compteur
+   *     « 1 validation sur 2 » restait à zéro, et le validateur croyait son geste
+   *     sans effet — puis recommençait.
+   *   • `VERSION_CONFLICT` — quelqu'un d'autre a modifié le dossier entre
+   *     l'affichage et le clic. C'est la définition même d'un écran périmé : le
+   *     revalider est la seule manière de rendre la reprise possible, et elle
+   *     appartient au serveur, pas à un `router.refresh()` côté client.
+   *
+   * Les autres issues sont des REFUS sans écriture : rien n'a changé, rien n'est
+   * à revalider, et le faire ferait payer un aller-retour à chaque refus.
+   */
+  const REVALIDATING: readonly string[] = ["APPLIED", "PARTIALLY_VALIDATED", "VERSION_CONFLICT"];
+  if (result.ok && REVALIDATING.includes(result.value.outcome)) {
     revalidatePath(DETAIL_PATH, "page");
     revalidatePath(LIST_PATH, "page");
   }
