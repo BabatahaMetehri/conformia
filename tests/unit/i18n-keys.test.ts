@@ -28,6 +28,26 @@ function resolve(catalogue: Catalogue, path: string): Resolution {
   return typeof node === "object" && node !== null ? "groupe" : "message";
 }
 
+/** Le message lui-même, ou `null` si le chemin ne désigne pas un message. */
+function messageAt(catalogue: Catalogue, path: string): string | null {
+  let node: unknown = catalogue;
+  for (const part of path.split(".")) {
+    if (typeof node !== "object" || node === null || !(part in node)) return null;
+    node = (node as Record<string, unknown>)[part];
+  }
+  return typeof node === "string" ? node : null;
+}
+
+/**
+ * Le message attend-il des valeurs ? `{days, plural, …}`, `{count}`, `{year}`.
+ *
+ * Les accolades échappées d'ICU — `'{'` — ne comptent pas : elles ne déclarent
+ * aucun paramètre.
+ */
+function expectsValues(message: string): boolean {
+  return /\{\s*[A-Za-z_]\w*/.test(message.replace(/'\{'/g, ""));
+}
+
 function sourceFiles(directory: string): string[] {
   return readdirSync(directory, { withFileTypes: true }).flatMap((entry) => {
     const full = join(directory, entry.name);
@@ -43,6 +63,8 @@ interface Usage {
   readonly file: string;
   readonly path: string;
   readonly kind: UsageKind;
+  /** L'appel passe-t-il des valeurs ? `t("clé", { … })` contre `t("clé")`. */
+  readonly hasArguments: boolean;
 }
 
 interface Declaration {
@@ -78,7 +100,7 @@ function collectUsages(): Usage[] {
     }
 
     for (const [index, declaration] of declarations.entries()) {
-      usages.push({ file, path: declaration.namespace, kind: "namespace" });
+      usages.push({ file, path: declaration.namespace, kind: "namespace", hasArguments: false });
 
       const nextSameVariable = declarations
         .slice(index + 1)
@@ -86,11 +108,18 @@ function collectUsages(): Usage[] {
       const scope = source.slice(declaration.at, nextSameVariable?.at ?? source.length);
 
       const literal = new RegExp(
-        String.raw`\b` + declaration.variable + String.raw`\(\s*"([^"]+)"`,
+        String.raw`\b` + declaration.variable + String.raw`\(\s*"([^"]+)"\s*(,?)`,
         "g",
       );
       for (const call of scope.matchAll(literal)) {
-        usages.push({ file, path: `${declaration.namespace}.${call[1] ?? ""}`, kind: "key" });
+        usages.push({
+          file,
+          path: `${declaration.namespace}.${call[1] ?? ""}`,
+          kind: "key",
+          // La virgule capturée est le seul indice disponible : elle distingue
+          // `t("clé")` de `t("clé", { … })`.
+          hasArguments: call[2] === ",",
+        });
       }
 
       // Clé construite : `t(`groupe.${valeur}`)`. Seul le préfixe est vérifiable.
@@ -101,7 +130,12 @@ function collectUsages(): Usage[] {
       for (const call of scope.matchAll(dynamic)) {
         const prefix = (call[1] ?? "").replace(/\.$/, "");
         if (prefix.length > 0) {
-          usages.push({ file, path: `${declaration.namespace}.${prefix}`, kind: "prefix" });
+          usages.push({
+            file,
+            path: `${declaration.namespace}.${prefix}`,
+            kind: "prefix",
+            hasArguments: false,
+          });
         }
       }
     }
@@ -152,6 +186,29 @@ describe("catalogues de traduction", () => {
       .filter((usage) => resolve(fr as Catalogue, usage.path) !== "groupe");
 
     expect(report(wrong)).toEqual([]);
+  });
+
+  it("⚠️ aucun message À PARAMÈTRES n'est appelé SANS ses valeurs", () => {
+    /*
+     * ⚠️ CE DÉFAUT FAIT TOMBER L'ÉCRAN ENTIER, PAS SEULEMENT LE LIBELLÉ.
+     *
+     * Sur un message ICU — `{days, plural, one {# jour de retard} …}` — appelé
+     * sans ses valeurs, next-intl ne rend pas une approximation : il lève
+     * `FORMATTING_ERROR`, et le rendu de la page échoue. C'est arrivé sur
+     * l'Échéancier, où la liste devenait inaccessible dès qu'UNE ligne était en
+     * retard légal — donc précisément quand elle était le plus utile.
+     *
+     * Le contrôle est mécanique parce que l'écran ne l'est pas : la clé fautive
+     * ne se voit qu'en peuplant la page d'une donnée particulière.
+     */
+    const missing = usages
+      .filter((usage) => usage.kind === "key" && !usage.hasArguments)
+      .filter((usage) => {
+        const message = messageAt(fr, usage.path);
+        return message !== null && expectsValues(message);
+      });
+
+    expect(report(missing)).toEqual([]);
   });
 
   it("les deux catalogues portent exactement les mêmes clés", () => {

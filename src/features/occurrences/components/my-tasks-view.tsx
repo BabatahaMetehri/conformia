@@ -91,6 +91,7 @@ export function MyTasksView({
                     internalDueDate={item.internalDueDate}
                     legalDueDate={item.legalDueDate}
                     daysToInternal={item.daysToInternal}
+                    daysToLegal={item.daysToLegal}
                     isOverdue={item.isOverdue}
                     isInternallyLate={item.isInternallyLate}
                   />

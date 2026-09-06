@@ -16,6 +16,14 @@ export interface OccurrenceRowView {
   readonly internalDueDate: string;
   readonly legalDueDate: string;
   readonly daysToInternal: number;
+  /**
+   * Jours restants jusqu'à l'échéance LÉGALE — négatif au-delà.
+   *
+   * ⚠️ Calculé en SQL, à la date d'ALGER. Le recalculer côté client donnerait le
+   * fuseau du navigateur et, pire, une valeur différente du serveur au moment de
+   * l'hydratation.
+   */
+  readonly daysToLegal: number;
   readonly isOverdue: boolean;
   readonly isInternallyLate: boolean;
   readonly status: OccurrenceStatus;

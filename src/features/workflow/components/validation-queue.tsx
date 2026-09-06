@@ -336,7 +336,7 @@ export function ValidationQueue({
       <Dialog open={confirmBulk} onOpenChange={setConfirmBulk}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>{t("bulkConfirmTitle")}</DialogTitle>
+            <DialogTitle>{t("bulkConfirmTitle", { count: selected.length })}</DialogTitle>
             {/* La confirmation est EXPLICITE et nomme le nombre : valider en lot
                 sans avoir ouvert les dossiers est un geste qui doit peser. */}
             <DialogDescription>

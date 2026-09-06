@@ -968,6 +968,7 @@
     "owner": "المسؤول",
     "validator": "المصادِق",
     "legalDueDate": "الاستحقاق القانوني",
+    "overdueColumn": "متأخر",
     "internalDueDate": "الاستحقاق الداخلي",
     "reference": "رقم الإيداع",
     "status": {

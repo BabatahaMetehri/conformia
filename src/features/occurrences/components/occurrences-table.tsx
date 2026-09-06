@@ -134,6 +134,7 @@ export function OccurrencesTable({
             internalDueDate={row.original.internalDueDate}
             legalDueDate={row.original.legalDueDate}
             daysToInternal={row.original.daysToInternal}
+            daysToLegal={row.original.daysToLegal}
             isOverdue={row.original.isOverdue}
             isInternallyLate={row.original.isInternallyLate}
           />

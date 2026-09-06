@@ -247,7 +247,12 @@ async function runExport(
     owner: t("owner"),
     validator: t("validator"),
     documents: t("documents"),
-    overdue: t("due.overdue"),
+    /*
+     * ⚠️ PAS `due.overdue` : c'est un pluriel ICU (« # jours de retard »), qui
+     * exige une valeur et fait échouer le rendu sans elle. Un en-tête de colonne
+     * n'a de toute façon pas à être une phrase comptée.
+     */
+    overdue: t("overdueColumn"),
     domain: t("domain"),
     authority: t("authority"),
     criticality: t("criticalityColumn"),

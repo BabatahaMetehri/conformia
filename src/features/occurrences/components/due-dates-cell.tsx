@@ -29,12 +29,14 @@ export function DueDatesCell({
   internalDueDate,
   legalDueDate,
   daysToInternal,
+  daysToLegal,
   isOverdue,
   isInternallyLate,
 }: {
   readonly internalDueDate: string;
   readonly legalDueDate: string;
   readonly daysToInternal: number;
+  readonly daysToLegal: number;
   readonly isOverdue: boolean;
   readonly isInternallyLate: boolean;
 }) {
@@ -63,7 +65,19 @@ export function DueDatesCell({
           {formatDateFr(legal)}
         </time>
         {isOverdue ? (
-          <span className="ms-1.5 font-medium text-status-overdue">{t("overdue")}</span>
+          /*
+           * ⚠️ `days` EST OBLIGATOIRE. La clé est un pluriel ICU
+           * (`{days, plural, …}`) : appelée sans variable, `next-intl` ne rend
+           * pas un libellé approximatif — il lève `FORMATTING_ERROR` et fait
+           * tomber l'écran entier. C'était le défaut : l'Échéancier ne
+           * s'affichait plus dès qu'UNE ligne était en retard légal.
+           *
+           * Le compte vient du serveur, calculé à la date d'Alger : le refaire
+           * ici donnerait le fuseau du navigateur.
+           */
+          <span className="ms-1.5 font-medium text-status-overdue">
+            {t("overdue", { days: Math.abs(daysToLegal) })}
+          </span>
         ) : null}
       </span>
     </div>

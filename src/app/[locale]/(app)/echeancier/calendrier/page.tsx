@@ -94,6 +94,7 @@ export default async function Page({
           internalDueDate: row.internalDueDate,
           legalDueDate: row.legalDueDate,
           daysToInternal: row.daysToInternal,
+          daysToLegal: row.daysToLegal,
           isOverdue: row.isOverdue,
           isInternallyLate: row.isInternallyLate,
           status: row.status as OccurrenceStatus,

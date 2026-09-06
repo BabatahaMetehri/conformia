@@ -968,6 +968,7 @@
     "owner": "Responsable",
     "validator": "Validateur",
     "legalDueDate": "Échéance légale",
+    "overdueColumn": "En retard",
     "internalDueDate": "Échéance interne",
     "reference": "Numéro de dépôt",
     "status": {
