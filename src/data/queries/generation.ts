@@ -15,6 +15,7 @@ import "server-only";
 
 import { mapPostgrestError } from "@/lib/errors";
 import { err, ok, type Result } from "@/lib/result";
+import type { HolidayEntry } from "@/lib/holidays";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { Database } from "@/types/database.types";
 
@@ -107,13 +108,20 @@ function toObligation(row: {
   };
 }
 
-/** Toutes les dates chômées. Le calcul d'échéance les veut toutes. */
-export async function loadHolidayDates(
+/**
+ * Le CALENDRIER entier, récurrence comprise.
+ *
+ * ⚠️ `is_recurring` EST LU, et ne l'était pas. Cette fonction ne rendait que
+ * `holiday_date` : le moteur recevait des dates exactes, et une fête marquée
+ * récurrente en 2026 ne protégeait rien en 2027. La colonne existait, elle
+ * s'affichait dans l'écran d'administration, et elle n'avait aucun effet.
+ */
+export async function loadHolidayCalendar(
   client: GenerationClient,
-): Promise<Result<readonly string[]>> {
-  const { data, error } = await client.from("holidays").select("holiday_date");
+): Promise<Result<readonly HolidayEntry[]>> {
+  const { data, error } = await client.from("holidays").select("holiday_date, is_recurring");
   if (error !== null) return err(mapPostgrestError(error));
-  return ok(data.map((row) => row.holiday_date));
+  return ok(data.map((row) => ({ date: row.holiday_date, isRecurring: row.is_recurring })));
 }
 
 export interface OccurrenceDraft {

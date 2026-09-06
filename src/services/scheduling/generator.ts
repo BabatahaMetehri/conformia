@@ -26,7 +26,7 @@ import {
   type ActiveRegister,
   listFutureTodoOccurrences,
   listGeneratableObligations,
-  loadHolidayDates,
+  loadHolidayCalendar,
   loadObligation,
   updateOccurrenceDueDates,
   type GeneratableObligation,
@@ -42,7 +42,9 @@ import {
  */
 const PER_REGISTER = "PER_REGISTER";
 import { nowInAppTz, toAppTz, toUtcFromAppTz, type PeriodDescriptor } from "@/lib/dates";
+import { yearsCoveredBy, yearsWithExactHolidays, type HolidayEntry } from "@/lib/holidays";
 import { AppError } from "@/lib/errors";
+import { logger } from "@/lib/logger";
 import { err, ok, type Result } from "@/lib/result";
 import {
   computeDueDate,
@@ -153,22 +155,16 @@ export async function generateOccurrences(
     return err(AppError.notFound("obligation", obligationTypeId));
   }
 
-  const holidays = await loadHolidayDates(client);
+  const holidays = await loadHolidayCalendar(client);
   if (!holidays.ok) return holidays;
 
-  return generateForObligation(
-    client,
-    obligation.value,
-    holidays.value.map(fromIsoDay),
-    horizonMonths,
-    now,
-  );
+  return generateForObligation(client, obligation.value, holidays.value, horizonMonths, now);
 }
 
 async function generateForObligation(
   client: GenerationClient,
   obligation: GeneratableObligation,
-  holidays: readonly Date[],
+  holidays: readonly HolidayEntry[],
   horizonMonths: number,
   now: Date,
 ): Promise<Result<GenerationReport>> {
@@ -263,7 +259,7 @@ async function generateForObligation(
 async function generateForScope(
   client: GenerationClient,
   obligation: GeneratableObligation,
-  holidays: readonly Date[],
+  holidays: readonly HolidayEntry[],
   horizonMonths: number,
   now: Date,
   register: ActiveRegister | null,
@@ -399,6 +395,43 @@ async function generateForScope(
  * détail par obligation : c'est lui qui rend l'échec visible sans le rendre
  * bloquant.
  */
+/**
+ * Signale les années de l'horizon dont le calendrier ne porte AUCUNE date exacte.
+ *
+ * ⚠️ LE VRAI DÉFAUT ÉTAIT LE SILENCE, pas l'absence de dates. Un calendrier
+ * incomplet ne produisait ni erreur, ni message, ni test rouge : seulement des
+ * échéances calculées comme si aucun jour n'était chômé. On pouvait générer une
+ * année entière de dossiers faux sans qu'une seule ligne de journal en témoigne.
+ *
+ * ⚠️ LES RÉCURRENTES NE COMPTENT PAS comme couverture. Elles valent pour toute
+ * année par construction : les compter déclarerait 2027 « couverte » alors
+ * qu'aucune fête religieuse n'y est saisie — c'est-à-dire reproduirait exactement
+ * le silence qu'on répare.
+ *
+ * L'avertissement ne fait pas échouer la génération : des dossiers aux dates
+ * imparfaites valent mieux que pas de dossiers du tout, et le tableau de bord
+ * porte l'alerte visible (`HOLIDAYS_INCOMPLETE`). Mais il est ÉCRIT, et c'est
+ * tout ce qui manquait.
+ */
+function warnOnUncoveredYears(
+  holidays: readonly HolidayEntry[],
+  now: Date,
+  horizonMonths: number,
+): void {
+  const couvertes = yearsWithExactHolidays(holidays);
+  const manquantes = yearsCoveredBy(now, horizonMonths).filter((year) => !couvertes.has(year));
+
+  if (manquantes.length === 0) return;
+
+  logger.warn("Calendrier des jours fériés incomplet", {
+    years: manquantes,
+    // Le message dit la CONSÉQUENCE, pas seulement le constat : « années
+    // manquantes » n'apprend rien à qui lit un journal à trois heures du matin.
+    consequence: "les échéances de ces années ne tiennent pas compte des jours chômés",
+    remedy: "Administration → Référentiels → Jours fériés",
+  });
+}
+
 export async function generateAllActive(
   client: GenerationClient,
   horizonMonths: number = DEFAULT_HORIZON_MONTHS,
@@ -407,10 +440,12 @@ export async function generateAllActive(
   const obligations = await listGeneratableObligations(client);
   if (!obligations.ok) return obligations;
 
-  const holidays = await loadHolidayDates(client);
+  const holidays = await loadHolidayCalendar(client);
   if (!holidays.ok) return holidays;
 
-  const holidayDates = holidays.value.map(fromIsoDay);
+  const holidayDates = holidays.value;
+  warnOnUncoveredYears(holidayDates, now, horizonMonths);
+
   const perObligation: GenerationReport[] = [];
 
   for (const obligation of obligations.value) {
@@ -472,13 +507,13 @@ export async function regenerateFuture(
   if (!rule.ok) return rule;
 
   const [holidays, occurrences] = await Promise.all([
-    loadHolidayDates(client),
+    loadHolidayCalendar(client),
     listFutureTodoOccurrences(client, obligationTypeId, isoDay(fromDate)),
   ]);
   if (!holidays.ok) return holidays;
   if (!occurrences.ok) return occurrences;
 
-  const holidayDates = holidays.value.map(fromIsoDay);
+  const holidayDates = holidays.value;
   const leadDays = resolveLeadDays(
     obligation.value.criticality as Criticality,
     obligation.value.internalLeadDays,
@@ -565,9 +600,9 @@ export async function backfillArchivedShells(
   if (!rule.ok)
     return ok({ ...empty, failed: 1, failures: [{ periodKey: "*", reason: "INVALID_DUE_RULE" }] });
 
-  const holidays = await loadHolidayDates(client);
+  const holidays = await loadHolidayCalendar(client);
   if (!holidays.ok) return holidays;
-  const holidayDates = holidays.value.map(fromIsoDay);
+  const holidayDates = holidays.value;
 
   // Fenêtre PASSÉE : de `now - months` à `now`, bornée par la validité.
   const window = generationWindow(

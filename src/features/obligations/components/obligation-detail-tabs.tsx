@@ -21,6 +21,7 @@ import {
 } from "@/features/obligations/components/obligation-history";
 import { Link } from "@/i18n/navigation";
 import { formatDateFr } from "@/lib/dates";
+import type { HolidayEntry } from "@/lib/holidays";
 
 /**
  * Fiche d'une obligation, en cinq onglets.
@@ -86,7 +87,7 @@ export function ObligationDetailTabs({
   canManage,
 }: {
   readonly detail: ObligationDetailView;
-  readonly holidays: readonly string[];
+  readonly holidays: readonly HolidayEntry[];
   readonly assignees: readonly { readonly id: string; readonly fullName: string }[];
   readonly canManage: boolean;
 }) {

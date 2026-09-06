@@ -97,6 +97,25 @@ const periodRule: fc.Arbitrary<DueRule> = fc
     holiday_shift: direction,
   }));
 
+/**
+ * Jours chômés en DATES, pour les aides bas niveau.
+ *
+ * ⚠️ `addBusinessDays` et `computeInternalDueDate` travaillent sur des dates
+ * déjà choisies : ce sont des primitives de calendrier, elles n'ont pas à
+ * connaître la récurrence. La projection appartient au moteur d'échéance, qui
+ * seul sait sur quelle année l'échéance tombe.
+ */
+const holidayDates = fc
+  .uniqueArray(fc.integer({ min: 1, max: 28 }), { minLength: 0, maxLength: 6 })
+  .chain((days) =>
+    fc
+      .record({
+        year: fc.integer({ min: 2020, max: 2036 }),
+        month: fc.integer({ min: 1, max: 12 }),
+      })
+      .map(({ year, month }) => days.map((day) => algiersNoon(year, month, day))),
+  );
+
 /** Jours fériés du mois de la période, pour éprouver la collision avec le week-end. */
 const holidays = fc
   .uniqueArray(fc.integer({ min: 1, max: 28 }), { minLength: 0, maxLength: 6 })
@@ -106,7 +125,20 @@ const holidays = fc
         year: fc.integer({ min: 2020, max: 2036 }),
         month: fc.integer({ min: 1, max: 12 }),
       })
-      .map(({ year, month }) => days.map((day) => algiersNoon(year, month, day))),
+      /*
+       * ⚠️ DATES EXACTES, jamais récurrentes. Une entrée récurrente se projette
+       * sur toutes les années : les propriétés éprouvées ici portent sur UNE
+       * période, et un jour chômé surgissant d'une autre année les rendrait
+       * fausses pour une raison qui n'a rien à voir avec ce qu'elles affirment.
+       */
+      .map(({ year, month }) =>
+        days.map((day) => ({
+          date: [String(year), String(month).padStart(2, "0"), String(day).padStart(2, "0")].join(
+            "-",
+          ),
+          isRecurring: false,
+        })),
+      ),
   );
 
 // ═════════════════════════════════════════════════════════════════════════════
@@ -146,7 +178,8 @@ describe("computeDueDate — propriétés", () => {
         if (rule.holiday_shift === DateShift.NONE) return;
         const result = computeDueDate({ rule, period, holidays: days });
         if (!result.ok) return;
-        const keys = new Set(days.map(dayKey));
+        // L'entrée porte déjà la clé du jour : `AAAA-MM-JJ`, la forme comparée.
+        const keys = new Set(days.map((entry) => entry.date));
         expect(keys.has(dayKey(result.value.legalDueDate))).toBe(false);
       }),
       { numRuns: 500 },
@@ -266,7 +299,7 @@ describe("computeInternalDueDate — propriétés", () => {
       fc.property(
         fc.date({ min: new Date("2020-01-01"), max: new Date("2035-12-31"), noInvalidDate: true }),
         fc.integer({ min: 1, max: 15 }),
-        holidays,
+        holidayDates,
         (legal, lead, days) => {
           const internal = computeInternalDueDate(legal, lead, days);
           expect(isBusinessDay(internal, days)).toBe(true);
@@ -283,7 +316,7 @@ describe("addBusinessDays — propriétés", () => {
       fc.property(
         fc.date({ min: new Date("2020-01-01"), max: new Date("2035-12-31"), noInvalidDate: true }),
         fc.integer({ min: -20, max: 20 }).filter((n) => n !== 0),
-        holidays,
+        holidayDates,
         (from, count, days) => {
           expect(isBusinessDay(addBusinessDays(from, count, days), days)).toBe(true);
         },
@@ -302,7 +335,7 @@ describe("addBusinessDays — propriétés", () => {
       fc.property(
         fc.date({ min: new Date("2020-01-01"), max: new Date("2035-12-31"), noInvalidDate: true }),
         fc.integer({ min: 1, max: 12 }),
-        holidays,
+        holidayDates,
         (from, count, days) => {
           if (!isBusinessDay(from, days)) return;
           const forward = addBusinessDays(from, count, days);

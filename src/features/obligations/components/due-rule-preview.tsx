@@ -9,6 +9,7 @@ import { Periodicity } from "@/config/constants";
 import { formatDateFr } from "@/lib/dates";
 import { previewDueDates, type DueDatePreview } from "@/services/scheduling";
 import { cn } from "@/lib/utils";
+import type { HolidayEntry } from "@/lib/holidays";
 
 /**
  * Prévisualisation en direct des prochaines échéances.
@@ -41,7 +42,7 @@ export function DueRulePreview({
   readonly rule: unknown;
   readonly periodicity: Periodicity;
   /** Jours fériés au format `yyyy-MM-dd`, chargés une fois par le serveur. */
-  readonly holidays: readonly string[];
+  readonly holidays: readonly HolidayEntry[];
   readonly internalLeadDays: number;
   /** Date d'expiration ou d'événement, pour les ancres qui en dépendent. */
   readonly anchorDate?: string | undefined;
@@ -50,10 +51,7 @@ export function DueRulePreview({
   const t = useTranslations("obligations.preview");
   const format = useFormatter();
 
-  const holidayDates = useMemo(
-    () => holidays.map((day) => new Date(`${day}T12:00:00.000Z`)),
-    [holidays],
-  );
+  const holidayDates = useMemo(() => holidays, [holidays]);
 
   const result = useMemo(
     () =>

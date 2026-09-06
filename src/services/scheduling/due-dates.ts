@@ -34,6 +34,7 @@ import {
   type PeriodDescriptor,
   type PeriodRule,
 } from "@/lib/dates";
+import { expandHolidaysAround, type HolidayEntry } from "@/lib/holidays";
 import { AppError } from "@/lib/errors";
 import { err, ok, type Result } from "@/lib/result";
 import { isEventDrivenAnchor, validateDueRule, type DueRule } from "@/services/scheduling/due-rule";
@@ -78,7 +79,20 @@ export interface ComputeDueDateInput {
    * `EXPIRY_DATE` et `EVENT_DATE`, ignorée pour les autres.
    */
   readonly anchorDate?: Date | undefined;
-  readonly holidays?: readonly Date[] | undefined;
+  /**
+   * Le CALENDRIER, et non une liste de dates déjà choisies.
+   *
+   * ⚠️ CE PARAMÈTRE PORTAIT AUTREFOIS `readonly Date[]`, ET C'ÉTAIT LE DÉFAUT.
+   * L'appelant devait alors décider AVANT le calcul quelles dates fournir —
+   * c'est-à-dire deviner l'année de l'échéance avant de l'avoir calculée. Il
+   * fournissait donc les dates telles quelles, et une période de décembre 2026
+   * échéant en janvier 2027 se calculait contre le calendrier de 2026.
+   *
+   * En recevant les ENTRÉES, la fonction projette elle-même les récurrentes sur
+   * l'année où l'échéance tombe réellement. L'ordre est le bon : on calcule la
+   * date, puis on consulte le calendrier de son année.
+   */
+  readonly holidays?: readonly HolidayEntry[] | undefined;
   /** Marge interne, en jours OUVRÉS, retranchée à l'échéance légale. */
   readonly internalLeadDays?: number | undefined;
 }
@@ -92,12 +106,24 @@ export interface ComputeDueDateInput {
  */
 export function computeDueDate(input: ComputeDueDateInput): Result<DueDatePreview> {
   const { rule, period } = input;
-  const holidays = input.holidays ?? [];
+  const entries = input.holidays ?? [];
 
   const base = anchorInstant(rule, period, input.anchorDate);
   if (!base.ok) return base;
 
   const rawDueDate = applyOffsets(base.value, rule);
+
+  /*
+   * ⚠️ LE CALENDRIER EST CELUI DE L'ANNÉE OÙ L'ÉCHÉANCE TOMBE, pas celui de la
+   * période. La distinction n'est pas théorique : une déclaration de décembre
+   * 2026 échoit en janvier 2027, et c'est le 1er janvier 2027 qui la décale.
+   *
+   * L'année se lit sur la date BRUTE, avant report — c'est la seule connue à cet
+   * instant, et le report ne déplace jamais que de quelques jours. Les années
+   * voisines sont incluses pour que ces quelques jours puissent franchir le
+   * 31 décembre sans sortir du calendrier.
+   */
+  const holidays = expandHolidaysAround(entries, toAppTz(rawDueDate).getFullYear());
 
   const shifted = applyShift(rawDueDate, rule, holidays);
   if (!shifted.ok) return shifted;
@@ -308,7 +334,7 @@ export interface PreviewDueDatesInput {
   readonly count?: number | undefined;
   /** Point de départ. Défaut : maintenant, heure d'Alger. */
   readonly from?: Date | undefined;
-  readonly holidays?: readonly Date[] | undefined;
+  readonly holidays?: readonly HolidayEntry[] | undefined;
   readonly internalLeadDays?: number | undefined;
   /** Requis pour les ancres `EXPIRY_DATE` et `EVENT_DATE`. */
   readonly anchorDate?: Date | undefined;

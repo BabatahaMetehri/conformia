@@ -9,6 +9,7 @@ import "server-only";
 
 import { AppError, mapPostgrestError } from "@/lib/errors";
 import { err, ok, type Result } from "@/lib/result";
+import type { HolidayEntry } from "@/lib/holidays";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import type { ObligationListFilters } from "@/services/obligations/schema";
 import type {
@@ -282,7 +283,7 @@ export interface ObligationFormOptions {
   readonly domains: readonly Pick<DomainRow, "id" | "code" | "label">[];
   readonly authorities: readonly Pick<AuthorityRow, "id" | "code" | "name">[];
   readonly obligations: readonly Pick<ObligationTypeRow, "id" | "code" | "name">[];
-  readonly holidays: readonly string[];
+  readonly holidays: readonly HolidayEntry[];
 }
 
 /** Tout ce dont le formulaire a besoin, en une passe. */
@@ -293,7 +294,7 @@ export async function getObligationFormOptions(): Promise<Result<ObligationFormO
     supabase.from("domains").select("id, code, label").order("label"),
     supabase.from("authorities").select("id, code, name").order("name"),
     supabase.from("obligation_types").select("id, code, name").is("deleted_at", null).order("code"),
-    supabase.from("holidays").select("holiday_date").order("holiday_date"),
+    supabase.from("holidays").select("holiday_date, is_recurring").order("holiday_date"),
   ]);
 
   if (domains.error !== null) return err(mapPostgrestError(domains.error));
@@ -305,7 +306,10 @@ export async function getObligationFormOptions(): Promise<Result<ObligationFormO
     domains: domains.data,
     authorities: authorities.data,
     obligations: obligations.data,
-    holidays: holidays.data.map((row) => row.holiday_date),
+    holidays: holidays.data.map((row) => ({
+      date: row.holiday_date,
+      isRecurring: row.is_recurring,
+    })),
   });
 }
 

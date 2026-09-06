@@ -18,6 +18,7 @@ import {
   wasShifted,
 } from "@/services/scheduling";
 import type { DueRule } from "@/services/scheduling";
+import type { HolidayEntry } from "@/lib/holidays";
 
 /**
  * Moteur d'échéance — cas ajoutés au lot « génération automatique ».
@@ -34,6 +35,21 @@ import type { DueRule } from "@/services/scheduling";
 
 function alger(year: number, month: number, day: number): Date {
   return toUtcFromAppTz(new Date(year, month - 1, day, 12, 0, 0, 0));
+}
+
+/**
+ * Un jour chômé à DATE EXACTE, tel que la base le porte.
+ *
+ * ⚠️ `isRecurring: false` par défaut, et ce n'est pas indifférent : une entrée
+ * récurrente se projette sur TOUTES les années, y compris celles qu'un scénario
+ * ne regarde pas. Les cas qui éprouvent une année précise emploient donc des
+ * dates exactes ; ceux qui éprouvent la récurrence le disent.
+ */
+function ferie(year: number, month: number, day: number, isRecurring = false): HolidayEntry {
+  const date = [String(year), String(month).padStart(2, "0"), String(day).padStart(2, "0")].join(
+    "-",
+  );
+  return { date, isRecurring };
 }
 
 function iso(instant: Date): string {
@@ -221,7 +237,7 @@ describe("double report", () => {
     const result = computeDueDate({
       rule: rule({ anchor: DueAnchor.FIXED_DATE, fixed_month: 4, fixed_day: 30 }),
       period: period("2026", alger(2026, 1, 1), alger(2026, 12, 31), Periodicity.ANNUAL),
-      holidays: [alger(2026, 4, 30)],
+      holidays: [ferie(2026, 4, 30)],
     });
     expect(result.ok).toBe(true);
     if (!result.ok) return;
@@ -234,7 +250,7 @@ describe("double report", () => {
   it("REFUSE une règle dont le report ne converge pas", () => {
     // Vingt jours fériés consécutifs : la règle est pathologique. Mieux vaut une
     // erreur explicite qu'une boucle qui immobilise le serveur.
-    const holidays = Array.from({ length: 20 }, (_, index) => alger(2026, 3, 1 + index));
+    const holidays = Array.from({ length: 20 }, (_, index) => ferie(2026, 3, 1 + index));
     const result = computeDueDate({
       rule: rule({ anchor: DueAnchor.FIXED_DATE, fixed_month: 3, fixed_day: 1 }),
       period: period("2026", alger(2026, 1, 1), alger(2026, 12, 31), Periodicity.ANNUAL),
@@ -330,7 +346,7 @@ describe("refus du calcul", () => {
      * rendre les deux premières lignes et taire la troisième : une liste
      * silencieusement incomplète se lit comme un calendrier, et se croit.
      */
-    const holidays = Array.from({ length: 20 }, (_, index) => alger(2026, 3, 1 + index));
+    const holidays = Array.from({ length: 20 }, (_, index) => ferie(2026, 3, 1 + index));
     const result = previewDueDates({
       rule: { anchor: DueAnchor.FIXED_DATE, fixed_month: 3, fixed_day: 1 },
       periodicity: Periodicity.ANNUAL,

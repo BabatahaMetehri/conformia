@@ -41,6 +41,7 @@ import {
 } from "@/data/mutations/obligations";
 import { AppError } from "@/lib/errors";
 import { err, ok, type Result } from "@/lib/result";
+import type { HolidayEntry } from "@/lib/holidays";
 import {
   CreateObligationTypeSchema,
   ObligationListFiltersSchema,
@@ -547,10 +548,12 @@ function isoDate(instant: Date): string {
   return formatISO(instant, { representation: "date" });
 }
 
-async function holidayDates(): Promise<Result<readonly Date[]>> {
+async function holidayDates(): Promise<Result<readonly HolidayEntry[]>> {
   const options = await getObligationFormOptions();
   if (!options.ok) return options;
-  return ok(options.value.holidays.map((day) => new Date(`${day}T12:00:00.000Z`)));
+  // Les entrées passent TELLES QUELLES : c'est le moteur qui projette les
+  // récurrentes sur l'année de l'échéance, et lui seul connaît cette année.
+  return ok(options.value.holidays);
 }
 
 /** Statuts que le recalcul ne touche jamais. Exposé pour l'affichage. */

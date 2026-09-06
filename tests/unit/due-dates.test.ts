@@ -80,7 +80,7 @@ describe("critères d'acceptation", () => {
       periodicity: Periodicity.MONTHLY,
       from: at("2026-03-05"),
       count: 1,
-      holidays: [at("2026-04-20")],
+      holidays: [{ date: "2026-04-20", isRecurring: false }],
     });
 
     if (!result.ok) throw new Error("prévisualisation en échec");
@@ -413,7 +413,7 @@ describe("reports de jour chômé", () => {
       periodicity: Periodicity.MONTHLY,
       from: at("2026-02-01"),
       count: 1,
-      holidays: [at("2026-03-22")],
+      holidays: [{ date: "2026-03-22", isRecurring: false }],
     });
 
     if (!result.ok) throw new Error("prévisualisation en échec");
@@ -744,7 +744,10 @@ describe("invariants", () => {
   });
 
   it("l'échéance légale tombe toujours un jour ouvré quand le report est actif", () => {
-    const holidays = [at("2026-04-20"), at("2026-04-21")];
+    const holidays = [
+      { date: "2026-04-20", isRecurring: false },
+      { date: "2026-04-21", isRecurring: false },
+    ];
 
     const result = previewDueDates({
       rule: { anchor: DueAnchor.PERIOD_END, offset_days: 20 },

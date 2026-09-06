@@ -41,6 +41,7 @@ import {
 } from "@/services/obligations/schema";
 import { defaultDueRule } from "@/services/scheduling";
 import { useActionRunner } from "@/hooks/use-action-runner";
+import type { HolidayEntry } from "@/lib/holidays";
 
 /**
  * Formulaire du référentiel : création et modification.
@@ -61,7 +62,7 @@ export interface ObligationFormOptionsView {
     readonly code: string;
     readonly name: string;
   }[];
-  readonly holidays: readonly string[];
+  readonly holidays: readonly HolidayEntry[];
 }
 
 const NONE = "__none__";
