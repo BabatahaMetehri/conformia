@@ -103,8 +103,15 @@ export async function DashboardAlerts({ view }: { readonly view: DashboardView }
           <li key={alert.code} className="flex items-center gap-2 text-sm text-text-primary">
             <AlertTriangle aria-hidden="true" className="size-3.5 shrink-0 text-status-overdue" />
             {/* ⚠️ Le compteur ET le libellé : « 3 » seul n'est pas une alerte,
-                et une alerte sans nombre ne dit pas s'il faut courir. */}
-            <span>{t(`alerts.${alert.code}`, { count: alert.total })}</span>
+                et une alerte sans nombre ne dit pas s'il faut courir.
+
+                ⚠️ `year` est passé en CHAÎNE, et c'est délibéré. Une alerte de
+                calendrier porte une année dans `total` ; formatée comme un
+                nombre, elle s'afficherait « 2 027 » en français — une année
+                avec un séparateur de milliers ne se lit pas comme une année. */}
+            <span>
+              {t(`alerts.${alert.code}`, { count: alert.total, year: String(alert.total) })}
+            </span>
           </li>
         ))}
       </ul>

@@ -115,7 +115,22 @@
       "authorities": "Organismes",
       "domains": "Domaines",
       "departments": "Services",
-      "readOnly": "Lecture seule : un renommage traverse tout le référentiel."
+      "readOnly": "Lecture seule : un renommage traverse tout le référentiel.",
+      "impact": {
+        "title": "Confirmer la modification du calendrier",
+        "title_save": "Ajouter ce jour férié ?",
+        "title_import": "Importer ce calendrier ?",
+        "title_delete": "Retirer ce jour férié ?",
+        "description": "Un jour chômé qui change déplace les échéances qui tombent dessus. Voici ce que cette modification changerait.",
+        "loading": "Calcul de l'impact en cours…",
+        "failed": "L'impact n'a pas pu être calculé. La modification n'a pas été appliquée.",
+        "summary": "{moved, plural, =0 {Aucune échéance ne serait déplacée} one {# échéance serait déplacée} other {# échéances seraient déplacées}}, sur {examined, plural, =0 {aucun dossier à faire} one {# dossier à faire} other {# dossiers à faire}}.",
+        "rejected": "{count, plural, one {# ligne illisible sera ignorée} other {# lignes illisibles seront ignorées}} : {lines}.",
+        "protected": "Les dossiers déjà commencés, validés, transmis ou archivés ne sont jamais déplacés.",
+        "cancel": "Annuler",
+        "confirm": "Appliquer",
+        "applying": "Application…"
+      }
     },
     "jobs": {
       "alertTitle": "Des travaux n'ont pas tourné comme prévu",
@@ -387,6 +402,7 @@
       "IMMINENT_NOT_STARTED": "{count, plural, one {# dossier à échéance sous 48 h, non démarré} other {# dossiers à échéance sous 48 h, non démarrés}}",
       "VALIDATION_STALE": "{count, plural, one {# validation en attente depuis plus de 5 jours} other {# validations en attente depuis plus de 5 jours}}",
       "BACKUP_STALE": "Aucune sauvegarde réussie depuis plus de 36 heures",
+      "HOLIDAYS_INCOMPLETE": "Calendrier {year} incomplet — les échéances de cette année ne tiennent pas compte des jours fériés",
       "INTEGRITY_MISMATCH": "{count, plural, one {# divergence d'intégrité documentaire} other {# divergences d'intégrité documentaire}}"
     },
     "lateReasons": {

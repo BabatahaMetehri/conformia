@@ -5766,6 +5766,15 @@ export type Database = {
           },
         ]
       }
+      holiday_calendar_coverage: {
+        Row: {
+          civil_count: number | null
+          is_complete: boolean | null
+          religious_count: number | null
+          year: number | null
+        }
+        Relationships: []
+      }
       job_health: {
         Row: {
           details: Json | null
