@@ -122,20 +122,62 @@ fixe, tous en **2026** :
 
 **Ce qui manque, et ce que cela coûte :**
 
-- **Les fêtes religieuses de 2026** — Aïd el-Fitr, Aïd el-Adha, Awal Moharem,
-  Achoura, Mawlid Ennabaoui. Elles suivent le calendrier hégirien et sont fixées
-  **par décret**. Elles ne se calculent pas : aucun code ne peut les deviner, et
-  ce document ne les invente pas. Sans elles, une échéance tombant un jour de
-  Aïd est calculée comme un jour ouvré — et le décalage réglementaire n'est pas
-  appliqué.
-- **L'année 2027, entièrement.** ⚠️ Attention au piège : la colonne
-  `is_recurring` est **informative**. Le calcul d'échéance lit des dates exactes
-  (`loadHolidayDates`) ; une fête marquée « récurrente » en 2026 **ne protège
-  pas** 2027. Chaque année doit être saisie.
+- **Les fêtes religieuses de 2026 ET de 2027** — Aïd el-Fitr, Aïd el-Adha, Awal
+  Moharem, Achoura, Mawlid Ennabaoui. Elles suivent le calendrier hégirien et
+  sont fixées **par décret**. Elles ne se calculent pas : aucun code ne peut les
+  deviner, et ce document ne les invente pas. Sans elles, une échéance tombant un
+  jour de Aïd est calculée comme un jour ouvré — et le décalage réglementaire
+  n'est pas appliqué.
+
+**`is_recurring` — CORRIGÉ.** ⚠️ Le piège était réel et silencieux : la colonne
+était lue, affichée, cochée par les administrateurs, et **sans aucun effet**. Le
+moteur recevait des dates exactes, si bien qu'une fête marquée « récurrente » en
+2026 ne protégeait rien en 2027 — et comme le calendrier ne contenait que 2026,
+**toute** échéance calculée en 2027 ignorait les jours chômés. Rien ne le
+signalait : ni erreur, ni message, ni test rouge.
+
+Désormais les récurrentes sont **projetées** sur chaque année demandée
+(`src/lib/holidays.ts`), et les cinq fêtes civiles ci-dessus valent donc pour
+2027, 2028 et au-delà **sans nouvelle saisie**. Il reste à saisir, chaque année,
+les seules dates qui ne se déduisent de rien : les religieuses.
+
+**Le garde-fou.** Une année de l'horizon sans **aucune** date exacte n'est jamais
+un état normal — c'est toujours un oubli. Elle se signale donc de trois façons :
+
+| Où                          | Quoi                                                                       |
+| --------------------------- | -------------------------------------------------------------------------- |
+| Journal de génération       | `Calendrier des jours fériés incomplet`, avec les années et la conséquence |
+| Tableau de bord             | alerte `HOLIDAYS_INCOMPLETE`, réservée à qui détient `referential.manage`  |
+| `holiday_calendar_coverage` | vue de contrôle : `year, civil_count, religious_count, is_complete`        |
+
+Pour vérifier l'état à tout moment :
+
+```sql
+select * from public.holiday_calendar_coverage;
+```
+
+Une ligne à `is_complete = false` désigne une année dont les échéances ignorent
+les jours chômés. **L'alerte ne s'éteindra pas d'elle-même** : elle est faite
+pour rester visible jusqu'à la saisie.
 
 **À faire :** obtenir du cabinet comptable ou du Journal officiel la liste des
-jours chômés 2026 et 2027, puis les saisir dans
-**Administration → Référentiels**, ou par import CSV sur le même écran.
+jours chômés **2026 et 2027**, puis les saisir dans **Administration →
+Référentiels**, à la main ou par import CSV.
+
+Le gabarit est fourni : [`docs/templates/jours-feries.csv`](templates/jours-feries.csv).
+Format `date,libellé,récurrent`, la date en `AAAA-MM-JJ`.
+
+⚠️ **`récurrent` vaut `false` pour toute fête religieuse**, sans exception. La
+marquer `true` la projetterait sur toutes les années à la même date grégorienne —
+ce qui est faux par construction — et, pire, ferait croire au garde-fou que
+l'année est couverte. Le seul `true` légitime est celui des cinq fêtes civiles,
+déjà saisies.
+
+**L'impact est annoncé avant d'être appliqué.** Ajouter, importer ou retirer un
+jour férié déplace des échéances que des gens ont notées ailleurs. L'écran
+chiffre le déplacement **avant** d'écrire, et renoncer n'écrit rien. Seuls les
+dossiers `TODO` bougent : ceux déjà commencés, validés, transmis ou archivés ne
+sont jamais déplacés.
 
 **Le rappel annuel — corrigé.** La tâche qui devait créer chaque 1er décembre le
 dossier « Mise à jour du calendrier N+1 » était écrite, testée… et **appelée par
