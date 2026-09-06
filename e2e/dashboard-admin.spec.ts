@@ -206,6 +206,39 @@ test.describe("administration", () => {
     });
     await expect(page.getByText("Chaque année").first()).toBeVisible();
   });
+
+  test("⚠️ ajouter un jour férié ANNONCE son impact avant d'écrire", async ({ page }) => {
+    /*
+     * Un jour chômé ajouté déplace des échéances que des gens ont notées
+     * ailleurs. L'écran rendait compte APRÈS — « 12 échéances déplacées » —
+     * quand il n'était plus temps de dire non. Ce test vérifie les deux moitiés
+     * de la correction : le nombre est annoncé AVANT, et renoncer n'écrit rien.
+     */
+    await signIn(page, ADMIN);
+    await page.goto("/fr/admin/referentials");
+
+    await page.getByLabel("Date").fill("2027-04-15");
+    await page.getByLabel("Libellé").fill("Jour de contrôle E2E");
+    await page.getByRole("button", { name: "Ajouter" }).click();
+
+    // La fenêtre chiffre l'impact — y compris quand il est nul, ce qui est une
+    // information et non un silence.
+    const dialog = page.getByRole("alertdialog");
+    await expect(dialog).toBeVisible({ timeout: 20_000 });
+    await expect(dialog.getByText(/échéance|échéances/).first()).toBeVisible({ timeout: 20_000 });
+    // Et elle DIT ce qui ne bougera pas : un dossier commencé n'est jamais déplacé.
+    await expect(dialog.getByText(/jamais déplacés/)).toBeVisible();
+
+    await dialog.getByRole("button", { name: "Annuler" }).click();
+    await expect(dialog).toBeHidden();
+
+    // Renoncer n'écrit rien : la date ne doit pas être apparue dans la liste.
+    await page.reload();
+    await expect(page.getByText("Yennayer", { exact: false }).first()).toBeVisible({
+      timeout: 20_000,
+    });
+    await expect(page.getByText("Jour de contrôle E2E")).toHaveCount(0);
+  });
 });
 
 test.describe("accessibilité", () => {

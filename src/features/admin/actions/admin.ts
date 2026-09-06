@@ -15,6 +15,7 @@ import { z } from "zod";
 
 import type {
   CountOutcome,
+  HolidayImpactOutcome,
   HolidayImportOutcome,
   IdOutcome,
   PlainAdminOutcome,
@@ -32,7 +33,11 @@ import {
   withdrawInvitation,
   withdrawRole,
 } from "@/services/admin";
-import { parseHolidayCsv, recalculateForHolidayChange } from "@/services/admin/holidays";
+import {
+  parseHolidayCsv,
+  previewHolidayChange,
+  recalculateForHolidayChange,
+} from "@/services/admin/holidays";
 import { uuidSchema } from "@/lib/schemas";
 
 const USERS_PATH = "/[locale]/(app)/admin/users";
@@ -219,6 +224,73 @@ export async function saveHolidayAction(input: unknown): Promise<HolidayImportOu
 }
 
 const ImportSchema = z.object({ content: z.string().min(1).max(200_000) });
+
+/**
+ * ─── ANNONCER AVANT D'AGIR ───────────────────────────────────────────────────
+ *
+ * ⚠️ CES TROIS ACTIONS N'ÉCRIVENT RIEN. Chacune répond à une seule question :
+ * combien d'échéances ce changement déplacerait-il ?
+ *
+ * Un jour férié ajouté, importé ou retiré décale des dates que des gens ont
+ * notées ailleurs — dans un agenda, sur un tableau, dans leur tête. L'écran
+ * rendait compte APRÈS : « 12 échéances déplacées », quand il n'était plus temps
+ * de dire non. Le nombre doit être connu pendant qu'il est encore possible de
+ * renoncer.
+ *
+ * L'impact est calculé PAR LE SERVEUR, à partir de l'état réel de la base. Ce
+ * qui sera écrit est recalculé une seconde fois à l'application : l'aperçu est
+ * un affichage, jamais une promesse.
+ */
+
+export async function previewHolidaySaveAction(input: unknown): Promise<HolidayImpactOutcome> {
+  const parsed = HolidaySchema.safeParse(input);
+  if (!parsed.success) return invalid();
+
+  const impact = await previewHolidayChange({ added: [parsed.data] });
+  if (!impact.ok) return { status: "error", error: toClientError(impact.error) };
+
+  return {
+    status: "success",
+    data: { ...impact.value, importable: 1, rejectedLines: [] },
+  };
+}
+
+export async function previewHolidayImportAction(input: unknown): Promise<HolidayImpactOutcome> {
+  const parsed = ImportSchema.safeParse(input);
+  if (!parsed.success) return invalid();
+
+  const { rows, rejected } = parseHolidayCsv(parsed.data.content);
+
+  // Un fichier dont rien n'est lisible ne déplace rien : inutile d'interroger la
+  // base pour le dire, et les lignes rejetées sont montrées quand même.
+  if (rows.length === 0) {
+    return {
+      status: "success",
+      data: { moved: 0, examined: 0, importable: 0, rejectedLines: rejected },
+    };
+  }
+
+  const impact = await previewHolidayChange({ added: rows });
+  if (!impact.ok) return { status: "error", error: toClientError(impact.error) };
+
+  return {
+    status: "success",
+    data: { ...impact.value, importable: rows.length, rejectedLines: rejected },
+  };
+}
+
+export async function previewHolidayDeleteAction(input: unknown): Promise<HolidayImpactOutcome> {
+  const parsed = z.object({ holidayId: uuidSchema }).safeParse(input);
+  if (!parsed.success) return invalid();
+
+  const impact = await previewHolidayChange({ removedId: parsed.data.holidayId });
+  if (!impact.ok) return { status: "error", error: toClientError(impact.error) };
+
+  return {
+    status: "success",
+    data: { ...impact.value, importable: 0, rejectedLines: [] },
+  };
+}
 
 export async function importHolidaysAction(input: unknown): Promise<HolidayImportOutcome> {
   const parsed = ImportSchema.safeParse(input);

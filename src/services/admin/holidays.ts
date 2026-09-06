@@ -17,9 +17,12 @@ import "server-only";
  * faux : on continue de se fier à la date qu'on avait notée.
  */
 
-import { listHolidayDates, listRecalculableOccurrences } from "@/data/queries/admin";
+import { listHolidayCalendar, listRecalculableOccurrences } from "@/data/queries/admin";
+import { formatISODateInAppTz } from "@/lib/dates";
+import type { HolidayEntry } from "@/lib/holidays";
 import { ok, type Result } from "@/lib/result";
 import type { Periodicity } from "@/config/constants";
+import { requirePermission } from "@/services/auth/context";
 import { computeDueDate } from "@/services/scheduling";
 import { DueRuleSchema } from "@/services/scheduling/due-rule";
 import { propagateDueDates } from "@/services/admin";
@@ -81,28 +84,43 @@ export function parseHolidayCsv(content: string): CsvParseResult {
   return { rows, rejected };
 }
 
+/** Ce qu'un changement de calendrier déplacerait, sans rien écrire. */
+export interface HolidayImpact {
+  /** Occurrences dont l'échéance changerait RÉELLEMENT. */
+  readonly moved: number;
+  /** Occurrences examinées — celles que le changement ne touche pas comprises. */
+  readonly examined: number;
+}
+
+interface DueDateUpdate {
+  readonly occurrence_id: string;
+  readonly legal_due_date: string;
+  readonly internal_due_date: string;
+}
+
 /**
- * Recalcule les échéances des occurrences ENCORE À FAIRE.
+ * Les échéances que CE calendrier produirait, comparées à celles en place.
  *
- * ⚠️ Ne touche que `TODO`, non verrouillées : on ne déplace pas le sol sous les
- * pieds de quelqu'un qui a déjà commencé. La borne est appliquée deux fois — ici
- * pour ne pas proposer l'impossible, et par `apply_due_date_updates` qui refuse
- * tout le reste.
+ * ⚠️ Ne considère que les occurrences `TODO` non verrouillées : on ne déplace
+ * pas le sol sous les pieds de quelqu'un qui a déjà commencé. La borne est
+ * appliquée deux fois — ici pour ne pas proposer l'impossible, et par
+ * `apply_due_date_updates` qui refuse tout le reste.
+ *
+ * Aucune écriture. C'est ce qui permet d'ANNONCER le nombre avant d'agir.
  */
-export async function recalculateForHolidayChange(reason: string): Promise<Result<number>> {
-  const today = new Date().toISOString().slice(0, 10);
+async function computeUpdatesFor(
+  calendar: readonly HolidayEntry[],
+): Promise<Result<{ readonly updates: readonly DueDateUpdate[]; readonly examined: number }>> {
+  // ⚠️ Aujourd'hui à ALGER, pas en UTC. `new Date().toISOString().slice(0, 10)`
+  // — ce qu'il y avait ici — donne la date UTC : entre 23 h et minuit à Alger,
+  // c'est encore celle de la veille, et le recalcul se voyait alors proposer une
+  // échéance du jour même, précisément celle qu'il protège.
+  const today = formatISODateInAppTz();
 
-  const [pending, holidays] = await Promise.all([
-    listRecalculableOccurrences(today),
-    listHolidayDates(),
-  ]);
-
+  const pending = await listRecalculableOccurrences(today);
   if (!pending.ok) return pending;
-  if (!holidays.ok) return holidays;
 
-  const holidayDates = holidays.value.map((date) => new Date(`${date}T00:00:00Z`));
-  const updates: { occurrence_id: string; legal_due_date: string; internal_due_date: string }[] =
-    [];
+  const updates: DueDateUpdate[] = [];
 
   for (const row of pending.value) {
     const rule = DueRuleSchema.safeParse(row.rule);
@@ -125,7 +143,7 @@ export async function recalculateForHolidayChange(reason: string): Promise<Resul
         end: new Date(`${row.periodEnd}T00:00:00Z`),
         periodicity: row.periodicity as Periodicity,
       },
-      holidays: holidayDates,
+      holidays: calendar,
       internalLeadDays: row.leadDays,
       ...(anchor === undefined ? {} : { anchorDate: anchor }),
     });
@@ -142,6 +160,59 @@ export async function recalculateForHolidayChange(reason: string): Promise<Resul
     updates.push({ occurrence_id: row.id, legal_due_date: legal, internal_due_date: internal });
   }
 
-  if (updates.length === 0) return ok(0);
-  return propagateDueDates(updates, reason);
+  return ok({ updates, examined: pending.value.length });
+}
+
+/**
+ * Ce qu'un changement de calendrier DÉPLACERAIT, s'il était appliqué.
+ *
+ * ⚠️ ANNONCER AVANT D'AGIR, ET NON RENDRE COMPTE APRÈS. Importer un calendrier
+ * déplace des échéances que des gens ont notées ailleurs — dans un agenda, sur
+ * un tableau, dans leur tête. Découvrir après coup que trente dossiers ont
+ * changé de date ne laisse aucune occasion de dire « non, pas celui-là » : le
+ * nombre doit être connu pendant qu'il est encore possible de renoncer.
+ *
+ * Le calendrier candidat est construit ICI, à partir de l'état réel de la base :
+ * rien de ce que le formulaire transmet n'entre dans le calcul, sinon la
+ * modification proposée elle-même.
+ */
+export async function previewHolidayChange(change: {
+  readonly added?: readonly HolidayEntry[];
+  readonly removedId?: string;
+}): Promise<Result<HolidayImpact>> {
+  const context = await requirePermission("referential.manage");
+  if (!context.ok) return context;
+
+  const calendar = await listHolidayCalendar();
+  if (!calendar.ok) return calendar;
+
+  const candidate: HolidayEntry[] = calendar.value
+    .filter((row) => row.id !== change.removedId)
+    .map((row) => ({ date: row.date, isRecurring: row.isRecurring }));
+
+  for (const entry of change.added ?? []) candidate.push(entry);
+
+  const computed = await computeUpdatesFor(candidate);
+  if (!computed.ok) return computed;
+
+  return ok({ moved: computed.value.updates.length, examined: computed.value.examined });
+}
+
+/**
+ * Recalcule les échéances des occurrences ENCORE À FAIRE.
+ *
+ * ⚠️ Recalcule à partir du calendrier tel qu'il est EN BASE au moment de
+ * l'appel, jamais à partir de l'aperçu : la liste montrée à l'écran n'est qu'un
+ * affichage, et le monde a pu bouger entre les deux. C'est la même règle que
+ * pour le recalcul d'une règle d'obligation.
+ */
+export async function recalculateForHolidayChange(reason: string): Promise<Result<number>> {
+  const calendar = await listHolidayCalendar();
+  if (!calendar.ok) return calendar;
+
+  const computed = await computeUpdatesFor(calendar.value);
+  if (!computed.ok) return computed;
+
+  if (computed.value.updates.length === 0) return ok(0);
+  return propagateDueDates([...computed.value.updates], reason);
 }

@@ -23,6 +23,20 @@ export type HolidayImportOutcome = AdminOutcome<{
   readonly recalculated: number;
 }>;
 
+/**
+ * L'impact ANNONCÉ d'un changement de calendrier, avant qu'il soit appliqué.
+ *
+ * `rejectedLines` n'est renseigné que pour un import : autant montrer les lignes
+ * illisibles pendant qu'on peut encore corriger le fichier, plutôt qu'après les
+ * avoir avalées.
+ */
+export type HolidayImpactOutcome = AdminOutcome<{
+  readonly moved: number;
+  readonly examined: number;
+  readonly importable: number;
+  readonly rejectedLines: readonly number[];
+}>;
+
 export type CsvOutcome = AdminOutcome<{
   readonly csv: string;
   readonly rowCount: number;

@@ -10,6 +10,7 @@ import "server-only";
 
 import { mapPostgrestError } from "@/lib/errors";
 import { err, ok, type Result } from "@/lib/result";
+import type { HolidayEntry } from "@/lib/holidays";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 
 // ─── Comptes ─────────────────────────────────────────────────────────────────
@@ -433,12 +434,27 @@ export async function listRecalculableOccurrences(
   );
 }
 
-/** Toutes les dates chômées, sans borne : le calcul d'échéance les veut toutes. */
-export async function listHolidayDates(): Promise<Result<readonly string[]>> {
+/**
+ * Le calendrier entier, récurrence comprise — voir `loadHolidayCalendar`.
+ *
+ * Sans borne d'année : le calcul d'échéance les veut toutes, et les récurrentes
+ * n'appartiennent à aucune année en particulier.
+ *
+ * L'identifiant accompagne chaque ligne pour qu'une SIMULATION puisse retirer
+ * une date du calendrier sans l'effacer. `CalendarRow` reste un `HolidayEntry`
+ * pour le moteur, qui n'a que faire de l'identifiant.
+ */
+export interface CalendarRow extends HolidayEntry {
+  readonly id: string;
+}
+
+export async function listHolidayCalendar(): Promise<Result<readonly CalendarRow[]>> {
   const supabase = await createSupabaseServerClient();
 
-  const { data, error } = await supabase.from("holidays").select("holiday_date");
+  const { data, error } = await supabase.from("holidays").select("id, holiday_date, is_recurring");
   if (error !== null) return err(mapPostgrestError(error));
 
-  return ok(data.map((row) => row.holiday_date));
+  return ok(
+    data.map((row) => ({ id: row.id, date: row.holiday_date, isRecurring: row.is_recurring })),
+  );
 }

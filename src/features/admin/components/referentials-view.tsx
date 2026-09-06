@@ -10,14 +10,13 @@ import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import type { HolidayImportOutcome } from "@/features/admin/actions/types";
 import {
-  deleteHolidayAction,
-  importHolidaysAction,
-  saveHolidayAction,
-} from "@/features/admin/actions/admin";
+  HolidayImpactDialog,
+  type HolidayIntent,
+} from "@/features/admin/components/holiday-impact-dialog";
 import { formatDateFr } from "@/lib/dates";
 import type { HolidayRow, Referentials } from "@/services/admin";
-import { useActionRunner } from "@/hooks/use-action-runner";
 
 /**
  * Référentiels : organismes, domaines, services, jours fériés.
@@ -45,14 +44,21 @@ export function ReferentialsView({
 }) {
   const t = useTranslations("admin.referentials");
 
-  const [pending, run] = useActionRunner();
   const [form, setForm] = useState({ date: "", label: "", isRecurring: false });
 
-  function report(data: {
-    imported: number;
-    rejectedLines: readonly number[];
-    recalculated: number;
-  }) {
+  /*
+   * ⚠️ AUCUNE DES TROIS ACTIONS N'EST APPLIQUÉE DIRECTEMENT. Elles passent par
+   * une intention, que la fenêtre de confirmation chiffre avant d'exécuter :
+   * ajouter, importer ou retirer un jour chômé déplace des échéances que des
+   * gens ont notées ailleurs, et le nombre doit être connu pendant qu'il est
+   * encore possible de renoncer.
+   */
+  const [intent, setIntent] = useState<HolidayIntent | null>(null);
+
+  function report(outcome: HolidayImportOutcome) {
+    if (outcome.status !== "success") return;
+    const data = outcome.data;
+
     if (data.rejectedLines.length > 0) {
       // ⚠️ Les lignes rejetées sont MONTRÉES : un import qui avale la moitié
       // d'un fichier en silence produit un calendrier faux que personne ne
@@ -62,48 +68,33 @@ export function ReferentialsView({
       });
     }
     toast.success(t("saved", { count: data.imported, moved: data.recalculated }));
+    setForm({ date: "", label: "", isRecurring: false });
   }
 
   function submit(): void {
-    run(async () => {
-      const outcome = await saveHolidayAction(form);
-      if (outcome.status === "error") {
-        toast.error(t("failed"));
-        return;
-      }
-      setForm({ date: "", label: "", isRecurring: false });
-      report(outcome.data);
-    });
+    setIntent({ kind: "save", holiday: form });
   }
 
   function importCsv(file: File): void {
-    run(async () => {
-      const content = await file.text();
-      const outcome = await importHolidaysAction({ content });
-      if (outcome.status === "error") {
-        toast.error(t("failed"));
-        return;
-      }
-      report(outcome.data);
+    void file.text().then((content) => {
+      setIntent({ kind: "import", content });
     });
   }
 
   function remove(holiday: HolidayRow): void {
-    run(async () => {
-      const outcome = await deleteHolidayAction({
-        holidayId: holiday.id,
-        label: holiday.label,
-      });
-      if (outcome.status === "error") {
-        toast.error(t("failed"));
-        return;
-      }
-      report(outcome.data);
-    });
+    setIntent({ kind: "delete", holidayId: holiday.id, label: holiday.label });
   }
 
   return (
     <div className="space-y-6">
+      <HolidayImpactDialog
+        intent={intent}
+        onOpenChange={(open) => {
+          if (!open) setIntent(null);
+        }}
+        onApplied={report}
+      />
+
       <section className="rounded-lg border border-border bg-surface p-4">
         <h2 className="text-sm font-semibold text-text-primary">{t("holidaysTitle")}</h2>
         <p className="mt-0.5 mb-3 text-xs text-text-muted">{t("holidaysHint")}</p>
@@ -143,7 +134,7 @@ export function ReferentialsView({
             <div className="flex gap-2 pb-0.5">
               <Button
                 size="sm"
-                disabled={pending || form.date === "" || form.label.trim().length === 0}
+                disabled={intent !== null || form.date === "" || form.label.trim().length === 0}
                 onClick={submit}
               >
                 <CalendarPlus aria-hidden="true" className="size-4" />
@@ -198,7 +189,7 @@ export function ReferentialsView({
                       <Button
                         size="sm"
                         variant="ghost"
-                        disabled={pending}
+                        disabled={intent !== null}
                         aria-label={t("remove", { label: holiday.label })}
                         onClick={() => {
                           remove(holiday);

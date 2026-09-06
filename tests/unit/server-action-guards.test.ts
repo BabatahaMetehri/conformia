@@ -114,6 +114,12 @@ const GUARDED_BY_SERVICE: Readonly<Record<string, string>> = {
   saveHolidayAction: "saveHolidays",
   importHolidaysAction: "saveHolidays",
   deleteHolidayAction: "removeHoliday",
+  // Les trois aperçus n'écrivent rien, mais ils LISENT le plan de charge des
+  // occurrences et le chiffrent : c'est un renseignement, et il se garde comme
+  // le geste qu'il annonce.
+  previewHolidaySaveAction: "previewHolidayChange",
+  previewHolidayImportAction: "previewHolidayChange",
+  previewHolidayDeleteAction: "previewHolidayChange",
   saveSettingAction: "saveSetting",
   exportAuditAction: "exportAuditCsv",
   acknowledgeIntegrityAlertAction: "acknowledgeIntegrityAlert",
