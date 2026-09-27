@@ -1,12 +1,14 @@
-# Guide — Responsable (et Suppléant)
+# Guide — Responsable (and Suppléant)
 
-> Deux pages. À lire une fois, à garder sous la main la première semaine.
-> **Responsable et Suppléant ont exactement les mêmes droits** : seule la trace
-> dans l'historique les distingue. Ce guide vaut pour les deux.
+> Two pages. Read once, keep to hand for the first week.
+> **Responsable and Suppléant have exactly the same rights**: only the trace in
+> the history tells them apart. This guide covers both.
+>
+> The app is in French; screen names below are given as they appear.
 
 ---
 
-## Votre écran, c'est « Mes tâches »
+## Your screen is "Mes tâches" (my tasks)
 
 ```
 ┌──────────────────────────────────────────────────────────────┐
@@ -18,97 +20,96 @@
 └──────────────────────────────────────────────────────────────┘
 ```
 
-Le chiffre à côté de « Mes tâches », dans le menu, est le nombre de dossiers qui
-vous attendent. **S'il est à zéro, vous n'avez rien à faire** — c'est une
-information, pas une panne.
+The number next to "Mes tâches" in the menu is how many dossiers are waiting for
+you. **If it is zero, you have nothing to do** — that is information, not a
+fault.
 
-⚠️ **Deux dates par dossier, et ce n'est pas une coquetterie :**
+⚠️ **Two dates per dossier, and it is not decoration:**
 
-| Date                 | Ce qu'elle veut dire                                           |
-| -------------------- | -------------------------------------------------------------- |
-| **Échéance interne** | Celle que vous devez tenir. C'est celle qui s'affiche en gras. |
-| **Échéance légale**  | Celle de l'administration. Elle arrive **après**.              |
+| Date                            | What it means                                       |
+| ------------------------------- | --------------------------------------------------- |
+| **Échéance interne** (internal) | The one you must meet. It is the one shown in bold. |
+| **Échéance légale** (legal)     | The authority's. It comes **after**.                |
 
-L'écart entre les deux est votre marge de sécurité. Un dossier « en retard » dans
-l'outil n'est pas encore en retard vis-à-vis de l'administration — mais il a
-mangé sa marge, et c'est le moment de s'en occuper.
+The gap between the two is your safety margin. A dossier marked late in the tool
+is not yet late with the authority — but it has eaten its margin, and that is the
+moment to deal with it.
 
 ---
 
-## Le parcours d'un dossier, en cinq gestes
+## A dossier's journey, in five moves
 
 ```
   À faire  ──▶  En cours  ──▶  À valider  ──▶  Validé  ──▶  Déposé
-     1            2               3            (pas vous)      5
+     1            2               3            (not you)      5
                                   ▲                │
                                   └──── Rejeté ────┘
                                          4
 ```
 
-**1 · Prendre en charge.** Ouvrez le dossier, cliquez **Prendre en charge**. Il
-passe « En cours » et l'historique note que c'est vous.
+(To do → In progress → For validation → Validated → Filed; Rejected loops back.)
 
-**2 · Déposer les pièces.** Onglet **Dossier** : la liste de ce qui est attendu.
-Glissez vos fichiers sur la ligne correspondante. Le compteur « 2 sur 3 » se met
-à jour.
+**1 · Take it on.** Open the dossier, click **Prendre en charge**. It moves to
+"En cours" and the history records that it was you.
 
-⚠️ **La liste des pièces n'est pas une suggestion.** Le bouton « Soumettre à
-validation » reste grisé tant qu'une pièce obligatoire manque, et l'écran vous
-dit **laquelle**. Ce n'est pas l'outil qui est bloqué : c'est le dossier qui est
-incomplet.
+**2 · Upload the documents.** **Dossier** tab: the list of what is expected. Drag
+your files onto the matching line. The "2 of 3" counter updates.
 
-**3 · Soumettre à validation.** Le dossier part chez le superviseur. Vous n'y
-touchez plus.
+⚠️ **The document list is not a suggestion.** The "Soumettre à validation" button
+stays greyed out while a required document is missing, and the screen tells you
+**which one**. The tool is not stuck: the dossier is incomplete.
 
-**4 · Si le dossier revient « Rejeté ».** Le motif est écrit, en toutes lettres,
-dans le bandeau rouge en haut du dossier. Corrigez, resoumettez. Un rejet n'est
-pas un reproche : c'est le circuit qui fonctionne.
+**3 · Submit for validation.** The dossier goes to the supervisor. You do not
+touch it after that.
 
-**5 · Après validation**, le dossier est déposé auprès de l'administration, puis
-archivé. ⚠️ **Un dossier archivé ne se modifie plus** — c'est ce qui donne sa
-valeur à l'archive.
+**4 · If it comes back "Rejeté".** The reason is written out in full, in the red
+banner at the top of the dossier. Correct, resubmit. A rejection is not a
+reproach: it is the circuit working.
 
----
-
-## Ce qui vous préviendra tout seul
-
-| Quand                     | Ce que vous recevez                                                       |
-| ------------------------- | ------------------------------------------------------------------------- |
-| 30, 15, 7 et 1 jour avant | Un rappel par courriel et dans la cloche                                  |
-| 1, 3 et 7 jours après     | Une relance — et à J+3 votre superviseur est en copie, à J+7 la direction |
-
-⚠️ **Vous n'avez rien à surveiller.** Si aucun rappel n'arrive, c'est qu'il n'y a
-rien à faire. Consultez vos courriels indésirables la première semaine, une fois,
-pour vérifier que les rappels passent bien.
+**5 · After validation**, the dossier is filed with the authority, then archived.
+⚠️ **An archived dossier cannot be changed** — that is what gives the archive its
+value.
 
 ---
 
-## Quand vous partez en congé
+## What will warn you by itself
 
-Écran **Absences → Déclarer une absence**.
+| When                       | What you get                                                    |
+| -------------------------- | --------------------------------------------------------------- |
+| 30, 15, 7 and 1 day before | A reminder by email and in the bell                             |
+| 1, 3 and 7 days after      | A chase — at D+3 your supervisor is copied, at D+7 the director |
 
-Ce que cela change : les **courriels** qui vous étaient destinés partent vers
-votre suppléant, avec la mention « untel est absent, vous recevez cette alerte en
-tant que suppléant ». Vos notifications dans l'application, elles, restent —
-pour que vous retrouviez le contexte au retour.
-
-⚠️ **Une absence ne donne et ne retire aucun droit.** Votre suppléant peut déjà
-agir sur vos dossiers, absence ou pas : c'est le principe. La déclaration change
-seulement **qui reçoit les courriels**.
+⚠️ **You have nothing to monitor.** If no reminder arrives, there is nothing to
+do. Check your spam folder once in the first week, to confirm the reminders get
+through.
 
 ---
 
-## Les trois questions qui reviennent
+## When you go on leave
 
-**« J'ai déposé une pièce mais le compteur n'a pas bougé. »**
-La pièce est peut-être rattachée à la mauvaise ligne. Onglet **Documents** :
-vérifiez à quelle ligne de la liste elle est associée.
+Screen **Absences → Déclarer une absence** (declare an absence).
 
-**« Je ne peux pas valider mon propre dossier. »**
-C'est voulu, et ce n'est pas contournable : celui qui prépare ne valide pas.
-C'est ce qui donne sa valeur à la validation.
+What it changes: the **emails** addressed to you go to your stand-in instead,
+with a note saying "so-and-so is away, you are receiving this alert as their
+stand-in". Your in-app notifications stay put — so you find the context again on
+your return.
 
-**« Le dossier est archivé, je dois ajouter un justificatif ancien. »**
-Demandez à la Direction : rouvrir un dossier archivé demande une permission
-particulière et un motif écrit. C'est volontairement plus lourd qu'un dépôt
-ordinaire.
+⚠️ **An absence grants and removes no rights.** Your stand-in can already act on
+your dossiers, absence or not: that is the point. Declaring it only changes **who
+receives the emails**.
+
+---
+
+## The three questions that keep coming up
+
+**"I uploaded a document but the counter did not move."**
+The document is probably attached to the wrong line. **Documents** tab: check
+which line of the list it is linked to.
+
+**"I cannot validate my own dossier."**
+That is intended, and it cannot be worked around: whoever prepares does not
+validate. That is what gives validation its value.
+
+**"The dossier is archived and I need to add an old supporting document."**
+Ask Direction: reopening an archived dossier needs a specific permission and a
+written reason. It is deliberately heavier than an ordinary upload.

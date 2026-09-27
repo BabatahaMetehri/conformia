@@ -1,12 +1,14 @@
-# Guide — Superviseur
+# Guide — Superviseur (supervisor)
 
-> Deux pages. Votre rôle : **contrôler et valider** ce que le responsable a
-> préparé. Vous pouvez aussi préparer en cas de nécessité — mais vous ne pourrez
-> alors pas valider ce dossier-là, et c'est voulu.
+> Two pages. Your job: **check and validate** what the owner prepared. You can
+> also prepare when needed — but you will then be unable to validate that
+> particular dossier, and that is intended.
+>
+> The app is in French; screen names below are given as they appear.
 
 ---
 
-## Votre écran, c'est « À valider »
+## Your screen is "À valider" (to validate)
 
 ```
 ┌────────────────────────────────────────────────────────────────────┐
@@ -20,90 +22,87 @@
 └────────────────────────────────────────────────────────────────────┘
 ```
 
-La flèche `▾` déplie le dossier **sans quitter la file** : complétude, pièces,
-dernières étapes. Vous décidez sans ouvrir six onglets.
+The `▾` arrow expands the dossier **without leaving the queue**: completeness,
+documents, recent steps. You decide without opening six tabs.
 
-⚠️ **Les cases à cocher n'apparaissent que sur les criticités basses.** Un dossier
-`HAUTE` ou `CRITIQUE` se valide un par un, après l'avoir regardé. La validation
-groupée existe pour les dossiers de routine, pas pour aller vite sur ce qui
-compte.
-
----
-
-## Valider, rejeter
-
-**Valider** — le dossier passe à l'étape suivante.
-
-**Rejeter** — ⚠️ **un motif est obligatoire**, et il part au responsable. Écrivez
-ce qui manque, pas « non conforme » : le motif est ce qui évite un second
-aller-retour. « Le montant TVA ne correspond pas au grand livre » se corrige ;
-« à revoir » ne se corrige pas.
-
-**Certains dossiers demandent deux validations.** Après la vôtre, l'écran
-annonce « 1 validation sur 2 » et le dossier **reste** en attente : c'est la
-Direction qui donnera la seconde. Ce n'est pas un échec de votre geste.
+⚠️ **Checkboxes only appear on low criticalities.** A `HAUTE` or `CRITIQUE`
+dossier is validated one at a time, after looking at it. Bulk validation exists
+for routine dossiers, not to go fast on what matters.
 
 ---
 
-## ⚠️ Pourquoi vous ne pouvez pas valider certains dossiers
+## Validate, reject
 
-Si vous avez **préparé** un dossier — ou si vous en êtes le responsable ou le
-suppléant — vous ne pouvez pas le valider. Le bouton est absent, et l'écran le
-dit.
+**Validate** — the dossier moves to the next step.
 
-Ce n'est pas votre rôle qui est en cause, c'est **votre acte**. Le contrôle porte
-sur ce que vous avez fait sur ce dossier précis, pas sur votre position dans
-l'organigramme. Dans ce cas, c'est la Direction qui valide.
+**Reject** — ⚠️ **a reason is mandatory**, and it goes to the owner. Write what is
+missing, not "non-compliant": the reason is what avoids a second round trip. "The
+VAT amount does not match the ledger" can be corrected; "needs review" cannot.
 
-C'est la garantie la plus forte du dispositif : elle rend impossible qu'une même
-personne prépare et approuve une déclaration.
-
----
-
-## Affecter un dossier
-
-Onglet **Affectation** d'un dossier, ou action groupée depuis l'échéancier.
-
-Trois rôles à poser :
-
-| Rôle            | Qui c'est                                                   |
-| --------------- | ----------------------------------------------------------- |
-| **Responsable** | Celui qui prépare                                           |
-| **Suppléant**   | Celui qui prend le relais — **mêmes droits, en permanence** |
-| **Superviseur** | Celui qui validera                                          |
-
-⚠️ **Un dossier sans suppléant fonctionne**, jusqu'au jour où le responsable est
-absent et où personne ne reprend. L'écran vous le signale sans vous bloquer.
-
-Vous pouvez aussi poser une affectation **par défaut** sur une obligation, dans
-le référentiel : elle s'appliquera aux dossiers futurs, et l'écran vous proposera
-de la propager aux dossiers en cours — en vous disant combien sont concernés.
+**Some dossiers need two validations.** After yours, the screen says "1
+validation of 2" and the dossier **stays** pending: Direction gives the second.
+That is not a failure of your action.
 
 ---
 
-## Déléguer pendant votre absence
+## ⚠️ Why you cannot validate certain dossiers
 
-Écran **Administration → Délégations**.
+If you **prepared** a dossier — or if you are its owner or stand-in — you cannot
+validate it. The button is absent, and the screen says so.
 
-Vous déléguez **votre** pouvoir de validation, à quelqu'un qui l'exercera pendant
-une période bornée. Vous n'avez besoin de personne pour cela : celui qui peut
-valider est celui qui peut déléguer.
+It is not your role that is in question, it is **your act**. The check is on what
+you did to this particular dossier, not on your position in the org chart. In
+that case Direction validates.
 
-⚠️ **Vous ne pouvez déléguer que pour vous-même.** Même un administrateur ne peut
-pas créer une délégation à votre place — il pourrait seulement en révoquer une.
-Le consentement ne se délègue pas.
+This is the strongest guarantee in the system: it makes it impossible for one
+person to both prepare and approve a declaration.
 
 ---
 
-## Les trois questions qui reviennent
+## Assigning a dossier
 
-**« Le dossier a disparu de ma file après validation. »**
-C'est le comportement attendu : la file ne montre que ce qui attend **votre**
-décision. Le dossier est dans l'échéancier, à son nouvel état.
+The **Affectation** tab of a dossier, or a bulk action from the Échéancier.
 
-**« Je vois "1 sur 2" et rien ne bouge. »**
-Le dossier demande deux validations. La seconde revient à la Direction.
+Three roles to set:
 
-**« Quelqu'un a modifié le dossier pendant que je le regardais. »**
-L'écran vous le dit et se rafraîchit. Relisez avant de décider : la version que
-vous aviez sous les yeux n'est plus celle qui compte.
+| Role            | Who that is                                 |
+| --------------- | ------------------------------------------- |
+| **Responsable** | the one who prepares                        |
+| **Suppléant**   | the stand-in — **same rights, permanently** |
+| **Superviseur** | the one who will validate                   |
+
+⚠️ **A dossier with no stand-in works fine**, until the day the owner is away and
+nobody picks it up. The screen tells you without blocking you.
+
+You can also set a **default** assignment on an obligation, in the referential:
+it will apply to future dossiers, and the screen will offer to propagate it to
+current ones — telling you how many are affected.
+
+---
+
+## Delegating while you are away
+
+Screen **Administration → Délégations**.
+
+You delegate **your** validation power to someone who will exercise it for a
+bounded period. You need nobody's help for this: whoever can validate can
+delegate.
+
+⚠️ **You can only delegate for yourself.** Even an administrator cannot create a
+delegation on your behalf — they could only revoke one. Consent is not
+delegable.
+
+---
+
+## The three questions that keep coming up
+
+**"The dossier disappeared from my queue after I validated it."**
+That is the expected behaviour: the queue only shows what is waiting for **your**
+decision. The dossier is in the Échéancier, in its new state.
+
+**"I see '1 of 2' and nothing is moving."**
+The dossier requires two validations. The second one belongs to Direction.
+
+**"Someone changed the dossier while I was looking at it."**
+The screen tells you and refreshes. Read it again before deciding: the version
+you had in front of you is no longer the one that counts.

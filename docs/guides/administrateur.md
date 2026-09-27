@@ -1,12 +1,14 @@
-# Guide — Administrateur
+# Guide — Administrateur (administrator)
 
-> Deux pages. Vous tenez les **comptes**, les **rôles**, les **réglages** et le
-> **référentiel**. Vous ne voyez **aucun dossier** ni **aucun document** — lisez
-> pourquoi avant de le prendre pour un défaut : `pourquoi-admin-ne-voit-pas.md`.
+> Two pages. You own the **accounts**, the **roles**, the **settings** and the
+> **referential**. You see **no dossier** and **no document** — read why before
+> taking it for a fault: `pourquoi-admin-ne-voit-pas.md`.
+>
+> The app is in French; screen names below are given as they appear.
 
 ---
 
-## Ce que vous voyez, et ce que vous ne voyez pas
+## What you see, and what you do not
 
 ```
   Mes tâches          ✓     Échéancier         ✗
@@ -17,100 +19,125 @@
   Journal d'audit     ✓
 ```
 
-Vous administrez **ce qui décrit** les obligations. Vous ne lisez pas **ce qui
-les remplit**. La distinction tient en une phrase, et c'est celle à retenir —
-c'est aussi la réponse à donner quand on vous posera la question.
+You administer **what describes** the obligations. You do not read **what fills
+them in**. The distinction fits in one sentence, and it is the one to remember —
+it is also the answer to give when you are asked.
 
-⚠️ Si vous devez **aussi** consulter les dossiers : ne modifiez pas le rôle
-`ADMIN`, **ajoutez-vous un second rôle** (`SUPERVISEUR` ou `DIRECTION`) sur votre
-compte. Les permissions s'additionnent et l'audit distingue au titre de quoi vous
-avez agi. Élargir `ADMIN` toucherait tous les administrateurs, présents et
-futurs, sans que personne ne le voie.
+⚠️ If you **also** need to consult dossiers: do not modify the `ADMIN` role,
+**give yourself a second role** (`SUPERVISEUR` or `DIRECTION`) on your account.
+Permissions add up, and the audit distinguishes which one you acted under.
+Widening `ADMIN` would affect every administrator, present and future, without
+anyone seeing it.
 
 ---
 
-## Ouvrir un compte
+## Opening an account
 
 **Administration → Utilisateurs → Inviter.**
 
-Une invitation envoie un lien à usage unique ; la personne choisit **son propre**
-mot de passe.
+An invitation sends a single-use link; the person chooses **their own** password.
 
-⚠️ **Vous ne fixez jamais le mot de passe de quelqu'un d'autre.** L'application
-ne le permet pas, et c'est le bon régime : un mot de passe transmis par courriel
-est un mot de passe qui reste dans une boîte pendant des années.
+⚠️ **You never set someone else's password.** The application does not allow it,
+and that is the right regime: a password sent by email is a password that sits in
+a mailbox for years.
 
-Le rôle se choisit à l'invitation :
+The role is chosen at invitation time:
 
-| Rôle          | Pour qui                                                   |
-| ------------- | ---------------------------------------------------------- |
-| `RESPONSABLE` | Prépare les dossiers                                       |
-| `SUPPLEANT`   | Prend le relais — **mêmes droits**, seule la trace diffère |
-| `SUPERVISEUR` | Contrôle et valide                                         |
-| `DIRECTION`   | Valide en second niveau, tient le référentiel              |
-| `AUDITOR`     | Lecture seule — **expire au bout de 90 jours**             |
-| `EXTERNAL`    | Intervenant externe — **expire au bout de 365 jours**      |
+| Role          | For whom                                            |
+| ------------- | --------------------------------------------------- |
+| `RESPONSABLE` | Prepares dossiers                                   |
+| `SUPPLEANT`   | Stands in — **same rights**, only the trace differs |
+| `SUPERVISEUR` | Checks and validates                                |
+| `DIRECTION`   | Second-level validation, owns the referential       |
+| `AUDITOR`     | Read-only — **expires after 90 days**               |
+| `EXTERNAL`    | Outside party — **expires after 365 days**          |
 
-⚠️ Les deux derniers **exigent** une date d'expiration : la base refuse
-l'attribution sans elle. Un accès accordé pour une mission ne doit pas survivre à
-la mission.
+⚠️ The last two **require** an expiry date: the database refuses the grant without
+one. Access given for an engagement must not outlive the engagement.
 
----
-
-## Le second facteur
-
-MFA **obligatoire** pour `ADMIN` et `DIRECTION` : le middleware bloque la session
-tant qu'il n'est pas enrôlé. Ce n'est pas contournable, y compris pour vous.
-
-Si quelqu'un perd son téléphone : **Administration → Utilisateurs → Réinitialiser
-la MFA**. La personne réenrôle à sa prochaine connexion. ⚠️ Vérifiez son identité
-autrement que par courriel avant de le faire : c'est la porte que l'on force en
-premier.
+You can also record the person's **phone** and **job title** on the invitation;
+both land on their profile when they accept. ⚠️ The job title grants nothing — a
+"Directeur financier" validates nothing without `SUPERVISEUR` or `DIRECTION`.
 
 ---
 
-## Surveiller que la plateforme tourne
+## The second factor
 
-**Administration → Travaux planifiés.** Chaque tâche, sa dernière exécution, son
-verdict.
+MFA is **mandatory** for `ADMIN` and `DIRECTION`: the middleware blocks the
+session until it is enrolled. It cannot be worked around, including by you.
 
-⚠️ **Ce qu'il faut regarder n'est pas l'échec, c'est le SILENCE.** Une tâche qui
-échoue le dit ; une tâche qui ne tourne plus ne dit rien. Une dernière exécution
-qui date de plus de vingt-six heures est le vrai signal.
-
-Trois alertes arrivent aussi dans votre cloche :
-
-- **sauvegarde périmée** — aucune sauvegarde réussie depuis 36 heures ;
-- **intégrité** — l'empreinte d'un document ne correspond plus. ⚠️ **Ne supprimez
-  rien** : la divergence est elle-même une preuve ;
-- **échec d'envoi définitif** — un courriel a épuisé ses tentatives.
+If someone loses their phone: **Administration → Utilisateurs → Réinitialiser la
+MFA**. They re-enrol at their next sign-in. ⚠️ Verify their identity by some means
+other than email before doing it: that is the door people force first.
 
 ---
 
-## Le calendrier des jours fériés — votre rendez-vous annuel
+## Watching that the platform is running
+
+**Administration → Travaux planifiés** (scheduled jobs). Each job, its last run,
+its verdict.
+
+⚠️ **What to watch for is not failure, it is SILENCE.** A job that fails says so;
+a job that has stopped running says nothing. A last run more than twenty-six
+hours old is the real signal.
+
+Since migration 0025 the dashboard also raises **`GENERATION_STALE`** when
+generation has not run for 48 hours — precisely because that silence used to look
+like a quiet week.
+
+Three alerts also arrive in your bell:
+
+- **stale backup** — no successful backup for 36 hours;
+- **integrity** — a document's fingerprint no longer matches. ⚠️ **Delete
+  nothing**: the discrepancy is itself evidence;
+- **permanent send failure** — an email exhausted its retries.
+
+---
+
+## The public holiday calendar — your annual appointment
 
 **Administration → Référentiels → Jours fériés.**
 
-⚠️ **Les fêtes religieuses sont fixées par décret** : elles ne se calculent pas,
-elles se saisissent, chaque année. Sans elles, une échéance tombant un jour chômé
-est traitée comme un jour ouvré.
+⚠️ **Religious feasts are fixed by decree**: they cannot be calculated, they are
+entered, every year. Without them, a deadline falling on a non-working day is
+treated as a working day.
 
-⚠️ **La mention « récurrent » est informative** : elle ne reporte pas la date sur
-l'année suivante. Chaque année doit être saisie, y compris les fêtes civiles à
-date fixe.
+**The "récurrent" (recurring) checkbox now works.** It used to be purely
+informative — ticked, saved, displayed, and with no effect whatsoever on the
+calculation. A feast marked recurring in 2026 protected nothing in 2027, and
+since the calendar only held 2026, **every** deadline computed for 2027 ignored
+public holidays entirely. Nothing reported it: no error, no message, no failing
+test.
 
-Chaque 1er décembre, l'outil crée dans **vos** tâches un dossier « Mise à jour du
-calendrier des jours fériés N+1 ». C'est votre rappel : il ne dépend pas de votre
-mémoire.
+Since the fix:
+
+- **civil feasts with a fixed date** — 1 January, Yennayer, 1 May, 5 July,
+  1 November — are entered **once**, ticked recurring, and apply to every year;
+- **religious feasts** are entered year by year, **never ticked recurring**.
+  Ticking one would project it onto every year at the same Gregorian date, which
+  is wrong by construction, and would make the coverage check believe the year is
+  complete.
+
+⚠️ The dashboard raises **`HOLIDAYS_INCOMPLETE`** while next year holds no
+religious feast at all. It will not switch itself off: their absence is never a
+normal state, always an oversight. Check coverage with:
+
+```sql
+select * from public.holiday_calendar_coverage;
+```
+
+Every 1 December the tool creates a dossier in **your** tasks: "Mise à jour du
+calendrier des jours fériés N+1". That is your reminder: it does not depend on
+your memory.
 
 ---
 
-## Ce que vous ne pouvez pas faire, et c'est normal
+## What you cannot do, and that is normal
 
-- **Lire un dossier ou un document.** Voir plus haut.
-- **Créer une délégation pour quelqu'un d'autre.** Vous pouvez en **révoquer**
-  une, jamais en consentir une à la place d'un tiers.
-- **Modifier le journal d'audit.** Personne ne le peut, y compris vous. Il est
-  en écriture seule, par construction de la base.
-- **Supprimer une obligation ou un registre.** On **désactive** ; l'historique
-  doit rester lisible.
+- **Read a dossier or a document.** See above.
+- **Create a delegation for someone else.** You can **revoke** one, never consent
+  to one on a third party's behalf.
+- **Modify the audit log.** Nobody can, including you. It is write-only by
+  construction of the database.
+- **Delete an obligation or a register.** You **deactivate**; the history must
+  stay readable.

@@ -1,14 +1,16 @@
-# Guide — Direction
+# Guide — Direction (senior management)
 
-> Deux pages. Vous voyez **tout le contenu métier**, vous validez en second
-> niveau, vous tenez le référentiel. Vous n'ouvrez pas de comptes — c'est
-> l'administrateur, et c'est délibéré.
+> Two pages. You see **all the business content**, you give second-level
+> validation, you own the referential. You do not open accounts — that is the
+> administrator, and it is deliberate.
+>
+> The app is in French; screen names below are given as they appear.
 
 ---
 
-## Le tableau de bord répond à une question
+## The dashboard answers one question
 
-> **« Où en sommes-nous, et qu'est-ce qui va nous coûter cher ? »**
+> **"Where do we stand, and what is going to cost us?"**
 
 ```
 ┌─────────────────┬─────────────────┬─────────────────┬─────────────────┐
@@ -17,91 +19,92 @@
 └─────────────────┴─────────────────┴─────────────────┴─────────────────┘
 ```
 
-⚠️ **« En retard » se lit sur l'échéance INTERNE**, pas l'échéance légale. Un
-dossier en retard ici n'est pas encore en retard vis-à-vis de l'administration :
-il a mangé sa marge. C'est un avertissement, pas une pénalité — et c'est
-exactement le moment où il est encore temps.
+(Overdue · To validate · This week · Compliance rate)
 
-Le taux de conformité compte les dossiers déposés dans les délais sur l'ensemble
-des dossiers échus. Il ne compte pas les dossiers à venir : un taux qui monterait
-mécaniquement avec le temps ne dirait rien.
+⚠️ **"En retard" is read against the INTERNAL deadline**, not the legal one. A
+dossier late here is not yet late with the authority: it has eaten its margin. It
+is a warning, not a penalty — and it is exactly the moment when there is still
+time.
 
----
-
-## Votre rôle dans le circuit
-
-**Second niveau de validation.** Certaines obligations exigent deux validations :
-le superviseur donne la première, vous donnez la seconde. Écran **À valider**.
-
-**Le recours quand la séparation des pouvoirs bloque.** Si le superviseur a
-lui-même préparé un dossier, il ne peut pas le valider. C'est vous qui validez —
-c'est prévu, ce n'est pas un contournement.
-
-**Déverrouiller un dossier archivé.** Vous seule pouvez rouvrir une archive, pour
-y verser un justificatif ancien par exemple. ⚠️ **Un motif écrit est obligatoire**
-et reste dans l'historique : une archive rouverte sans raison lisible ferait
-perdre à l'archive ce qui lui donne sa valeur.
+The compliance rate counts dossiers filed on time out of all dossiers that have
+come due. It does not count future dossiers: a rate that rose mechanically with
+time would say nothing.
 
 ---
 
-## Le référentiel, c'est vous
+## Your part in the circuit
 
-Écran **Référentiel**. Vous pouvez ajouter une obligation, corriger une échéance,
-changer une périodicité — sans passer par l'administrateur.
+**Second level of validation.** Some obligations require two validations: the
+supervisor gives the first, you give the second. Screen **À valider**.
 
-C'est voulu : le référentiel est du **contenu métier**, pas de la configuration
-technique. Un texte change, une échéance bouge ; c'est une décision de
-conformité, pas une opération informatique.
+**The fallback when separation of duties blocks.** If the supervisor prepared a
+dossier themselves, they cannot validate it. You do — that is by design, not a
+workaround.
 
-⚠️ **Avant d'enregistrer, regardez les six prochaines dates** que l'écran
-calcule. C'est là qu'une règle fausse se voit — et une échéance fausse ne produit
-aucune erreur visible, seulement un rappel au mauvais moment et une pénalité au
-bon.
-
-Après modification d'une règle, l'outil vous propose de **recalculer les dossiers
-futurs**, en vous disant combien sont concernés. Les dossiers passés ne bougent
-jamais.
+**Unlocking an archived dossier.** You alone can reopen an archive, to file an
+old supporting document for instance. ⚠️ **A written reason is mandatory** and
+stays in the history: an archive reopened without a readable reason would lose
+what gives the archive its value.
 
 ---
 
-## La question encore ouverte, à trancher avec le cabinet comptable
+## The referential is yours
 
-**CASNOS se dédouble**, et le référentiel n'en suit aujourd'hui qu'une moitié :
+Screen **Référentiel**. You can add an obligation, correct a deadline, change a
+periodicity — without going through the administrator.
 
-- le **paiement** de la cotisation, au **30 juin** — confirmé, c'est la ligne
-  présente dans le référentiel ;
-- une **déclaration** préalable, fin janvier ou fin février selon les sources —
-  ⚠️ **date non confirmée, obligation volontairement non créée**.
+That is intended: the referential is **business content**, not technical
+configuration. A law changes, a deadline moves; that is a compliance decision,
+not an IT operation.
 
-La créer avec une date devinée serait pire que son absence : une échéance fausse
-ne produit aucune erreur visible, seulement un rappel au mauvais moment — et
-l'équipe prendrait l'habitude de s'y fier. Dès que la date est confirmée :
-**Référentiel → Nouvelle obligation**, trois minutes.
+⚠️ **Before saving, look at the next six dates** the screen computes. That is
+where a wrong rule shows — and a wrong deadline produces no visible error, only a
+reminder at the wrong moment and a penalty at the right one.
 
-_(CNAS-DAS est corrigée : 31 janvier, et non 31 mars comme retenu au départ.)_
-
-## Ce que vous ne voyez pas, et pourquoi
-
-**Utilisateurs** et **Rôles** ne sont pas dans votre menu. Le pouvoir métier ne
-s'attribue pas ses propres droits : c'est la contrepartie du fait que
-l'administrateur, lui, ne voit aucun dossier.
-
-Vous avez en revanche le **Journal d'audit** : qui a fait quoi, quand, sur quel
-dossier, avec l'état avant et après. Rien n'y est modifiable ni effaçable, par
-personne — y compris par l'administrateur.
+After changing a rule, the tool offers to **recompute future dossiers**, telling
+you how many are affected. Past dossiers never move.
 
 ---
 
-## Les trois questions qui reviennent
+## The question still open, to settle with the accountants
 
-**« Pourquoi l'administrateur ne voit-il pas les dossiers ? »**
-Pour que la personne qui installe le logiciel ne soit pas la mieux informée de
-l'entreprise. Détail dans `pourquoi-admin-ne-voit-pas.md`.
+**CASNOS is two obligations**, and the referential currently carries only one
+half:
 
-**« Un dossier est en retard mais la déclaration a été déposée. »**
-Le dépôt n'a pas été enregistré dans l'outil. C'est le seul cas où l'indicateur
-ment — et il ment parce qu'on ne lui a rien dit.
+- the **payment** of the contribution, on **30 June** — confirmed, that is the
+  line present in the referential;
+- a prior **declaration**, end of January or end of February depending on the
+  source — ⚠️ **date not confirmed, obligation deliberately not created**.
 
-**« Puis-je exporter pour le commissaire aux comptes ? »**
-Oui : écran **Rapports**. Tableau de suivi, taux de conformité, ou archive
-complète d'un dossier avec ses pièces et un manifeste d'empreintes.
+Creating it with a guessed date would be worse than its absence: a wrong deadline
+produces no visible error, only a reminder at the wrong moment — and the team
+would learn to rely on it. As soon as the date is confirmed: **Référentiel →
+Nouvelle obligation**, three minutes.
+
+_(CNAS-DAS is corrected: 31 January, not 31 March as originally recorded.)_
+
+## What you do not see, and why
+
+**Utilisateurs** and **Rôles** are not in your menu. Business authority does not
+grant itself its own permissions: that is the counterpart to the administrator
+seeing no dossiers at all.
+
+You do, on the other hand, have the **Journal d'audit**: who did what, when, on
+which dossier, with the state before and after. Nothing in it can be changed or
+erased, by anyone — including the administrator.
+
+---
+
+## The three questions that keep coming up
+
+**"Why can the administrator not see the dossiers?"**
+So that the person who installs the software is not the best-informed person in
+the company. Detail in `pourquoi-admin-ne-voit-pas.md`.
+
+**"A dossier is overdue but the declaration was filed."**
+The filing was not recorded in the tool. That is the one case where the indicator
+lies — and it lies because nobody told it.
+
+**"Can I export for the statutory auditor?"**
+Yes: screen **Rapports**. Tracking table, compliance rate, or a complete archive
+of a dossier with its documents and a fingerprint manifest.

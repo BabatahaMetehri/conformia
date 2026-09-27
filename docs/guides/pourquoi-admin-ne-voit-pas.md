@@ -1,87 +1,88 @@
-# « Pourquoi l'administrateur ne voit-il pas les documents ? »
+# "Why can't the administrator see the documents?"
 
-Cette question sera posée. Elle ressemblera à un défaut. Elle n'en est pas un —
-c'est la décision la plus importante du modèle d'accès, et elle se défend très
-bien à condition d'être préparée.
+This question will be asked. It will look like a defect. It is not — it is the
+most important decision in the access model, and it defends itself very well
+provided you have prepared the answer.
 
-⚠️ **À lire avant la première session de formation.** Une réponse improvisée est
-toujours moins convaincante qu'une réponse préparée.
+⚠️ **Read this before the first training session.** An improvised answer is always
+less convincing than a prepared one.
 
----
-
-## La réponse courte, à donner telle quelle
-
-> L'administrateur gère les **comptes**, les **rôles** et les **réglages**. Il ne
-> lit pas les déclarations fiscales de l'entreprise, ni les bulletins de paie, ni
-> les correspondances avec l'administration. Ce n'est pas un oubli : c'est fait
-> exprès, et c'est vérifié à chaque livraison.
-
-Puis, si l'on demande pourquoi :
-
-> Parce que sinon, la personne qui installe le logiciel serait la mieux informée
-> de l'entreprise.
-
-Cette phrase suffit presque toujours. Elle déplace la question de « c'est une
-gêne » vers « c'est une protection », et personne ne défend l'inverse une fois
-qu'il est dit à voix haute.
+> The app is in French; role and screen names below are given as they appear.
 
 ---
 
-## Ce que voit réellement chaque rôle
+## The short answer, to give as it stands
 
-|                             | Dossiers | Documents | Référentiel | Comptes |
-| --------------------------- | :------: | :-------: | :---------: | :-----: |
-| **Administrateur**          |    —     |     —     |      ✓      |    ✓    |
-| **Direction**               |    ✓     |     ✓     |      ✓      |    —    |
-| **Responsable / Suppléant** |    ✓     |     ✓     |   lecture   |    —    |
-| **Superviseur**             |    ✓     |     ✓     |   lecture   |    —    |
+> The administrator manages **accounts**, **roles** and **settings**. They do not
+> read the company's tax returns, nor payslips, nor correspondence with the
+> authorities. This is not an oversight: it is deliberate, and it is verified at
+> every release.
 
-L'administrateur voit le **Référentiel** et les **Registres** : ce sont les
-objets qui **décrivent** les obligations. Il ne voit pas ce qui les **remplit**.
-La distinction tient en une phrase, et c'est celle qu'il faut retenir.
+Then, if asked why:
 
-Symétriquement, la Direction administre le référentiel mais n'ouvre aucun compte :
-le pouvoir métier ne s'attribue pas ses propres droits.
+> Because otherwise the person who installs the software would be the
+> best-informed person in the company.
 
----
-
-## Les trois objections, et leurs réponses
-
-**« J'en ai besoin pour dépanner. »**
-
-Non. Un incident se diagnostique avec le **journal d'audit** — qui a fait quoi,
-quand, sur quelle entité, avec quel identifiant de corrélation — auquel
-l'administrateur a pleinement accès. Le contenu du dossier n'aide en rien à
-comprendre pourquoi une transition a été refusée. En pratique, aucun incident de
-ce projet n'a demandé de lire une pièce.
-
-**« De toute façon je peux lire la base. »**
-
-Avec un accès direct au serveur, oui — et c'est précisément pour cela que cet
-accès est une procédure **exceptionnelle et tracée**, et non le fonctionnement
-quotidien d'un compte applicatif. La différence entre « ce serait techniquement
-possible » et « c'est accordé par défaut » est toute la différence le jour où il
-faut expliquer qui a vu quoi.
-
-**« Ça complique le support. »**
-
-Un peu, et c'est le prix. Il est bas : la Direction et l'auditeur ont la lecture
-qui leur revient, et le journal d'audit répond aux questions de support.
+That sentence is almost always enough. It moves the question from "this is
+inconvenient" to "this is a protection", and nobody argues the other way once it
+is said out loud.
 
 ---
 
-## Ce qu'il faut faire si le besoin est réel
+## What each role actually sees
 
-Si vous devez **aussi** consulter les dossiers, la réponse n'est pas d'élargir
-`ADMIN` : c'est de **cumuler les rôles** sur votre compte.
+|                             | Dossiers | Documents | Referential | Accounts |
+| --------------------------- | :------: | :-------: | :---------: | :------: |
+| **Administrateur**          |    —     |     —     |      ✓      |    ✓     |
+| **Direction**               |    ✓     |     ✓     |      ✓      |    —     |
+| **Responsable / Suppléant** |    ✓     |     ✓     |  read-only  |    —     |
+| **Superviseur**             |    ✓     |     ✓     |  read-only  |    —     |
 
-Administration → Utilisateurs → votre compte → ajouter `SUPERVISEUR` ou
-`DIRECTION`.
+The administrator sees the **Référentiel** and the **Registres**: those are the
+objects that **describe** the obligations. They do not see what **fills them in**.
+The distinction fits in one sentence, and it is the one to remember.
 
-Les permissions s'additionnent, et le journal d'audit continue de distinguer
-**au titre de quel rôle** chaque action a été faite. Vous gardez donc les deux
-casquettes, et l'historique dit laquelle vous portiez.
+Symmetrically, Direction administers the referential but opens no accounts:
+business authority does not grant itself its own permissions.
 
-⚠️ **Ce qu'il ne faut pas faire :** ajouter `occurrence.read` au rôle `ADMIN`.
-Cela ne toucherait pas un compte mais **le rôle**, donc tous les administrateurs
-présents et futurs, et romprait la séparation pour tout le monde — silencieusement.
+---
+
+## The three objections, and their answers
+
+**"I need it to troubleshoot."**
+
+No. An incident is diagnosed with the **audit log** — who did what, when, on
+which entity, with which correlation id — to which the administrator has full
+access. The contents of a dossier help not at all in understanding why a
+transition was refused. In practice, no incident in this project has required
+reading a document.
+
+**"I can read the database anyway."**
+
+With direct server access, yes — and that is precisely why such access is an
+**exceptional and traced** procedure, not the daily operation of an application
+account. The difference between "it would be technically possible" and "it is
+granted by default" is the whole difference on the day you have to explain who
+saw what.
+
+**"It complicates support."**
+
+A little, and that is the price. It is low: Direction and the auditor have the
+read access that belongs to them, and the audit log answers support questions.
+
+---
+
+## What to do if the need is real
+
+If you **also** need to consult dossiers, the answer is not to widen `ADMIN`: it
+is to **hold both roles** on your account.
+
+Administration → Utilisateurs → your account → add `SUPERVISEUR` or `DIRECTION`.
+
+Permissions add up, and the audit log keeps distinguishing **under which role**
+each action was taken. You keep both hats, and the history says which one you
+were wearing.
+
+⚠️ **What not to do:** add `occurrence.read` to the `ADMIN` role. That would not
+touch one account but **the role**, therefore every administrator present and
+future, and would break the separation for everyone — silently.
