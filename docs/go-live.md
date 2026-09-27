@@ -1,324 +1,325 @@
-# Mise en production
+# Go-live
 
-Ce document est une **liste d'exécution**, pas une présentation. Chaque section
-dit ce qu'il faut faire, dans quel ordre, et à quoi l'on reconnaît que c'est
-fait. Ce qui n'a pas de critère observable n'est pas une étape : c'est une
-intention.
+This document is an **execution list**, not a presentation. Each section says
+what to do, in what order, and how you recognise it is done. Anything with no
+observable criterion is not a step: it is an intention.
 
-⚠️ **Rien de ce qui suit ne se délègue à l'outil.** L'application est prête ; ce
-qui reste tient à des secrets, des données réelles, des personnes et une
-infrastructure — quatre choses qu'aucun code ne peut produire à votre place.
+⚠️ **Nothing below can be delegated to the tool.** The application is ready; what
+remains comes down to secrets, real data, people and infrastructure — four things
+no code can produce for you.
+
+> The app is in French; screen names below are given as they appear.
 
 ---
 
-## Où en est le dépôt
+## Where the repository stands
 
-Fait, vérifiable, déjà dans le code :
+Done, verifiable, already in the code:
 
-| Point                      | État                                                                                                         |
-| -------------------------- | ------------------------------------------------------------------------------------------------------------ |
-| Artefacts de développement | Aucun. Ni écran de démonstration, ni route de test, ni compte semé.                                          |
-| Jeu de départ              | `supabase/seed/` ne contient que le référentiel métier — aucun compte, aucune donnée fictive.                |
-| Garde-fou de production    | `scripts/seed.mjs` et `scripts/create-user.mjs` refusent `NODE_ENV=production` **et** toute base non locale. |
-| Secrets dans le dépôt      | Aucun. `gitleaks` passe sur les 44 commits de l'historique.                                                  |
-| Intégration continue       | `.github/workflows/ci.yml` — bloquante, sans étape facultative.                                              |
+| Point                     | State                                                                                                   |
+| ------------------------- | ------------------------------------------------------------------------------------------------------- |
+| Development artefacts     | None. No demo screen, no test route, no seeded account.                                                 |
+| Seed data                 | `supabase/seed/` holds only the business referential — no accounts, no fictitious data.                 |
+| Production guard rail     | `scripts/seed.mjs` and `scripts/create-user.mjs` refuse `NODE_ENV=production` **and** any non-local db. |
+| Secrets in the repository | None. `gitleaks` passes over the full history.                                                          |
+| Continuous integration    | `.github/workflows/ci.yml` — blocking, with no optional step.                                           |
 
-⚠️ **Deux points de la liste initiale n'existaient pas** : il n'y a jamais eu de
-route `/_design-system`, ni de fichier `dev_users.sql`. Le seul outil qui
-fabrique des comptes est `scripts/create-user.mjs`, désormais gardé.
+⚠️ **Two items from the original list never existed**: there was never a
+`/_design-system` route, nor a `dev_users.sql` file. The only tool that creates
+accounts is `scripts/create-user.mjs`, now guarded.
 
 ---
 
 ## A · Secrets
 
-### Où vit chaque secret, et qui peut le lire
+### Where each secret lives, and who can read it
 
-| Secret                          | Émis par          | Vit dans                                        | Lu par                         |
-| ------------------------------- | ----------------- | ----------------------------------------------- | ------------------------------ |
-| `NEXT_PUBLIC_SUPABASE_ANON_KEY` | Supabase          | Variables de l'hébergeur + navigateur           | Tout le monde — c'est son rôle |
-| `SUPABASE_SERVICE_ROLE_KEY`     | Supabase          | Variables de l'hébergeur, **serveur seul**      | Les tâches planifiées          |
-| `DATABASE_URL`                  | Supabase          | Variables de l'hébergeur                        | Migrations, sauvegarde         |
-| `RESEND_API_KEY`                | Resend            | Variables de l'hébergeur                        | Le diffuseur de notifications  |
-| `CRON_SECRET`                   | `npm run secrets` | Variables de l'hébergeur **et** planificateur   | Les deux, et personne d'autre  |
-| `BACKUP_ENCRYPTION_KEY`         | `npm run secrets` | **Coffre de l'entreprise, hors infrastructure** | Voir plus bas                  |
+| Secret                          | Issued by         | Lives in                                     | Read by                     |
+| ------------------------------- | ----------------- | -------------------------------------------- | --------------------------- |
+| `NEXT_PUBLIC_SUPABASE_ANON_KEY` | Supabase          | Host variables + the browser                 | Everyone — that is its job  |
+| `SUPABASE_SERVICE_ROLE_KEY`     | Supabase          | Host variables, **server only**              | The scheduled jobs          |
+| `DATABASE_URL`                  | Supabase          | Host variables                               | Migrations, backup          |
+| `RESEND_API_KEY`                | Resend            | Host variables                               | The notification dispatcher |
+| `CRON_SECRET`                   | `npm run secrets` | Host variables **and** the scheduler         | Both, and nobody else       |
+| `BACKUP_ENCRYPTION_KEY`         | `npm run secrets` | **The company safe, outside infrastructure** | See below                   |
 
 ```bash
-npm run secrets          # produit CRON_SECRET et BACKUP_ENCRYPTION_KEY
+npm run secrets          # produces CRON_SECRET and BACKUP_ENCRYPTION_KEY
 ```
 
-Le script **n'écrit dans aucun fichier**. Il affiche, on copie, le terminal se
-ferme. Un script qui remplirait `.env.local` finirait par remplir un fichier
-suivi par git, un jour où quelqu'un l'aurait lancé depuis le mauvais dossier.
+The script **writes to no file**. It prints, you copy, the terminal closes. A
+script that filled in `.env.local` would eventually fill a file tracked by git,
+on a day someone ran it from the wrong directory.
 
-### Ordre de rotation — il compte
+### Rotation order — it matters
 
-1. **`RESEND_API_KEY`** — créer la nouvelle, la déployer, **puis** révoquer
-   l'ancienne. L'inverse coupe les notifications entre les deux gestes.
-2. **`CRON_SECRET`** — poser la même valeur des **deux** côtés au même moment.
-   Un décalage n'affiche aucune erreur : les échéances cessent simplement d'être
-   générées, et cela ne se voit qu'à la première manquée.
-3. **Clés Supabase** — « Rotate » invalide l'ancienne **immédiatement**. Préparer
-   le remplacement dans les variables de l'hébergeur d'abord, faire tourner
-   ensuite, redéployer dans la foulée.
-4. **`BACKUP_ENCRYPTION_KEY`** — voir la section suivante. Ne se tourne pas comme
-   les autres.
+1. **`RESEND_API_KEY`** — create the new one, deploy it, **then** revoke the old.
+   The reverse cuts notifications between the two moves.
+2. **`CRON_SECRET`** — set the same value on **both** sides at the same moment. A
+   mismatch shows no error: deadlines simply stop being generated, and that is
+   only noticed at the first one missed.
+3. **Supabase keys** — "Rotate" invalidates the old one **immediately**. Stage the
+   replacement in the host variables first, rotate second, redeploy right after.
+4. **`BACKUP_ENCRYPTION_KEY`** — see the next section. It does not rotate like the
+   others.
 
-### ⚠️ `BACKUP_ENCRYPTION_KEY` — la seule dont la perte est irréversible
+### ⚠️ `BACKUP_ENCRYPTION_KEY` — the only one whose loss is irreversible
 
-Cette clé chiffre les archives. **Une sauvegarde dont la clé est perdue n'est pas
-une sauvegarde** : c'est un fichier que personne ne pourra jamais ouvrir, y
-compris vous, y compris l'hébergeur, y compris avec un mandat de justice.
+This key encrypts the archives. **A backup whose key is lost is not a backup**:
+it is a file nobody will ever open, including you, including the host, including
+with a court order.
 
-Trois règles, et elles ne se négocient pas :
+Three rules, and they are not negotiable:
 
-1. **Hors de l'infrastructure applicative.** Pas dans les variables de
-   l'hébergeur au même endroit que le reste, pas dans le dépôt, pas dans un
-   gestionnaire de mots de passe hébergé par le même fournisseur que la base.
-   Un incident qui emporte l'infrastructure ne doit pas emporter la clé qui
-   permet d'en sortir.
-2. **Hors des sauvegardes.** Chiffrer la clé avec elle-même n'a pas de sens ;
-   l'inclure en clair dans l'archive annule le chiffrement.
-3. **En deux exemplaires, en deux lieux, connus de deux personnes.** Un seul
-   exemplaire, c'est un point de défaillance ; une seule personne qui la
-   connaît, c'est un point de défaillance qui prend des congés.
+1. **Outside the application infrastructure.** Not in the host variables next to
+   everything else, not in the repository, not in a password manager hosted by
+   the same provider as the database. An incident that takes out the
+   infrastructure must not take out the key that gets you back from it.
+2. **Outside the backups.** Encrypting the key with itself makes no sense;
+   including it in cleartext inside the archive cancels the encryption.
+3. **Two copies, in two places, known to two people.** One copy is a single point
+   of failure; one person who knows it is a single point of failure that takes
+   holidays.
 
-**Forme recommandée** : la clé imprimée sur papier, dans une enveloppe scellée,
-dans le coffre d'AGROESPACE — plus un second exemplaire chez le dirigeant. Le
-papier ne se corrompt pas, ne dépend d'aucun format, et ne se copie pas par
-accident.
+**Recommended form**: the key printed on paper, in a sealed envelope, in
+AGROESPACE's safe — plus a second copy held by the director. Paper does not
+corrupt, depends on no file format, and is not copied by accident.
 
-**Récupération — la procédure, à relire une fois par an :**
+**Recovery — the procedure, to be re-read once a year:**
 
 ```bash
-# 1. Récupérer l'archive et la clé (deux endroits différents, par construction)
-# 2. Vérifier que la clé est la bonne AVANT d'en avoir besoin :
+# 1. Retrieve the archive and the key (two different places, by construction)
+# 2. Check the key is the right one BEFORE you need it:
 BACKUP_ENCRYPTION_KEY="…" npm run restore:test
-#    → restaure dans une base jetable et compare les empreintes.
-#    Si cette commande échoue, la clé n'est pas la bonne. Le savoir maintenant
-#    coûte cinq minutes ; le savoir le jour de l'incident coûte l'entreprise.
+#    → restores into a disposable database and compares fingerprints.
+#    If this command fails, the key is not the right one. Knowing that now
+#    costs five minutes; knowing it on the day of the incident costs the company.
 ```
 
-⚠️ **Si la clé doit changer** : produire la nouvelle, **conserver l'ancienne** —
-les archives déjà écrites restent chiffrées avec elle — et noter la date de
-bascule à côté de chaque exemplaire. Une clé remplacée sans conserver la
-précédente rend illisible tout l'historique d'un coup.
+⚠️ **If the key must change**: produce the new one, **keep the old** — archives
+already written stay encrypted with it — and note the switch-over date next to
+each copy. A key replaced without keeping the previous one makes the whole
+history unreadable at once.
 
 ---
 
-## B · Données de production
+## B · Production data
 
-### 1. Jours fériés — ⚠️ **le point le plus urgent de cette liste**
+### 1. Public holidays — ⚠️ **the most urgent point on this list**
 
-**État constaté :** la base contient **cinq** jours fériés, tous civils et à date
-fixe, tous en **2026** :
+**Observed state:** the database holds **five** public holidays, all civil and at
+fixed dates:
 
-| Date  | Fête                          |
+| Date  | Feast                         |
 | ----- | ----------------------------- |
-| 01/01 | Nouvel an                     |
+| 01/01 | New Year                      |
 | 12/01 | Yennayer                      |
-| 01/05 | Fête du Travail               |
-| 05/07 | Fête de l'Indépendance        |
-| 01/11 | Anniversaire de la Révolution |
+| 01/05 | Labour Day                    |
+| 05/07 | Independence Day              |
+| 01/11 | Anniversary of the Revolution |
 
-**Ce qui manque, et ce que cela coûte :**
+**What is missing, and what it costs:**
 
-- **Les fêtes religieuses de 2026 ET de 2027** — Aïd el-Fitr, Aïd el-Adha, Awal
-  Moharem, Achoura, Mawlid Ennabaoui. Elles suivent le calendrier hégirien et
-  sont fixées **par décret**. Elles ne se calculent pas : aucun code ne peut les
-  deviner, et ce document ne les invente pas. Sans elles, une échéance tombant un
-  jour de Aïd est calculée comme un jour ouvré — et le décalage réglementaire
-  n'est pas appliqué.
+- **The religious feasts for 2026 AND 2027** — Aïd el-Fitr, Aïd el-Adha, Awal
+  Moharem, Achoura, Mawlid Ennabaoui. They follow the Hijri calendar and are set
+  **by decree**. They cannot be calculated: no code can guess them, and this
+  document does not invent them. Without them, a deadline falling on Aïd is
+  computed as a working day — and the regulatory shift is not applied.
 
-**`is_recurring` — CORRIGÉ.** ⚠️ Le piège était réel et silencieux : la colonne
-était lue, affichée, cochée par les administrateurs, et **sans aucun effet**. Le
-moteur recevait des dates exactes, si bien qu'une fête marquée « récurrente » en
-2026 ne protégeait rien en 2027 — et comme le calendrier ne contenait que 2026,
-**toute** échéance calculée en 2027 ignorait les jours chômés. Rien ne le
-signalait : ni erreur, ni message, ni test rouge.
+**`is_recurring` — FIXED.** ⚠️ The trap was real and silent: the column was read,
+displayed, ticked by administrators, and had **no effect whatsoever**. The engine
+received exact dates, so a feast marked "recurring" in 2026 protected nothing in
+2027 — and since the calendar only held 2026, **every** deadline computed for
+2027 ignored non-working days. Nothing reported it: no error, no message, no
+failing test.
 
-Désormais les récurrentes sont **projetées** sur chaque année demandée
-(`src/lib/holidays.ts`), et les cinq fêtes civiles ci-dessus valent donc pour
-2027, 2028 et au-delà **sans nouvelle saisie**. Il reste à saisir, chaque année,
-les seules dates qui ne se déduisent de rien : les religieuses.
+Recurring entries are now **projected** onto each year requested
+(`src/lib/holidays.ts`), so the five civil feasts above apply to 2027, 2028 and
+beyond **with no further entry**. What remains to be entered each year are the
+only dates that can be deduced from nothing: the religious ones.
 
-**Le garde-fou.** Une année de l'horizon sans **aucune** date exacte n'est jamais
-un état normal — c'est toujours un oubli. Elle se signale donc de trois façons :
+**The guard rail.** A year in the horizon with **no** exact date is never a normal
+state — it is always an oversight. It is therefore reported three ways:
 
-| Où                          | Quoi                                                                       |
+| Where                       | What                                                                       |
 | --------------------------- | -------------------------------------------------------------------------- |
-| Journal de génération       | `Calendrier des jours fériés incomplet`, avec les années et la conséquence |
-| Tableau de bord             | alerte `HOLIDAYS_INCOMPLETE`, réservée à qui détient `referential.manage`  |
-| `holiday_calendar_coverage` | vue de contrôle : `year, civil_count, religious_count, is_complete`        |
+| Generation log              | `Calendrier des jours fériés incomplet`, with the years and consequence    |
+| Dashboard                   | `HOLIDAYS_INCOMPLETE` alert, restricted to holders of `referential.manage` |
+| `holiday_calendar_coverage` | control view: `year, civil_count, religious_count, is_complete`            |
 
-Pour vérifier l'état à tout moment :
+To check the state at any time:
 
 ```sql
 select * from public.holiday_calendar_coverage;
 ```
 
-Une ligne à `is_complete = false` désigne une année dont les échéances ignorent
-les jours chômés. **L'alerte ne s'éteindra pas d'elle-même** : elle est faite
-pour rester visible jusqu'à la saisie.
+A row with `is_complete = false` names a year whose deadlines ignore non-working
+days. **The alert will not switch itself off**: it is built to stay visible until
+the entry is made.
 
-**À faire :** obtenir du cabinet comptable ou du Journal officiel la liste des
-jours chômés **2026 et 2027**, puis les saisir dans **Administration →
-Référentiels**, à la main ou par import CSV.
+**To do:** obtain from the accountants or the Official Journal the list of
+non-working days for **2026 and 2027**, then enter them under **Administration →
+Référentiels**, by hand or by CSV import.
 
-Le gabarit est fourni : [`docs/templates/jours-feries.csv`](templates/jours-feries.csv).
-Format `date,libellé,récurrent`, la date en `AAAA-MM-JJ`.
+The template is provided: [`docs/templates/jours-feries.csv`](templates/jours-feries.csv).
+Format `date,label,recurring`, the date as `YYYY-MM-DD`.
 
-⚠️ **`récurrent` vaut `false` pour toute fête religieuse**, sans exception. La
-marquer `true` la projetterait sur toutes les années à la même date grégorienne —
-ce qui est faux par construction — et, pire, ferait croire au garde-fou que
-l'année est couverte. Le seul `true` légitime est celui des cinq fêtes civiles,
-déjà saisies.
+⚠️ **`recurring` is `false` for every religious feast**, without exception.
+Marking one `true` would project it onto every year at the same Gregorian date —
+wrong by construction — and, worse, would make the guard rail believe the year is
+covered. The only legitimate `true` is on the five civil feasts, already entered.
 
-**L'impact est annoncé avant d'être appliqué.** Ajouter, importer ou retirer un
-jour férié déplace des échéances que des gens ont notées ailleurs. L'écran
-chiffre le déplacement **avant** d'écrire, et renoncer n'écrit rien. Seuls les
-dossiers `TODO` bougent : ceux déjà commencés, validés, transmis ou archivés ne
-sont jamais déplacés.
+**The impact is announced before it is applied.** Adding, importing or removing a
+public holiday moves deadlines that people have written down elsewhere. The screen
+quantifies the shift **before** writing, and declining writes nothing. Only `TODO`
+dossiers move: those already started, validated, filed or archived are never
+touched.
 
-**Le rappel annuel — corrigé.** La tâche qui devait créer chaque 1er décembre le
-dossier « Mise à jour du calendrier N+1 » était écrite, testée… et **appelée par
-personne** : ni pg_cron, ni route, ni tâche. Elle n'aurait jamais tiré. Deux
-défauts s'y ajoutaient : aucune garde de date (elle aurait recréé le dossier
-chaque matin) et deux `ON CONFLICT` désignant des contraintes inexistantes, qui
-la faisaient échouer à sa première exécution réelle. Corrigé, greffé sur la
-génération quotidienne, et éprouvé par
-`tests/integration/holiday-reminder.test.ts`.
+**The annual reminder — fixed.** The job meant to create the "Mise à jour du
+calendrier N+1" dossier every 1 December was written, tested… and **called by
+nobody**: no pg_cron, no route, no job. It would never have fired. Two further
+defects came with it: no date guard (it would have recreated the dossier every
+morning) and two `ON CONFLICT` clauses naming constraints that do not exist, which
+made it fail on its first real run. Fixed, grafted onto the daily generation, and
+exercised by `tests/integration/holiday-reminder.test.ts`.
 
-### 2. Registres de commerce
+### 2. Commercial registers
 
-Écran **Registres → Nouveau**. Pour chaque établissement : numéro RC, type
-(principal / secondaire / annexe), libellé, date de délivrance, activité.
+The **five AGROESPACE registers are already seeded** by
+`supabase/seed/0003_registres_agroespace.sql` — 58/00, 58/02, 58/04 (El Meniaa),
+01/07 (Adrar), 47/06 (Ghardaïa).
 
-⚠️ **Le type conditionne la génération.** Une obligation `PER_REGISTER` produit
-un dossier **par registre actif**. Saisir un registre de trop, c'est une
-colonne de dossiers de trop, tous les mois.
+⚠️ **Three points in that file are marked "to confirm"**: one register number with
+an illegible digit, which of the five is the principal one, and the **expiry
+dates, which are absent**. Corrections are made on the **Registres** screen.
 
-### 3. Révision des 23 obligations
+⚠️ **The expiry date is not a comfort field.** `AGR-SANIT` and `ETAB-CLASSE` are
+anchored on it: without it they generate **no dossier at all** — measured, zero —
+and that zero looks exactly like "nothing to do".
 
-Le référentiel livré compte **23** obligations (et non 22). Pour chacune :
+⚠️ **The type drives generation.** A `PER_REGISTER` obligation produces a dossier
+**per active register**. One register too many is a column of dossiers too many,
+every year.
 
-- **s'applique-t-elle ?** Sinon : la désactiver, ne pas la supprimer —
-  l'historique doit rester lisible ;
-- **`ENTITY` ou `PER_REGISTER` ?** Une obligation qui vaut pour l'entreprise
-  entière ne doit pas se multiplier par établissement ;
-- **l'échéance est-elle la bonne ?** L'écran affiche les six prochaines dates
-  calculées : c'est là qu'une règle fausse se voit.
+### 3. Reviewing the 23 obligations
 
-### 4. Échéances — une corrigée, une encore ouverte
+The delivered referential holds **23** obligations (not 22). For each:
 
-**CNAS-DAS — CORRIGÉ.** La valeur de départ était le **31 mars** ; c'est le
-**31 janvier**. ⚠️ L'erreur allait dans le sens qui coûte : elle faisait croire
-qu'il restait deux mois. Le référentiel livré porte désormais la bonne date, et
-l'échéance interne tombe quinze jours ouvrés plus tôt — vérifié : période 2026,
-échéance légale au 31/01/2027, interne au 10/01/2027.
+- **does it apply?** If not: deactivate it, do not delete it — the history must
+  stay readable;
+- **`ENTITY` or `PER_REGISTER`?** An obligation that applies to the whole company
+  must not multiply per establishment;
+- **is the deadline right?** The screen shows the next six computed dates: that is
+  where a wrong rule shows.
 
-**CASNOS — PARTIELLEMENT RÉSOLU. C'est la dernière question ouverte du projet.**
+### 4. Deadlines — one corrected, one still open
 
-L'obligation se dédouble, et le référentiel n'en portait qu'une moitié :
+**CNAS-DAS — CORRECTED.** The starting value was **31 March**; it is **31
+January**. ⚠️ The error ran in the direction that costs: it suggested two months
+remained. The delivered referential now carries the right date, and the internal
+deadline falls fifteen working days earlier — verified: period 2026, legal
+deadline 31/01/2027, internal 10/01/2027.
 
-| Étape                         | Date                           | État                                                          |
-| ----------------------------- | ------------------------------ | ------------------------------------------------------------- |
-| **Paiement** de la cotisation | 30 juin                        | **Confirmé.** C'est la ligne `CASNOS`, renommée pour le dire. |
-| **Déclaration** préalable     | fin janvier **ou** fin février | ⚠️ **Non confirmée. Aucune obligation n'est créée.**          |
+**CASNOS — PARTIALLY RESOLVED. This is the project's last open question.**
 
-⚠️ **L'obligation manquante n'a volontairement pas été créée.** La créer avec
-une date devinée serait pire que son absence : une échéance fausse ne produit
-aucune erreur visible, seulement un rappel au mauvais moment — et l'équipe
-prendrait l'habitude de s'y fier. Une obligation absente, au moins, se remarque.
+The obligation is two things, and the referential carried only one half:
 
-**À faire, dès que la date est confirmée :** Référentiel → Nouvelle obligation,
-domaine SOCIAL, organisme CASNOS, périodicité annuelle, ancre à date fixe. Les
-six prochaines dates s'affichent avant l'enregistrement : c'est là qu'une erreur
-de saisie se voit.
+| Step                            | Date                           | State                                                        |
+| ------------------------------- | ------------------------------ | ------------------------------------------------------------ |
+| **Payment** of the contribution | 30 June                        | **Confirmed.** That is the `CASNOS` line, renamed to say so. |
+| Prior **declaration**           | end of January **or** February | ⚠️ **Not confirmed. No obligation created.**                 |
 
-**Restent à confirmer par ailleurs :** les trois acomptes IBS (20/03, 20/06,
-20/11), retenus sans source ferme.
+⚠️ **The missing obligation was deliberately not created.** Creating it with a
+guessed date would be worse than its absence: a wrong deadline produces no visible
+error, only a reminder at the wrong moment — and the team would learn to rely on
+it. An absent obligation at least gets noticed.
 
-Toute correction se fait dans l'interface, avec prévisualisation immédiate. Un
-recalcul des occurrences **futures** est proposé après modification ; les
-dossiers passés ne bougent jamais.
+**To do, as soon as the date is confirmed:** Référentiel → Nouvelle obligation,
+domain SOCIAL, authority CASNOS, annual periodicity, fixed-date anchor. The next
+six dates are shown before saving: that is where a typing error shows.
 
-### 5. Rattrapage historique
+**Also still to confirm:** the three IBS instalments (20/03, 20/06, 20/11), taken
+without a firm source.
+
+Every correction is made in the interface, with immediate preview. A recomputation
+of **future** occurrences is offered after a change; past dossiers never move.
+
+### 5. Historical backfill
 
 ```bash
-npm run db:backfill -- --months 12 --dry-run   # lire d'abord
-npm run db:backfill -- --months 12             # puis appliquer
+npm run db:backfill -- --months 36 --dry-run   # read first
+npm run db:backfill -- --months 36             # then apply
 ```
 
-Crée les coquilles des douze mois précédents au statut **ARCHIVED** : elles
-n'apparaissent dans aucune file et ne comptent dans aucun retard. Sans elles, un
-justificatif de mars n'a nulle part où aller.
+Creates shells for the preceding months at status **ARCHIVED**: they appear in no
+queue and count towards no overdue figure. Without them, a March supporting
+document has nowhere to go.
 
-⚠️ **À savoir avant de verser une pièce ancienne** : une occurrence archivée est
-immuable. Y déposer un document suppose de **rouvrir** le dossier (transition
-`ARCHIVED → SUBMITTED`, permission `occurrence.unlock`, motif obligatoire).
-C'est plus lourd que l'intention initiale ne le laissait croire.
+⚠️ **Know this before filing an old document**: an archived occurrence is
+immutable. Filing a document into it means **reopening** the dossier (transition
+`ARCHIVED → SUBMITTED`, permission `occurrence.unlock`, mandatory reason). That is
+heavier than the original intention suggested.
 
 ---
 
-## C · Comptes réels
+## C · Real accounts
 
-### Amorçage du premier administrateur
+### Bootstrapping the first administrator
 
-L'application n'a pas d'inscription : on entre par invitation, et une invitation
-suppose un administrateur. Ce nœud se coupe **une seule fois**, à la main :
+The application has no sign-up: you enter by invitation, and an invitation needs
+an administrator. That knot is cut **once**, by hand:
 
 ```sql
--- Sur la base de production, par la console SQL Supabase, une seule fois.
--- 1. Créer le compte par l'interface Supabase (Authentication → Add user),
---    avec un mot de passe provisoire long, envoyé par un canal séparé.
--- 2. Lui attribuer le rôle ADMIN :
+-- On the production database, via the Supabase SQL console, once.
+-- 1. Create the account through the Supabase interface (Authentication → Add user),
+--    with a long temporary password, sent over a separate channel.
+-- 2. Grant it the ADMIN role:
 insert into public.user_roles (user_id, role_id, domain_id)
-select '<uuid-du-compte>', r.id, null
+select '<account-uuid>', r.id, null
   from public.roles r where r.code = 'ADMIN';
 ```
 
-Puis, **à la première connexion** : changement du mot de passe et **enrôlement
-MFA immédiat**. Le middleware l'impose déjà pour ADMIN et DIRECTION — la
-première session ne va nulle part sans second facteur.
+Then, **at the first sign-in**: change the password and **enrol MFA immediately**.
+The middleware already enforces it for ADMIN and DIRECTION — the first session
+goes nowhere without a second factor.
 
-⚠️ `scripts/create-user.mjs` **ne peut pas** servir ici : il refuse toute base
-non locale, délibérément.
+⚠️ `scripts/create-user.mjs` **cannot** be used here: it refuses any non-local
+database, deliberately.
 
-### Les autres comptes — par invitation, jamais par mot de passe imposé
+### Every other account — by invitation, never by imposed password
 
-Écran **Administration → Utilisateurs → Inviter**. L'invitation envoie un lien à
-usage unique ; la personne choisit son propre mot de passe. Aucun mot de passe ne
-circule par courriel — c'est le seul régime acceptable, et l'application n'en
-propose pas d'autre.
+Screen **Administration → Utilisateurs → Inviter**. The invitation sends a
+single-use link; the person chooses their own password. No password travels by
+email — that is the only acceptable regime, and the application offers no other.
 
-| Personne       | Rôle                                           | MFA             |
-| -------------- | ---------------------------------------------- | --------------- |
-| Vous           | `ADMIN` **+** un second rôle (voir ci-dessous) | **Obligatoire** |
-| Le dirigeant   | `DIRECTION`                                    | **Obligatoire** |
-| Le préparateur | `RESPONSABLE`                                  | Recommandée     |
-| Son remplaçant | `SUPPLEANT`                                    | Recommandée     |
-| Le contrôleur  | `SUPERVISEUR`                                  | Recommandée     |
+| Person         | Role                                    | MFA           |
+| -------------- | --------------------------------------- | ------------- |
+| You            | `ADMIN` **+** a second role (see below) | **Mandatory** |
+| The director   | `DIRECTION`                             | **Mandatory** |
+| The preparer   | `RESPONSABLE`                           | Recommended   |
+| Their stand-in | `SUPPLEANT`                             | Recommended   |
+| The checker    | `SUPERVISEUR`                           | Recommended   |
 
-### ⚠️ Votre propre compte — cumulez, n'élargissez pas
+### ⚠️ Your own account — hold both, do not widen
 
-Le rôle `ADMIN` ne donne accès **ni aux dossiers, ni aux documents**. C'est
-délibéré, c'est éprouvé (`e2e/critical-journeys.spec.ts`, parcours 5), et c'est
-expliqué dans `docs/security.md`.
+The `ADMIN` role gives access **neither to dossiers nor to documents**. That is
+deliberate, it is tested (`e2e/critical-journeys.spec.ts`, journey 5), and it is
+explained in `docs/security.md`.
 
-Si vous devez aussi consulter les dossiers : **ajoutez-vous un second rôle** —
-`SUPERVISEUR` ou `DIRECTION` — sur le même compte. Le cumul est prévu par le
-modèle : les permissions s'additionnent, et la trace d'audit distingue toujours
-au titre de quoi vous avez agi.
+If you also need to consult dossiers: **give yourself a second role** —
+`SUPERVISEUR` or `DIRECTION` — on the same account. Holding both is provided for
+by the model: permissions add up, and the audit trail always distinguishes which
+one you acted under.
 
-**N'élargissez pas `ADMIN`.** Lui donner `occurrence.read` ferait de la personne
-qui installe le logiciel la mieux informée de l'entreprise, et romprait la seule
-séparation que ce modèle protège vraiment.
+**Do not widen `ADMIN`.** Giving it `occurrence.read` would make the person who
+installs the software the best-informed person in the company, and would break the
+one separation this model really protects.
 
-### Comptes à durée bornée
+### Time-bounded accounts
 
 ```sql
--- Aucun AUDITOR ni EXTERNAL ne doit exister sans expiration.
--- La base l'impose déjà (contrainte + max_duration_days) ; on le VÉRIFIE :
+-- No AUDITOR or EXTERNAL should exist without an expiry.
+-- The database already enforces it (constraint + max_duration_days); we VERIFY:
 select p.email, r.code, ur.expires_at
   from public.user_roles ur
   join public.roles r on r.id = ur.role_id
@@ -326,162 +327,167 @@ select p.email, r.code, ur.expires_at
  where r.code in ('AUDITOR', 'EXTERNAL')
    and ur.revoked_at is null
    and ur.expires_at is null;
--- Résultat attendu : zéro ligne.
+-- Expected result: zero rows.
 ```
 
 ---
 
-## D · Sauvegarde — pour de vrai
+## D · Backup — for real
 
-### La répétition, une fois, en entier
+### The rehearsal, once, in full
 
 ```bash
-npm run backup                      # 1. sauvegarde complète réelle
-npm run restore:test                # 2. restauration dans une base jetable
+npm run backup                      # 1. a real full backup
+npm run restore:test                # 2. restore into a disposable database
 ```
 
-⚠️ **Chronométrer la restauration et consigner la durée** dans
-`docs/runbook.md`, section « Restauration ». Une durée inconnue est une durée
-qu'on découvrira le jour de l'incident, devant quelqu'un qui attend une réponse.
+⚠️ **Time the restore and record the duration** in `docs/runbook.md`, section
+"Restore duration". An unknown duration is a duration you will discover on the day
+of the incident, in front of someone waiting for an answer.
 
-### La copie chiffrée arrive-t-elle vraiment chez AGROESPACE ?
+### Does the encrypted copy really reach AGROESPACE?
 
-`BACKUP_DESTINATION` ou `BACKUP_RCLONE_REMOTE` doit pointer vers un
-emplacement **contrôlé par l'entreprise** — poste dédié ou NAS. Une sauvegarde
-qui reste sur la machine sauvegardée n'en est pas une.
+`BACKUP_DESTINATION` or `BACKUP_RCLONE_REMOTE` must point at a location
+**controlled by the company** — a dedicated machine or a NAS. A backup that stays
+on the machine being backed up is not one.
 
-Vérifier, sur place : le fichier est là, sa taille est plausible, et **une
-deuxième personne sait où il est et comment y accéder**. Une sauvegarde que seule
-une personne sait retrouver a la fiabilité de cette personne.
+Check, on site: the file is there, its size is plausible, and **a second person
+knows where it is and how to reach it**. A backup only one person can find has the
+reliability of that person.
 
-### ⚠️ Couper la chaîne 40 heures — l'épreuve qui compte
+### ⚠️ Cut the chain for 40 hours — the drill that counts
 
-Le seuil est de **36 heures** (`BACKUP_STALE_AFTER_HOURS`). Quarante heures le
-dépassent franchement.
+The threshold is **36 hours** (`BACKUP_STALE_AFTER_HOURS`). Forty hours clears it
+comfortably.
 
 ```sql
--- Simuler l'absence de sauvegarde sans rien casser :
+-- Simulate the absence of backups without breaking anything:
 update public.backup_runs
    set finished_at = now() - interval '40 hours'
  where status = 'SUCCEEDED';
 ```
 
-Puis attendre le cycle horaire de notification (minute 5 de chaque heure).
+Then wait for the hourly notification cycle (minute 5 of each hour).
 
-**Ce qu'on doit constater :** l'alerte arrive **dans la boîte d'une personne
-réelle**, et pas seulement dans une table. Si elle n'arrive pas, le dispositif
-d'alerte est décoratif — et la panne classique n'est pas la sauvegarde qui
-échoue, c'est celle qui échoue **silencieusement pendant huit mois**.
-
----
-
-## E · Supervision
-
-| À brancher           | Sur quoi                              | Critère                                                    |
-| -------------------- | ------------------------------------- | ---------------------------------------------------------- |
-| Sonde externe        | `GET /api/health`                     | `503` déclenche une alerte                                 |
-| Suivi d'erreurs      | Serveur + navigateur                  | Une erreur provoquée apparaît, **sans donnée personnelle** |
-| Échec de tâche       | `job_runs.status = 'FAILED'`          | Alerte                                                     |
-| **Absence** de tâche | `job_runs` sans exécution depuis 26 h | Alerte — c'est le silence qui tue, pas l'échec             |
-
-⚠️ **Ne pointez pas la sonde sur l'URL d'une fiche.** Elle répond `200` même pour
-une ressource disparue — écart assumé, `docs/decisions.md` § 15 — et rassurerait
-au lieu d'alerter. `/api/health`, et rien d'autre.
-
-**Envoyer réellement chaque type d'alerte une fois**, et vérifier la réception :
-échéance à venir, retard, escalade, validation attendue, rejet, sauvegarde
-périmée, intégrité, échec d'envoi. Une alerte jamais reçue est une alerte dont on
-ignore si elle fonctionne.
+**What must be observed:** the alert arrives **in a real person's inbox**, and not
+only in a table. If it does not, the alerting mechanism is decorative — and the
+classic failure is not the backup that fails, it is the one that fails **silently
+for eight months**.
 
 ---
 
-## F · Sécurité en conditions réelles
+## E · Monitoring
 
-À exécuter **sur l'environnement déployé**, pas en local :
+| To wire up           | Onto what                       | Criterion                                             |
+| -------------------- | ------------------------------- | ----------------------------------------------------- |
+| External probe       | `GET /api/health`               | `503` raises an alert                                 |
+| Error tracking       | Server + browser                | A triggered error shows up, **with no personal data** |
+| Job failure          | `job_runs.status = 'FAILED'`    | Alert                                                 |
+| **Absence** of a job | `job_runs` with no run for 26 h | Alert — silence kills, not failure                    |
 
-- **CSP avec nonce** — ouvrir chaque écran, console ouverte : zéro violation.
-  Une CSP qui refuse un style n'affiche pas d'erreur, elle affiche un écran faux.
-- **Limitation de débit** — vérifier qu'une rafale d'écritures rend bien `429`.
-- **En-têtes** — scanner externe (`securityheaders.com` ou équivalent). HTTPS
-  forcé, **HSTS actif**.
-- **Route Handlers** — pour chacune : sans session, avec une session
-  insuffisante, puis avec la bonne. Trois réponses distinctes attendues.
-  `e2e/security.spec.ts` le fait déjà en local ; le refaire en ligne.
+⚠️ **Do not point the probe at a record URL.** It answers `200` even for a resource
+that is gone — an accepted gap, `docs/decisions.md` § 15 — and would reassure
+instead of alerting. `/api/health`, and nothing else.
+
+Since migration 0025 the dashboard also raises **`GENERATION_STALE`** after 48
+hours without generation — the in-app counterpart of the "absence of a job" line
+above.
+
+**Actually send each kind of alert once**, and confirm receipt: upcoming deadline,
+overdue, escalation, awaiting validation, rejection, stale backup, integrity, send
+failure. An alert never received is an alert nobody knows works.
 
 ---
 
-## G · Déploiement
+## F · Security under real conditions
 
-### Pré-production
+To be run **on the deployed environment**, not locally:
 
-Miroir fidèle : mêmes migrations, mêmes variables (valeurs différentes), **données
-fictives**. C'est là que se répètent les migrations et les restaurations.
+- **CSP with nonce** — open every screen with the console open: zero violations. A
+  CSP that refuses a style shows no error, it shows a wrong screen.
+- **Rate limiting** — check that a burst of writes really returns `429`.
+- **Headers** — external scanner (`securityheaders.com` or equivalent). HTTPS
+  forced, **HSTS active**.
+- **Route Handlers** — for each: with no session, with an insufficient session,
+  then with the right one. Three distinct answers expected. `e2e/security.spec.ts`
+  already does this locally; do it again online.
+- **Anonymous RPC** — verified locally after migration 0027: `health_snapshot` now
+  answers `401` without a session, and every business table returns zero rows.
+  Re-run the same probe against the deployed URL.
+
+---
+
+## G · Deployment
+
+### Staging
+
+A faithful mirror: same migrations, same variables (different values),
+**fictitious data**. That is where migrations and restores are rehearsed.
 
 ### Migrations
 
 ```bash
-supabase db push        # jamais par l'interface web
+supabase db push        # never through the web interface
 ```
 
-⚠️ **Jamais l'éditeur SQL de l'interface.** Une migration appliquée à la main
-n'existe pas dans le dépôt : la pré-production et la production divergent
-silencieusement, et la divergence se découvre au déploiement suivant.
+⚠️ **Never the interface's SQL editor.** A migration applied by hand does not exist
+in the repository: staging and production diverge silently, and the divergence is
+discovered at the next deployment.
 
-**Retour arrière par migration** — le tableau vit dans
-`docs/migrations-rollback.md`. Toute nouvelle migration l'y ajoute une ligne
-**dans le même commit**.
+**Rollback per migration** — the table lives in `docs/migrations-rollback.md`.
+Every new migration adds a line to it **in the same commit**.
 
-### Intégration continue
+### Continuous integration
 
-`.github/workflows/ci.yml` — bloquante. Typage, lint, format, tests unitaires,
-migrations, types à jour, intégration (RLS, politiques, jobs), build, bout en
-bout, et `gitleaks` sur l'historique complet. **Aucun déploiement sans suite
-verte.**
+`.github/workflows/ci.yml` — blocking, with no optional step. Types, lint, format,
+unit tests, migrations, types up to date, integration (RLS, policies, jobs), build,
+end-to-end, and `gitleaks` over the full history. **No deployment without a green
+run.**
 
-### Plan de retour arrière
+### Rollback plan
 
-| Question                            | Réponse                                                                                                                                                                                                         |
-| ----------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| **Qui décide ?**                    | Vous, ou le dirigeant en votre absence. Une seule personne, nommée à l'avance.                                                                                                                                  |
-| **Sur quoi ?**                      | Un dossier corrompu, une échéance fausse en production, une fuite de données, un écran inaccessible pour un rôle.                                                                                               |
-| **En combien de temps ?**           | Redéploiement de la version précédente : minutes. Retour arrière d'une migration : voir `docs/migrations-rollback.md`. Restauration complète : **durée à mesurer** (section D).                                 |
-| **Comment ?**                       | 1. Redéployer le commit précédent. 2. Si une migration est en cause, appliquer son retour arrière documenté. 3. Si des données sont corrompues, restaurer — et accepter la perte depuis la dernière sauvegarde. |
-| **Qui prévient les utilisateurs ?** | Vous, avant le retour arrière, pas après.                                                                                                                                                                       |
+| Question                   | Answer                                                                                                                                                                       |
+| -------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Who decides?**           | You, or the director in your absence. One person, named in advance.                                                                                                          |
+| **On what grounds?**       | A corrupted dossier, a wrong deadline in production, a data leak, a screen inaccessible to a role.                                                                           |
+| **How long does it take?** | Redeploying the previous version: minutes. Rolling back a migration: see `docs/migrations-rollback.md`. Full restore: **duration to be measured** (section D).               |
+| **How?**                   | 1. Redeploy the previous commit. 2. If a migration is at fault, apply its documented rollback. 3. If data is corrupted, restore — and accept the loss since the last backup. |
+| **Who tells the users?**   | You, before the rollback, not after.                                                                                                                                         |
 
-⚠️ **Ce plan doit être relu par quelqu'un qui ne l'a pas écrit.** Un plan de
-retour arrière relu par son auteur ne teste que sa propre cohérence.
+⚠️ **This plan must be read by someone who did not write it.** A rollback plan
+reviewed by its author tests only its own internal consistency.
 
 ---
 
-## H · Pilote
+## H · Pilot
 
-### Un cycle mensuel complet, un seul utilisateur
+### One full monthly cycle, one single user
 
-Ouvrir au **seul responsable**. Objectif unique et vérifiable : **un G50 réel
-traité de bout en bout dans l'outil** — prise en charge, dépôt des pièces,
-soumission, validation, dépôt effectif, archivage.
+Open it to the **owner alone**. One verifiable objective: **one real G50 handled
+end to end in the tool** — taken on, documents uploaded, submitted, validated,
+actually filed, archived.
 
-**Ne pas ouvrir aux autres avant la fin du cycle.** Une friction rencontrée par
-une personne se corrige ; la même rencontrée par cinq personnes devient une
-opinion sur l'outil.
+**Do not open it to the others before the cycle ends.** A friction met by one
+person gets fixed; the same friction met by five becomes an opinion about the
+tool.
 
-### Consigner chaque friction, même mineure
+### Record every friction, however minor
 
-Un fichier, une ligne par friction : date, écran, ce qui était attendu, ce qui
-s'est passé. ⚠️ **Les mineures surtout** : ce sont elles qui décident si l'outil
-est adopté ou contourné. Une friction majeure se signale toute seule ; une
-friction mineure se contourne en silence, et le contournement devient l'usage.
+One file, one line per friction: date, screen, what was expected, what happened.
+⚠️ **The minor ones above all**: they are what decides whether the tool is adopted
+or worked around. A major friction reports itself; a minor one is worked around in
+silence, and the workaround becomes the practice.
 
-### Formation
+### Training
 
-Un guide **par rôle**, deux pages maximum, illustré — `docs/guides/`. Une session
-de **30 minutes par personne**, sur ses propres dossiers, pas sur un exemple.
+One guide **per role**, two pages maximum, illustrated — `docs/guides/`. One
+session of **30 minutes per person**, on their own dossiers, not on an example.
 
-### ⚠️ La question qui reviendra
+### ⚠️ The question that will come back
 
-> « Pourquoi l'administrateur ne voit-il pas les documents ? »
+> "Why can't the administrator see the documents?"
 
-Elle reviendra, elle ressemblera à un bug, et la réponse est dans
-`docs/guides/pourquoi-admin-ne-voit-pas.md`. La lire **avant** la première
-session : la réponse improvisée est toujours moins convaincante que la réponse
-préparée, et celle-ci se défend très bien.
+It will come back, it will look like a bug, and the answer is in
+`docs/guides/pourquoi-admin-ne-voit-pas.md`. Read it **before** the first session:
+an improvised answer is always less convincing than a prepared one, and this one
+defends itself very well.
