@@ -1,20 +1,19 @@
-# Circulation de l'état
+# State flow
 
-Règle de décision. Elle ne se discute pas au cas par cas : si une situation ne
-rentre dans aucune ligne, c'est le modèle qu'on étend, pas l'exception qu'on
-ajoute.
+A decision rule. It is not debated case by case: if a situation fits no row, it
+is the model that gets extended, not the exception that gets added.
 
-## L'arbre de décision
+## The decision tree
 
-| La donnée…                                                    | Alors                                    |
-| ------------------------------------------------------------- | ---------------------------------------- |
-| vient du serveur, affichée telle quelle au chargement         | **Server Component**, `await` direct     |
-| vient du serveur, rechargée par l'interaction (filtre, page…) | **TanStack Query**                       |
-| est une écriture                                              | **Server Action** + `revalidatePath/Tag` |
-| est un état d'interface local à un composant                  | **`useState`**                           |
-| est un état d'interface partagé entre écrans                  | **un seul store Zustand**                |
+| The data…                                                      | Then                                     |
+| -------------------------------------------------------------- | ---------------------------------------- |
+| comes from the server, displayed as-is on load                 | **Server Component**, direct `await`     |
+| comes from the server, reloaded by interaction (filter, page…) | **TanStack Query**                       |
+| is a write                                                     | **Server Action** + `revalidatePath/Tag` |
+| is UI state local to one component                             | **`useState`**                           |
+| is UI state shared across screens                              | **one single Zustand store**             |
 
-### 1. Donnée serveur rendue au chargement → Server Component
+### 1. Server data rendered on load → Server Component
 
 ```tsx
 export default async function Page() {
@@ -24,13 +23,13 @@ export default async function Page() {
 }
 ```
 
-Pas de `useEffect`, pas de state, pas de spinner. La donnée fait partie du HTML.
-C'est le cas par défaut : on ne passe au client que si l'interaction l'exige.
+No `useEffect`, no state, no spinner. The data is part of the HTML. This is the
+default case: we only go to the client when interaction demands it.
 
-### 2. Donnée serveur interactive → TanStack Query
+### 2. Interactive server data → TanStack Query
 
-Dès que l'utilisateur pilote le rechargement — tri, filtre, pagination serveur,
-compteur de notifications — la donnée passe par un hook de feature.
+As soon as the user drives the reload — sorting, filtering, server-side
+pagination, notification counter — the data goes through a feature hook.
 
 ```ts
 useQuery({
@@ -39,17 +38,17 @@ useQuery({
 });
 ```
 
-Les clés viennent **toujours** de `src/lib/query-keys.ts`. Une clé écrite à la
-main dans un hook et une autre dans l'invalidation divergent au premier
-renommage, et le cache cesse silencieusement de se rafraîchir.
+Keys come **always** from `src/lib/query-keys.ts`. A key written by hand in a hook
+and another in the invalidation diverge at the first rename, and the cache
+silently stops refreshing.
 
-Réglages hérités de `src/app/providers.tsx` : `staleTime` 30 s, `retry` 1,
-`refetchOnWindowFocus` désactivé.
+Settings inherited from `src/app/providers.tsx`: `staleTime` 30 s, `retry` 1,
+`refetchOnWindowFocus` disabled.
 
 ### 3. Mutation → Server Action
 
-Une écriture n'appelle pas une route d'API depuis le client. Elle appelle une
-Server Action, qui appelle un service, qui rend un `Result<T, AppError>`.
+A write does not call an API route from the client. It calls a Server Action,
+which calls a service, which returns a `Result<T, AppError>`.
 
 ```ts
 "use server";
@@ -61,11 +60,11 @@ export async function submitOccurrence(input: SubmitInput) {
 }
 ```
 
-L'invalidation se fait par `revalidatePath` / `revalidateTag` côté serveur — pas
-en écrivant la réponse dans un state client. Le serveur reste la seule source de
-vérité, y compris juste après une écriture.
+Invalidation happens through `revalidatePath` / `revalidateTag` on the server —
+not by writing the response into client state. The server stays the single source
+of truth, including immediately after a write.
 
-### 3 bis. Lancer une mutation depuis un clic → `useActionRunner`
+### 3b. Firing a mutation from a click → `useActionRunner`
 
 ```tsx
 const [pending, run] = useActionRunner();
@@ -83,88 +82,85 @@ function submit(): void {
 }
 ```
 
-⚠️ **Aucun `router.refresh()` dans la tâche.** La Server Action appelle
-`revalidatePath` ; Next renvoie l'instruction de revalidation AVEC la réponse de
-l'action et rejoue la route lui-même. Un rafraîchissement client fait double
-emploi. Si l'écran ne se met pas à jour, ce n'est pas un rafraîchissement qui
-manque côté client : c'est un `revalidatePath` qui manque côté action.
+⚠️ **No `router.refresh()` inside the task.** The Server Action calls
+`revalidatePath`; Next returns the revalidation instruction WITH the action's
+response and replays the route itself. A client-side refresh duplicates it. If a
+screen does not update, what is missing is not a client refresh: it is a
+`revalidatePath` missing in the action.
 
-#### Les trois formes interdites, et ce que chacune perd
+#### The three forbidden shapes, and what each one loses
 
-Une règle ESLint (`conformia/no-async-transition`) les refuse, et le build
-échoue dessus.
+An ESLint rule (`conformia/no-async-transition`) refuses them, and the build fails
+on them.
 
-| Forme                                              | Ce qu'elle perd                                                                                                                                                              |
-| -------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `startTransition(async () => { … })`               | Les mises à jour qui suivent un `await` ne sont plus des mises à jour de transition (React le documente). Et deux exécutions lancées coup sur coup partent **en parallèle**. |
-| `startTransition(() => { void action().then(…) })` | La transition se referme avant le premier résultat : l'état d'attente **retombe aussitôt**, les boutons redeviennent cliquables pendant l'envoi.                             |
-| `router.refresh()` après un `await`                | Le rafraîchissement n'appartient plus à aucune transition et peut être annulé — mesuré en production sur le dépôt de pièces : `net::ERR_ABORTED`.                            |
+| Shape                                              | What it loses                                                                                                                            |
+| -------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------- |
+| `startTransition(async () => { … })`               | Updates after an `await` are no longer transition updates (React documents this). And two runs fired back to back go **in parallel**.    |
+| `startTransition(() => { void action().then(…) })` | The transition closes before the first result: the pending state **drops immediately**, and the buttons become clickable again mid-send. |
+| `router.refresh()` after an `await`                | The refresh no longer belongs to any transition and can be cancelled — measured in production on document upload: `net::ERR_ABORTED`.    |
 
-⚠️ **Ce que `startTransition(async …)` NE perd PAS**, contrairement à ce qu'on a
-cru : l'état d'attente. React 19 tient la transition ouverte jusqu'au bout de la
-fonction asynchrone. La mesure est dans
-`tests/unit/hooks/use-action-runner.test.tsx` — deux tentatives de test de bout
-en bout ont passé sur l'ancien code avant qu'elle ne dise pourquoi. Ce qui se
-perd vraiment est la MISE EN FILE : `useActionState` sérialise les envois,
-`useTransition` non.
+⚠️ **What `startTransition(async …)` does NOT lose**, contrary to what we
+believed: the pending state. React 19 holds the transition open until the async
+function finishes. The measurement is in
+`tests/unit/hooks/use-action-runner.test.tsx` — two end-to-end test attempts
+passed against the old code before it explained why. What is genuinely lost is
+QUEUEING: `useActionState` serialises submissions, `useTransition` does not.
 
-#### La seule exception, et pourquoi elle en est une
+#### The one exception, and why it is one
 
-`occurrence-checklist.tsx` conserve un `router.refresh()`. Le dépôt d'une pièce
-ne suit pas le cycle « clic → Server Action → revalidation » : le fichier part
-vers le Stockage, PUIS une action le confirme, et la page a déjà rendu. Le
-rafraîchissement y est déclenché par un effet dont la condition d'arrêt est un
-fait — la page a vu la pièce — et non enchaîné sur la fin d'une action, ce qui
-est précisément ce qui le rendait annulable.
+`occurrence-checklist.tsx` keeps a `router.refresh()`. Uploading a document does
+not follow the "click → Server Action → revalidation" cycle: the file goes to
+Storage, THEN an action confirms it, and the page has already rendered. The
+refresh there is driven by an effect whose stop condition is a fact — the page has
+seen the document — and not chained onto the end of an action, which is precisely
+what made it cancellable.
 
-### 4. État d'interface éphémère → `useState`
+### 4. Ephemeral UI state → `useState`
 
-Ouverture d'un menu, onglet actif, brouillon de champ non soumis, position d'un
-survol. Local au composant, mort avec lui. Aucun store, aucun contexte.
+An open menu, the active tab, an unsubmitted field draft, a hover position. Local
+to the component, dies with it. No store, no context.
 
-### 5. État d'interface partagé → un unique store Zustand
+### 5. Shared UI state → a single Zustand store
 
-Un seul store, pour ce qui survit à la navigation et concerne plusieurs écrans :
-repli de la barre latérale, densité d'affichage des tableaux, colonnes visibles,
-thème.
+One store, for what survives navigation and concerns several screens: sidebar
+collapse, table display density, visible columns, theme.
 
-Un seul, pas un par feature : multiplier les stores recrée le problème qu'ils
-étaient censés régler.
+One, not one per feature: multiplying stores recreates the problem they were
+meant to solve.
 
-## L'interdiction
+## The prohibition
 
-> **Aucune donnée serveur ne se copie dans Zustand. Jamais.**
+> **No server data is ever copied into Zustand. Ever.**
 
-Pas la liste des occurrences, pas l'occurrence courante, pas le profil, pas les
-permissions, pas un compteur venu de la base.
+Not the occurrence list, not the current occurrence, not the profile, not the
+permissions, not a counter from the database.
 
-La raison n'est pas esthétique. Une donnée dupliquée a deux âges : celui du
-serveur et celui du store. Ils divergent au premier onglet resté ouvert, au
-premier retour arrière, à la première mutation faite ailleurs. Sur un tableau de
-bord de conformité, cela veut dire afficher « déclaration déposée » pour une
-occurrence qui ne l'est pas. Le cache serveur (TanStack Query) sait invalider ;
-un store ne le sait pas.
+The reason is not aesthetic. Duplicated data has two ages: the server's and the
+store's. They diverge at the first tab left open, the first back navigation, the
+first mutation made elsewhere. On a compliance dashboard, that means showing
+"declaration filed" for an occurrence that is not. The server cache (TanStack
+Query) knows how to invalidate; a store does not.
 
-Si une donnée serveur doit être lue à plusieurs endroits : même `queryKey`,
-TanStack Query s'occupe du partage. Si elle doit être connue au premier rendu :
-Server Component, et descente par props ou contexte.
+If server data must be read in several places: same `queryKey`, and TanStack Query
+handles the sharing. If it must be known at first render: Server Component, and
+pass it down by props or context.
 
-### L'exception qui n'en est pas une
+### The exception that is not one
 
-`useCurrentUser()` expose l'utilisateur, ses rôles et ses permissions par
-contexte React. Ce n'est pas un store : la valeur est calculée par le Server
-Component racine à chaque rendu et n'est jamais écrite côté client. Elle est
-donc aussi fraîche que la page elle-même.
+`useCurrentUser()` exposes the user, their roles and their permissions through
+React context. It is not a store: the value is computed by the root Server
+Component on every render and is never written client-side. It is therefore
+exactly as fresh as the page itself.
 
-Ces permissions servent à **masquer** l'interface. Elles n'autorisent rien :
-l'autorité reste la RLS Postgres. Un bouton affiché à tort est un défaut
-d'affichage ; une policy trop permissive est une fuite.
+Those permissions serve to **hide** the interface. They authorise nothing: the
+authority remains Postgres RLS. A button shown in error is a display bug; an
+over-permissive policy is a leak.
 
-## Où vit quoi
+## Where things live
 
-| Fichier                         | Rôle                                         |
-| ------------------------------- | -------------------------------------------- |
-| `src/app/providers.tsx`         | `QueryClientProvider` + contexte utilisateur |
-| `src/lib/query-keys.ts`         | fabrique des clés de cache — source unique   |
-| `src/hooks/use-current-user.ts` | identité et droits, sans appel réseau        |
-| `src/stores/ui-store.ts`        | l'unique store Zustand (à créer au besoin)   |
+| File                            | Role                                        |
+| ------------------------------- | ------------------------------------------- |
+| `src/app/providers.tsx`         | `QueryClientProvider` + user context        |
+| `src/lib/query-keys.ts`         | cache key factory — single source           |
+| `src/hooks/use-current-user.ts` | identity and permissions, no network call   |
+| `src/stores/ui-store.ts`        | the single Zustand store (create as needed) |

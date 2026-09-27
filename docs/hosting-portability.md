@@ -1,56 +1,54 @@
-# Portabilité de l'hébergement
+# Hosting portability
 
-> La question de la localisation légale des données en Algérie n'est pas
-> tranchée. L'architecture doit rendre la réponse **indolore**, quelle qu'elle
-> soit.
+> Whether the data must legally reside in Algeria is not settled. The
+> architecture has to make the answer **painless**, whichever way it goes.
 
-Ce document existe pour qu'une décision juridique ne se transforme pas en projet
-de réécriture. Il énumère ce dont l'application dépend réellement, et ce qu'il
-faut changer pour la déplacer.
-
----
-
-## Ce dont l'application dépend
-
-**Deux choses, et rien d'autre :**
-
-| Dépendance                       | Interface employée                       | Fournisseur substituable                   |
-| -------------------------------- | ---------------------------------------- | ------------------------------------------ |
-| **PostgreSQL 15+**               | SQL standard, RLS, `pg_cron`, `pgcrypto` | Oui — Supabase, RDS, Cloud SQL, serveur nu |
-| **Stockage objet compatible S3** | API Storage de `@supabase/supabase-js`   | Oui — MinIO, Ceph, Wasabi, S3              |
-
-Tout le reste — Next.js, le rendu, les tâches planifiées — s'exécute sur un
-serveur Node ordinaire.
-
-### Ce qui n'est _pas_ une dépendance
-
-- **Aucune fonction Edge de l'hébergeur.** Les tâches planifiées passent par
-  `pg_cron` + `pg_net`, ou par de simples routes HTTP authentifiées
-  (`/api/cron/*`) qu'un `cron` système peut appeler. Les deux chemins existent et
-  sont éprouvés.
-- **Aucun service propriétaire d'authentification en dehors de GoTrue**, qui est
-  libre et auto-hébergeable.
-- **Aucune extension PostgreSQL exclusive à un hébergeur.** `pg_cron`,
-  `pgcrypto`, `pg_net` sont disponibles partout ; leur absence est _dégradante_,
-  pas bloquante (les migrations le disent explicitement et proposent le repli).
+This document exists so that a legal decision does not turn into a rewrite
+project. It lists what the application actually depends on, and what has to change
+to move it.
 
 ---
 
-## Basculer vers une instance auto-hébergée
+## What the application depends on
 
-### 1. Variables d'environnement à modifier
+**Two things, and nothing else:**
 
-**Ce sont les seules.** Aucune ligne de code applicatif ne change.
+| Dependency                     | Interface used                           | Substitutable provider                      |
+| ------------------------------ | ---------------------------------------- | ------------------------------------------- |
+| **PostgreSQL 15+**             | standard SQL, RLS, `pg_cron`, `pgcrypto` | Yes — Supabase, RDS, Cloud SQL, bare server |
+| **S3-compatible object store** | Storage API of `@supabase/supabase-js`   | Yes — MinIO, Ceph, Wasabi, S3               |
+
+Everything else — Next.js, rendering, scheduled jobs — runs on an ordinary Node
+server.
+
+### What is _not_ a dependency
+
+- **No host Edge function.** Scheduled jobs go through `pg_cron` + `pg_net`, or
+  through plain authenticated HTTP routes (`/api/cron/*`) that a system `cron` can
+  call. Both paths exist and are exercised.
+- **No proprietary authentication service other than GoTrue**, which is open
+  source and self-hostable.
+- **No PostgreSQL extension exclusive to one host.** `pg_cron`, `pgcrypto` and
+  `pg_net` are available everywhere; their absence is _degrading_, not blocking
+  (the migrations say so explicitly and offer the fallback).
+
+---
+
+## Switching to a self-hosted instance
+
+### 1. Environment variables to change
+
+**These are the only ones.** No line of application code changes.
 
 ```diff
 - NEXT_PUBLIC_SUPABASE_URL="https://xxxx.supabase.co"
 + NEXT_PUBLIC_SUPABASE_URL="https://conformia.agroespace.dz"
 
-- NEXT_PUBLIC_SUPABASE_ANON_KEY="…clé du projet hébergé…"
-+ NEXT_PUBLIC_SUPABASE_ANON_KEY="…clé de l'instance locale…"
+- NEXT_PUBLIC_SUPABASE_ANON_KEY="…hosted project key…"
++ NEXT_PUBLIC_SUPABASE_ANON_KEY="…local instance key…"
 
-- SUPABASE_SERVICE_ROLE_KEY="…clé du projet hébergé…"
-+ SUPABASE_SERVICE_ROLE_KEY="…clé de l'instance locale…"
+- SUPABASE_SERVICE_ROLE_KEY="…hosted project key…"
++ SUPABASE_SERVICE_ROLE_KEY="…local instance key…"
 
 - DATABASE_URL="postgresql://…@db.xxxx.supabase.co:5432/postgres"
 + DATABASE_URL="postgresql://…@10.0.0.12:5432/conformia"
@@ -58,110 +56,123 @@ serveur Node ordinaire.
   NEXT_PUBLIC_APP_URL="https://conformia.agroespace.dz"
 ```
 
-Les variables de sauvegarde, de courriel et de cron sont indépendantes de
-l'hébergeur et ne bougent pas.
+The backup, email and cron variables are host-independent and do not move.
 
-### 2. Réglages en base, pas en code
+### 2. Settings in the database, not in code
 
-Deux paramètres pointent vers les routes de tâches planifiées et se règlent en
-SQL :
-
-```sql
-alter database conformia set "app.generate_occurrences_url" =
-  'https://conformia.agroespace.dz/api/cron/generate';
-alter database conformia set "app.notifications_url" =
-  'https://conformia.agroespace.dz/api/cron/notifications';
-alter database conformia set "app.backup_url" =
-  'https://conformia.agroespace.dz/api/cron/backup';
-alter database conformia set "app.restore_test_url" =
-  'https://conformia.agroespace.dz/api/cron/restore-test';
-```
-
-Le fournisseur de courriel se change **sans redéploiement**, par une écriture :
+⚠️ **This section used to be wrong, and the way it was wrong matters.** It said
+the scheduled-job addresses were set with:
 
 ```sql
-update public.app_settings set email_provider = 'smtp';
+alter database conformia set "app.generate_occurrences_url" = '…';   -- ✗ never worked
 ```
 
-### 3. Migration des données
+A custom parameter can only be stored durably with SUPERUSER, which Supabase does
+not grant — not on the hosted offering, and not on the local stack either. The
+setting would have stayed NULL forever, and the job would have posted to an empty
+address. It also listed `app.backup_url` and `app.restore_test_url`, which pointed
+at routes that do not exist.
+
+Since migration 0025 the configuration lives in a table, written by a script:
 
 ```bash
-# 1. Export depuis l'instance actuelle
-npm run backup -- --kind=MANUAL
-
-# 2. Restauration sur la nouvelle
-npm run restore -- --archive=… --target=postgresql://…/conformia_restore --storage=/srv/storage
-
-# 3. Contrôles (docs/restore-procedure.md, étapes 4 et 5), puis bascule du DNS
+DATABASE_URL="postgresql://…" \
+NEXT_PUBLIC_APP_URL="https://conformia.agroespace.dz" \
+CRON_SECRET="<the same one as the application>" \
+npm run cron:config
 ```
 
-### 4. Ce qu'il faut prévoir côté infrastructure
+Two jobs, not five: `generate_occurrences_url` and `notifications_url`. The weekly
+digest is already produced by the notification cycle; the backup and the restore
+drill are **scripts**, not routes, and are scheduled by the operating system.
 
-| Composant      | Auto-hébergé                                    |
+The email provider changes **without redeployment**, by one write:
+
+```sql
+update public.app_settings set value = to_jsonb('smtp'::text) where key = 'email_provider';
+```
+
+⚠️ Not `set email_provider = 'smtp'`. That column existed alongside the key/value
+row, the screen wrote the row and the code read the column, and the switch had no
+effect. Migration 0026 removed the column.
+
+### 3. Data migration
+
+```bash
+# 1. Export from the current instance
+npm run backup -- --kind=MANUAL
+
+# 2. Restore onto the new one
+npm run restore -- --archive=… --target=postgresql://…/conformia_restore --storage=/srv/storage
+
+# 3. Checks (docs/restore-procedure.md, steps 4 and 5), then switch DNS
+```
+
+### 4. What to plan for on the infrastructure side
+
+| Component      | Self-hosted                                     |
 | -------------- | ----------------------------------------------- |
 | PostgreSQL     | 15+, extensions `pgcrypto`, `pg_cron`, `pg_net` |
-| Stockage objet | MinIO ou équivalent S3, bucket **privé**        |
-| GoTrue         | Conteneur officiel `supabase/gotrue`            |
-| PostgREST      | Conteneur officiel `postgrest/postgrest`        |
-| Storage API    | Conteneur officiel `supabase/storage-api`       |
+| Object storage | MinIO or S3-equivalent, **private** bucket      |
+| GoTrue         | Official `supabase/gotrue` container            |
+| PostgREST      | Official `postgrest/postgrest` container        |
+| Storage API    | Official `supabase/storage-api` container       |
 | Application    | Node 22+, `npm run build && npm run start`      |
-| TLS            | Terminaison au reverse proxy                    |
+| TLS            | Terminated at the reverse proxy                 |
 
-L'ensemble tient dans le `docker-compose` de référence de Supabase, sur une
-machine unique. Le dimensionnement est modeste : le volume annuel d'AGROESPACE se
-compte en centaines de dossiers, pas en millions.
-
----
-
-## Ce qui ne se transporte pas tel quel
-
-Honnêteté sur les points de friction. Aucun n'est bloquant ; tous demandent une
-demi-journée.
-
-1. **Le PITR (niveau 1 des sauvegardes)** est un service de l'hébergeur.
-   Auto-hébergé, il faut le reconstituer avec `wal-g` ou `pgBackRest`. La
-   sauvegarde de niveau 2, elle, fonctionne à l'identique — c'est précisément
-   pourquoi elle existe.
-
-2. **Les jetons JWT changent de secret.** Toutes les sessions sont invalidées à
-   la bascule : les utilisateurs se reconnectent. À annoncer, pas à découvrir.
-
-3. **Les liens de flux calendrier (ICS) contiennent le domaine.** Après bascule,
-   chaque abonné doit se réabonner — l'ancien lien pointe vers un hôte qui ne
-   répond plus. L'écran `/profile/calendar` porte déjà l'instruction.
-
-4. **`pg_net` n'est pas installé partout.** Sans lui, les migrations basculent sur
-   un `raise notice` et les tâches doivent être appelées par un `cron` système
-   sur les routes `/api/cron/*`, avec `CRON_SECRET`. Le chemin est éprouvé par le
-   test `e2e/cron-generation.spec.ts`.
+The whole thing fits in Supabase's reference `docker-compose`, on a single
+machine. Sizing is modest: AGROESPACE's annual volume is counted in hundreds of
+dossiers, not millions.
 
 ---
 
-## Vérifier la portabilité, plutôt que l'affirmer
+## What does not travel as-is
 
-L'application tourne déjà sur **deux hébergements différents** dans son cycle de
-développement :
+Honesty about the friction points. None is blocking; all take half a day.
 
-- la pile Supabase locale (`supabase start`), qui est l'auto-hébergement en
-  miniature — mêmes conteneurs, mêmes versions ;
-- l'environnement de développement de chacun.
+1. **PITR (backup level 1)** is a host service. Self-hosted, it has to be rebuilt
+   with `wal-g` or `pgBackRest`. Level 2 backup works identically — which is
+   precisely why it exists.
 
-L'intégralité de la suite d'intégration et des tests de bout en bout s'exécute
-contre la pile **locale**. Autrement dit : le mode auto-hébergé n'est pas une
-hypothèse documentée, c'est le mode dans lequel le projet est testé tous les
-jours.
+2. **The JWT tokens change secret.** Every session is invalidated at the switch:
+   users sign in again. To be announced, not discovered.
+
+3. **Calendar feed links (ICS) contain the domain.** After the switch each
+   subscriber has to resubscribe — the old link points at a host that no longer
+   answers. The `/profile/calendar` screen already carries the instruction.
+
+4. **`pg_net` is not installed everywhere.** Without it the migrations fall back
+   to a `raise notice`, and the jobs must be called by a system `cron` on the
+   `/api/cron/*` routes, with `CRON_SECRET`. ⚠️ On a fresh Supabase project pg_net
+   is **available but not created** — migration 0025 now creates it explicitly,
+   after a stack where its absence made every scheduled job fail on "schema net
+   does not exist", visible only in `cron.job_run_details`.
 
 ---
 
-## Décision à prendre par la direction
+## Verify portability, rather than asserting it
 
-La bascule est une opération d'une journée, dont la moitié est du contrôle. Ce
-qui doit être arbitré n'est pas technique :
+The application already runs on **two different hostings** in its development
+cycle:
 
-- [ ] Les données doivent-elles résider sur le territoire algérien ?
-- [ ] Si oui, sur une infrastructure d'AGROESPACE ou chez un hébergeur local ?
-- [ ] Qui exploite PostgreSQL au quotidien — mises à jour, supervision,
-      sauvegardes de niveau 1 ?
+- the local Supabase stack (`supabase start`), which is self-hosting in miniature
+  — same containers, same versions;
+- each developer's environment.
 
-La troisième question est la vraie. L'hébergement managé achète de
-l'exploitation, pas de la technique.
+The whole integration suite and the end-to-end tests run against the **local**
+stack. In other words: self-hosted mode is not a documented hypothesis, it is the
+mode the project is tested in every day.
+
+---
+
+## Decision for management
+
+The switch is a one-day operation, half of which is verification. What has to be
+settled is not technical:
+
+- [ ] Must the data reside on Algerian territory?
+- [ ] If so, on AGROESPACE infrastructure or with a local host?
+- [ ] Who operates PostgreSQL day to day — updates, monitoring, level-1 backups?
+
+The third question is the real one. Managed hosting buys operations, not
+technology.
