@@ -152,7 +152,7 @@ revoke all on function public.dispatch_cron_post(text) from anon, authenticated;
 --     Elle doit produire une archive sur un disque contrôlé par AGROESPACE ;
 --     une route servie par l'application n'a accès ni à ce disque ni à
 --     `pg_dump`. Ces deux-là relèvent de l'ordonnanceur du système
---     d'exploitation — voir `docs/deploiement.md`.
+--     d'exploitation — voir `docs/deployment.md`.
 --
 -- ⚠️ LES SUPPRIMER EST PLUS SÛR QUE LES LAISSER. Une tâche planifiée qui échoue
 -- chaque nuit apprend à ignorer `cron.job_run_details` ; et tant qu'elle figure

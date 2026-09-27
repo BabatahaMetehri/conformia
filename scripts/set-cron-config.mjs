@@ -31,7 +31,7 @@ import pg from "pg";
  * Le resume hebdomadaire n'y figure PAS : il est deja produit par le cycle de
  * notification, qui appelle scheduleWeeklyDigest a chaque passage. La sauvegarde
  * non plus : c'est un script (npm run backup), pas une route — elle ecrit sur un
- * disque que l'application ne voit pas. Voir docs/deploiement.md.
+ * disque que l'application ne voit pas. Voir docs/deployment.md.
  */
 const ROUTES = Object.freeze({
   generate_occurrences_url: "/api/cron/generate",

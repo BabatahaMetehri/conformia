@@ -9,12 +9,12 @@ Everything you need to do, in order, explained simply.
 
 This file is the **starting point**. The others go deeper:
 
-| File                          | What it holds                                 |
-| ----------------------------- | --------------------------------------------- |
-| `docs/deploiement.md`         | Technical detail of the installation (French) |
-| `docs/go-live.md`             | What must be settled before opening (French)  |
-| `docs/runbook.md`             | Day-to-day: what to do when something sticks  |
-| `docs/migrations-rollback.md` | Rolling a migration back                      |
+| File                          | What it holds                                |
+| ----------------------------- | -------------------------------------------- |
+| `docs/deployment.md`          | Technical detail of the installation         |
+| `docs/go-live.md`             | What must be settled before opening (French) |
+| `docs/runbook.md`             | Day-to-day: what to do when something sticks |
+| `docs/migrations-rollback.md` | Rolling a migration back                     |
 
 ---
 
