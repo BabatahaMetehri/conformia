@@ -1836,6 +1836,24 @@ export type Database = {
           },
         ]
       }
+      cron_dispatch_config: {
+        Row: {
+          key: string
+          updated_at: string
+          value: string
+        }
+        Insert: {
+          key: string
+          updated_at?: string
+          value: string
+        }
+        Update: {
+          key?: string
+          updated_at?: string
+          value?: string
+        }
+        Relationships: []
+      }
       departments: {
         Row: {
           code: string
@@ -5352,6 +5370,30 @@ export type Database = {
           },
         ]
       }
+      cron_dispatch_log: {
+        Row: {
+          accepted: boolean | null
+          dispatched_at: string | null
+          id: number | null
+          response_excerpt: string | null
+          status_code: number | null
+        }
+        Insert: {
+          accepted?: never
+          dispatched_at?: string | null
+          id?: number | null
+          response_excerpt?: never
+          status_code?: number | null
+        }
+        Update: {
+          accepted?: never
+          dispatched_at?: string | null
+          id?: number | null
+          response_excerpt?: never
+          status_code?: number | null
+        }
+        Relationships: []
+      }
       current_absences: {
         Row: {
           created_at: string | null
@@ -6296,6 +6338,7 @@ export type Database = {
         Args: { p_handover_to?: string; p_reason: string; p_user_id: string }
         Returns: number
       }
+      dispatch_cron_post: { Args: { p_key: string }; Returns: undefined }
       dispatch_transition_notifications: {
         Args: {
           p_from: Database["public"]["Enums"]["occurrence_status"]
