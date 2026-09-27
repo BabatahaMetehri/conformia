@@ -332,3 +332,39 @@ comment on function public.count_propagable_occurrences(uuid) is
   'Nombre de dossiers qu''une propagation toucherait. ⚠️ MÊMES conditions que '
   '`propagate_default_assignment`, cloisonnement compris : un comptage plus '
   'large annoncerait un nombre que la propagation ne tiendrait pas.';
+
+-- =============================================================================
+-- APPENDICE — VALEURS D'ÉNUMÉRATION DE LA TRIADE
+--
+-- ⚠️ CES QUATRE LIGNES SONT ICI POUR UNE RAISON DE TRANSACTION, PAS DE SUJET.
+-- Elles appartiennent logiquement à 0022, qui introduit la triade. Elles ont dû
+-- remonter d'un fichier parce que PostgreSQL refuse qu'une valeur ajoutée par
+-- `alter type … add value` soit UTILISÉE dans la transaction qui l'ajoute :
+--
+--     ERROR: unsafe use of new value "RESPONSIBLE" of enum type
+--            public.notification_audience (SQLSTATE 55P04)
+--
+-- 0022 connaissait la règle et isolait déjà ces ajouts dans sa « section 1 ».
+-- Mais une section n'est pas une transaction : le CLI Supabase applique CHAQUE
+-- FICHIER dans une transaction unique, si bien que l'ajout et l'usage y
+-- restaient ensemble. Seul un fichier séparé sépare réellement.
+--
+-- ⚠️ LE DÉFAUT NE POUVAIT PAS SE VOIR EN DÉVELOPPEMENT. Sur un poste où les
+-- migrations ont été appliquées une par une au fil des semaines, chacune a eu sa
+-- propre transaction et tout s'est bien passé. Il n'apparaît qu'à la PREMIÈRE
+-- installation depuis zéro — c'est-à-dire précisément au moment de créer la base
+-- de production, et nulle part avant.
+--
+-- Les mêmes instructions restent dans 0022 : portées par `if not exists`, elles
+-- y sont désormais sans effet. Les y laisser évite de toucher au corps d'une
+-- migration déjà appliquée.
+-- =============================================================================
+
+alter type public.notification_audience add value if not exists 'RESPONSIBLE';
+alter type public.notification_audience add value if not exists 'DEPUTY';
+alter type public.notification_audience add value if not exists 'SUPERVISOR';
+
+-- WHATSAPP reste déclaré sans être implémenté — 0022 dit pourquoi : le courriel
+-- est le seul canal externe retenu. Repris ici pour la même raison de
+-- transaction, sans rien changer à cette décision.
+alter type public.notification_channel add value if not exists 'WHATSAPP';
