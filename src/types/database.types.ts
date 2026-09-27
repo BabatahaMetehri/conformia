@@ -2972,6 +2972,8 @@ export type Database = {
       }
       documents: {
         Row: {
+          archived_in_backup_id: number | null
+          archived_offline_at: string | null
           bucket: string
           checklist_item_id: string | null
           deleted_at: string | null
@@ -2996,6 +2998,8 @@ export type Database = {
           version: number
         }
         Insert: {
+          archived_in_backup_id?: number | null
+          archived_offline_at?: string | null
           bucket?: string
           checklist_item_id?: string | null
           deleted_at?: string | null
@@ -3020,6 +3024,8 @@ export type Database = {
           version?: number
         }
         Update: {
+          archived_in_backup_id?: number | null
+          archived_offline_at?: string | null
           bucket?: string
           checklist_item_id?: string | null
           deleted_at?: string | null
@@ -3044,6 +3050,13 @@ export type Database = {
           version?: number
         }
         Relationships: [
+          {
+            foreignKeyName: "documents_archived_in_backup_id_fkey"
+            columns: ["archived_in_backup_id"]
+            isOneToOne: false
+            referencedRelation: "backup_runs"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "documents_checklist_item_id_fkey"
             columns: ["checklist_item_id"]
@@ -5796,6 +5809,18 @@ export type Database = {
           },
         ]
       }
+      exercise_inventory: {
+        Row: {
+          dossiers: number | null
+          entierement_archive: boolean | null
+          exercice: number | null
+          hors_fenetre: boolean | null
+          octets_en_ligne: number | null
+          pieces: number | null
+          pieces_en_ligne: number | null
+        }
+        Relationships: []
+      }
       holiday_calendar_coverage: {
         Row: {
           civil_count: number | null
@@ -6562,6 +6587,10 @@ export type Database = {
         Returns: undefined
       }
       mark_backup_verified: { Args: { p_id: number }; Returns: undefined }
+      mark_exercise_archived: {
+        Args: { p_backup_run_id: number; p_year: number }
+        Returns: number
+      }
       mark_notifications_failed: {
         Args: { p_error: string; p_ids: number[] }
         Returns: number
