@@ -91,6 +91,8 @@ export function UsersView({
     roleId: "",
     domainId: "",
     roleExpiresAt: "",
+    phone: "",
+    jobTitle: "",
   });
   const [grant, setGrant] = useState({ roleId: "", domainId: "", expiresAt: "" });
 
@@ -344,6 +346,33 @@ export function UsersView({
                 }}
               />
             </Field>
+            <Field label={t("phone")} htmlFor="invite-phone">
+              <Input
+                id="invite-phone"
+                type="tel"
+                placeholder={t("phonePlaceholder")}
+                value={invite.phone}
+                onChange={(event) => {
+                  setInvite({ ...invite, phone: event.target.value });
+                }}
+              />
+            </Field>
+            {/*
+              ⚠️ LA FONCTION N'EST PAS LE ROLE. Elle est informative et n'ouvre
+              aucun droit : un « Directeur financier » ne valide rien s'il ne
+              porte pas SUPERVISEUR ou DIRECTION. Les deux champs se suivent
+              volontairement, pour que la difference se voie a la saisie.
+            */}
+            <Field label={t("jobTitle")} htmlFor="invite-job">
+              <Input
+                id="invite-job"
+                placeholder={t("jobTitlePlaceholder")}
+                value={invite.jobTitle}
+                onChange={(event) => {
+                  setInvite({ ...invite, jobTitle: event.target.value });
+                }}
+              />
+            </Field>
             <Picker
               label={t("department")}
               value={invite.departmentId}
@@ -417,6 +446,8 @@ export function UsersView({
                     roleId: invite.roleId,
                     domainId: invite.domainId === "" ? null : invite.domainId,
                     roleExpiresAt: invite.roleExpiresAt === "" ? null : invite.roleExpiresAt,
+                    phone: invite.phone === "" ? null : invite.phone,
+                    jobTitle: invite.jobTitle === "" ? null : invite.jobTitle,
                   }),
                   t("invited"),
                   () => {

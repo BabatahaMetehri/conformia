@@ -4901,6 +4901,8 @@ export type Database = {
           full_name: string
           id: string
           invited_by: string
+          job_title: string | null
+          phone: string | null
           role_expires_at: string | null
           role_id: string
         }
@@ -4916,6 +4918,8 @@ export type Database = {
           full_name: string
           id?: string
           invited_by: string
+          job_title?: string | null
+          phone?: string | null
           role_expires_at?: string | null
           role_id: string
         }
@@ -4931,6 +4935,8 @@ export type Database = {
           full_name?: string
           id?: string
           invited_by?: string
+          job_title?: string | null
+          phone?: string | null
           role_expires_at?: string | null
           role_id?: string
         }

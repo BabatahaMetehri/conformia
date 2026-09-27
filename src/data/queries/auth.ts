@@ -27,6 +27,7 @@ export interface ProfileSummary {
   readonly email: string | null;
   readonly departmentId: string | null;
   readonly jobTitle: string | null;
+  readonly phone: string | null;
   readonly isActive: boolean;
   readonly mfaEnrolled: boolean;
 }
@@ -78,6 +79,7 @@ export async function getProfile(userId: ProfileId): Promise<Result<ProfileSumma
     email: data.email,
     departmentId: data.department_id,
     jobTitle: data.job_title,
+    phone: data.phone,
     isActive: data.is_active,
     mfaEnrolled: data.mfa_enrolled,
   });

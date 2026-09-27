@@ -83,6 +83,9 @@ export interface InviteInput {
   readonly roleId: string;
   readonly domainId: string | null;
   readonly roleExpiresAt: string | null;
+  /** Coordonnees reportees sur le profil a l'acceptation. Facultatives. */
+  readonly phone: string | null;
+  readonly jobTitle: string | null;
 }
 
 /**
@@ -109,6 +112,17 @@ export async function inviteUser(input: InviteInput): Promise<Result<string>> {
     return err(AppError.validationFailed({ field: "fullName", reason: "NAME_TOO_SHORT" }));
   }
 
+  /*
+   * Les coordonnees sont NETTOYEES mais jamais exigees. Refuser une invitation
+   * faute de numero empecherait de creer un compte pour quelqu'un qu'on joint
+   * autrement — et l'administrateur contournerait en saisissant n'importe quoi,
+   * ce qui est pire qu'un champ vide.
+   */
+  const trimOrNull = (value: string | null): string | null => {
+    const cleaned = (value ?? "").trim();
+    return cleaned.length === 0 ? null : cleaned;
+  };
+
   return insertInvitation({
     email,
     fullName: input.fullName.trim(),
@@ -116,6 +130,8 @@ export async function inviteUser(input: InviteInput): Promise<Result<string>> {
     roleId: input.roleId,
     domainId: input.domainId,
     roleExpiresAt: input.roleExpiresAt,
+    phone: trimOrNull(input.phone),
+    jobTitle: trimOrNull(input.jobTitle),
     invitedBy: context.value.userId,
   });
 }

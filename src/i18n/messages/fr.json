@@ -54,7 +54,11 @@
       "resetMfaHint": "Action fortement journalisée : la Direction en est informée.",
       "mfaReset": "Second facteur réinitialisé.",
       "reason": "Motif",
-      "reasonMin": "{min} caractères minimum."
+      "reasonMin": "{min} caractères minimum.",
+      "phone": "Téléphone",
+      "phonePlaceholder": "0550 12 34 56",
+      "jobTitle": "Fonction",
+      "jobTitlePlaceholder": "Comptable, responsable RH…"
     },
     "roles": {
       "loadFailed": "La matrice n'a pas pu être chargée.",
@@ -1836,7 +1840,8 @@
       "fullName": "Nom complet",
       "email": "Adresse professionnelle",
       "jobTitle": "Fonction",
-      "department": "Service"
+      "department": "Service",
+      "phone": "Téléphone"
     },
     "rolesTitle": "Rôles et portée",
     "noRoles": "Aucun rôle actif. Sans rôle, aucun dossier n'est visible — contactez votre administrateur.",

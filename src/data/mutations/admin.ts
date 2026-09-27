@@ -22,6 +22,8 @@ export interface NewInvitation {
   readonly roleId: string;
   readonly domainId: string | null;
   readonly roleExpiresAt: string | null;
+  readonly phone: string | null;
+  readonly jobTitle: string | null;
   readonly invitedBy: string;
 }
 
@@ -37,6 +39,8 @@ export async function insertInvitation(invitation: NewInvitation): Promise<Resul
       role_id: invitation.roleId,
       domain_id: invitation.domainId,
       role_expires_at: invitation.roleExpiresAt,
+      phone: invitation.phone,
+      job_title: invitation.jobTitle,
       invited_by: invitation.invitedBy,
     })
     .select("id")

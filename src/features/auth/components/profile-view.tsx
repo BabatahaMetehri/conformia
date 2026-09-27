@@ -71,6 +71,7 @@ export async function ProfileView({
         <dl className="rounded-lg border border-border bg-surface px-4 py-1">
           <Row label={t("fields.fullName")}>{profile.fullName ?? t("notProvided")}</Row>
           <Row label={t("fields.email")}>{profile.email ?? t("notProvided")}</Row>
+          <Row label={t("fields.phone")}>{profile.phone ?? t("notProvided")}</Row>
           <Row label={t("fields.jobTitle")}>{profile.jobTitle ?? t("notProvided")}</Row>
           <Row label={t("fields.department")}>{departmentName ?? t("notProvided")}</Row>
         </dl>

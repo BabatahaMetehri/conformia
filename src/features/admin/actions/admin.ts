@@ -66,6 +66,14 @@ const InviteSchema = z.object({
     .string()
     .regex(/^\d{4}-\d{2}-\d{2}$/)
     .nullable(),
+  /*
+   * ⚠️ FACULTATIVES, ET BORNEES. Un telephone n'a pas de format universel —
+   * l'Algerie ecrit « 0550 12 34 56 », « +213 550 123 456 » et « 05.50.12.34.56 »
+   * pour le meme numero. Imposer un motif ferait rejeter des numeros valides ;
+   * on borne donc la longueur et rien d'autre.
+   */
+  phone: z.string().trim().max(40).nullable().default(null),
+  jobTitle: z.string().trim().max(120).nullable().default(null),
 });
 
 export async function inviteUserAction(input: unknown): Promise<IdOutcome> {
