@@ -1,40 +1,40 @@
-# Modèle de données
+# Data model
 
-91 tables, **toutes** avec RLS activée. Ce document donne la structure et, surtout,
-les raisons — la forme exacte des colonnes vit dans `supabase/migrations/`.
+96 tables, **all** with RLS enabled. This document gives the structure and, above
+all, the reasons — the exact shape of the columns lives in `supabase/migrations/`.
 
-## Les deux objets qui portent tout
+## The two objects that carry everything
 
 ### Obligation (`obligation_types`)
 
-Décrite **une seule fois**. Elle porte ses règles, pas ses instances : périodicité,
-mode de calcul d'échéance (`due_rule`, en `jsonb`), pièces requises, entité
-responsable, base légale, criticité, nombre de niveaux de validation.
+Described **once**. It carries its rules, not its instances: periodicity, due-date
+calculation method (`due_rule`, as `jsonb`), required documents, responsible
+entity, legal basis, criticality, number of validation levels.
 
-⚠️ **`due_rule` est de la donnée, pas du code.** Ajouter une obligation ne demande
-aucun déploiement. Une règle qui ne s'exprime pas avec le modèle fait étendre le
-modèle, jamais le code (CLAUDE.md §3.5).
+⚠️ **`due_rule` is data, not code.** Adding an obligation requires no deployment. A
+rule that cannot be expressed with the model extends the model, never the code
+(CLAUDE.md §3.5).
 
 ### Occurrence (`obligation_occurrences`)
 
-Instance datée, **générée automatiquement**. C'est l'objet de travail quotidien.
-Jamais saisie à la main dans le flux nominal.
+A dated instance, **generated automatically**. This is the daily working object.
+Never entered by hand in the normal flow.
 
-Unicité : `(entity_id, obligation_type_id, period_key)` — c'est ce qui rend la
-génération rejouable sans produire de doublon.
+Uniqueness: `(entity_id, obligation_type_id, period_key)` — that is what makes
+generation replayable without producing duplicates.
 
-⚠️ **Aucune colonne de montant, par décision arrêtée.** La plateforme suit la
-DÉMARCHE, pas les chiffres. Ajouter un montant en ferait un outil comptable, avec les
-obligations de justesse et de rapprochement qui vont avec.
+⚠️ **No amount column, by settled decision.** The platform tracks the PROCESS, not
+the figures. Adding an amount would make it an accounting tool, with the
+correctness and reconciliation obligations that come with one.
 
-Deux échéances, toujours :
+Two deadlines, always:
 
-- `legal_due_date` — celle de l'administration ;
-- `internal_due_date` — celle de l'équipe, en avance de quelques **jours ouvrés**
-  selon la criticité (7 / 5 / 3 / 0). Les alertes portent sur l'échéance **interne** :
-  alerter à la date légale, c'est alerter trop tard.
+- `legal_due_date` — the authority's;
+- `internal_due_date` — the team's, earlier by a few **working days** according to
+  criticality (7 / 5 / 3 / 0). Alerts are based on the **internal** deadline:
+  alerting on the legal date is alerting too late.
 
-## Cycle de vie
+## Life cycle
 
 ```
 TODO → IN_PROGRESS → PENDING_VALIDATION → VALIDATED → SUBMITTED → ARCHIVED
@@ -43,102 +43,122 @@ TODO → IN_PROGRESS → PENDING_VALIDATION → VALIDATED → SUBMITTED → ARCH
                             └─→ NOT_APPLICABLE
 ```
 
-⚠️ **Les transitions sont des DONNÉES**, dans `status_transition_rules` — pas un
-`switch`. Toute transition passe par `evaluate_transition()` puis
-`apply_occurrence_transition()`, qui vérifient dans cet ordre :
+⚠️ **The transitions are DATA**, in `status_transition_rules` — not a `switch`.
+Every transition goes through `evaluate_transition()` then
+`apply_occurrence_transition()`, which check, in this order:
 
-1. la transition est permise depuis l'état courant ;
-2. l'acteur détient la permission ;
-3. les pièces obligatoires sont présentes (`occurrence_missing_items()`) ;
-4. le préparateur n'est pas le valideur ;
-5. la référence d'organisme et la preuve de dépôt existent, si l'obligation les exige ;
-6. le motif de retard est fourni au-delà de l'échéance légale.
+1. the transition is permitted from the current state;
+2. the actor holds the permission;
+3. the mandatory documents are present (`occurrence_missing_items()`);
+4. the preparer is not the validator;
+5. the authority reference and proof of filing exist, if the obligation requires
+   them;
+6. a lateness reason is supplied beyond the legal deadline.
 
-`apply_occurrence_transition()` rend `APPLIED` quand elle a agi — et non `ALLOWED`,
-qui est le verdict d'`evaluate_transition()`. Les deux mots désignent deux choses.
+`apply_occurrence_transition()` returns `APPLIED` when it has acted — not
+`ALLOWED`, which is the verdict of `evaluate_transition()`. The two words mean two
+different things.
 
-**Verrouillage optimiste** : la colonne `version` s'incrémente à chaque transition.
-Deux validations concurrentes ne peuvent pas aboutir toutes les deux.
+**Optimistic locking**: the `version` column increments on every transition. Two
+concurrent validations cannot both succeed.
 
 ## Documents
 
-`documents` porte l'empreinte `sha256`, la version, le lien `supersedes_id` vers la
-version précédente, et `checklist_item_id` vers la ligne de dossier qu'il satisfait.
+`documents` carries the `sha256` fingerprint, the version, the `supersedes_id`
+link to the previous version, and `checklist_item_id` to the checklist line it
+satisfies.
 
-⚠️ **Le rattachement fait la complétude.** Une pièce obligatoire est fournie quand un
-document VIVANT lui est rattaché — aucune case à cocher n'entre dans ce calcul, et
-`is_checked` n'est plus qu'une dérivation du dépôt.
+⚠️ **Attachment is what makes completeness.** A mandatory document is supplied when
+a LIVE document is attached to it — no checkbox enters that calculation, and
+`is_checked` is now merely derived from the upload.
 
-⚠️ **`authenticated` n'a AUCUN droit d'écriture direct sur `documents`.** Tout dépôt
-passe par `confirm_document_upload()`, `security definer`, qui vérifie le billet,
-l'empreinte et l'occurrence. C'est une garantie du modèle : elle se constate en
-essayant.
+⚠️ **`authenticated` has NO direct write right on `documents`.** Every upload goes
+through `confirm_document_upload()`, `security definer`, which verifies the
+ticket, the fingerprint and the occurrence. It is a guarantee of the model: you
+can confirm it by trying.
 
-`document_access_log` (partitionnée par mois) enregistre chaque consultation. La
-trace précède l'émission de l'URL signée, dans la même transaction.
+`document_access_log` (partitioned by month) records every consultation. The trace
+precedes issuing the signed URL, in the same transaction.
 
 ## Audit
 
-`audit_log`, partitionnée par mois, **append-only garanti par trigger** — aucun
-`UPDATE`, aucun `DELETE`.
+`audit_log`, partitioned by month, **append-only guaranteed by trigger** — no
+`UPDATE`, no `DELETE`.
 
-Chaque ligne porte : acteur, courriel, action, table, identifiant, état avant, état
-après, champs modifiés, horodatage UTC, adresse IP, et depuis 0016 l'**identifiant de
-corrélation** de la requête.
+Each row carries: actor, email, action, table, id, state before, state after,
+changed fields, UTC timestamp, IP address, and since 0016 the request's
+**correlation id**.
 
-Colonnes sensibles masquées à l'écriture (`audit_redacted_columns`) : mots de passe,
-jetons, secrets.
+Sensitive columns are redacted on write (`audit_redacted_columns`): passwords,
+tokens, secrets.
 
-⚠️ **Le trigger ne capture aucune exception.** Si le journal ne peut pas s'écrire, la
-transaction métier est annulée. Un système de conformité qui perd sa traçabilité en
-silence vaut moins que pas de système du tout.
+⚠️ **The trigger catches no exception.** If the log cannot be written, the business
+transaction is rolled back. A compliance system that loses its traceability
+silently is worth less than no system at all.
 
-## Identités et droits
+## Identities and permissions
 
 ```
 profiles ──< user_roles >── roles ──< role_permissions >── permissions
                  │
-                 └── domains   (NULL = tous les domaines)
+                 └── domains   (NULL = all domains)
 ```
 
-`validation_delegations` permet à un valideur de déléguer temporairement ses droits —
-avec dates de début et de fin, révocation, et trace dans l'audit
-(`audit_log.on_behalf_of_id`). Elle existe pour remplacer la pratique réelle qu'elle
-rend inutile : le prêt de mot de passe pendant les congés.
+Since 0029, `profiles` also carries `phone` and `job_title`, copied from the
+invitation when the account is created. ⚠️ The job title grants nothing — it is
+informational; permissions come from the role.
 
-## Exploitation
+`validation_delegations` lets a validator temporarily delegate their rights — with
+start and end dates, revocation, and a trace in the audit
+(`audit_log.on_behalf_of_id`). It exists to replace the real practice it makes
+unnecessary: lending a password while on leave.
 
-| Table             | Rôle                                                                |
-| ----------------- | ------------------------------------------------------------------- |
-| `job_runs`        | une ligne par exécution planifiée, y compris celles sans effet      |
-| `backup_runs`     | journal des sauvegardes, avec empreinte et destination              |
-| `restore_tests`   | verdict des épreuves de restauration mensuelles                     |
-| `export_runs`     | traçabilité des exports — qui a extrait quoi, quand                 |
-| `notifications`   | file d'envoi ET centre de notifications de l'utilisateur            |
-| `rate_limit_hits` | fenêtre glissante de la limitation de débit, purgée au fil de l'eau |
-| `auth_attempts`   | tentatives de connexion, pour la limitation par courriel et par IP  |
-| `holidays`        | jours fériés algériens — **donnée**, jamais une table en dur        |
+## Operations
 
-⚠️ `job_runs` enregistre aussi les exécutions **sans effet** : un silence ne se
-distingue pas d'une panne. La vue `job_health` va plus loin — elle part de la liste
-des travaux ATTENDUS, si bien qu'un planificateur arrêté rend `NEVER_RAN` ou `STALE`
-au lieu de ne rien rendre du tout.
+| Table                  | Role                                                                                                                                |
+| ---------------------- | ----------------------------------------------------------------------------------------------------------------------------------- |
+| `job_runs`             | one row per scheduled run, including those with no effect                                                                           |
+| `backup_runs`          | backup log, with fingerprint and destination                                                                                        |
+| `restore_tests`        | verdict of the monthly restore drills                                                                                               |
+| `export_runs`          | export traceability — who extracted what, when                                                                                      |
+| `notifications`        | send queue AND the user's notification centre                                                                                       |
+| `rate_limit_hits`      | sliding window for rate limiting, purged continuously                                                                               |
+| `auth_attempts`        | sign-in attempts, for throttling by email and by IP                                                                                 |
+| `holidays`             | Algerian public holidays — **data**, never a hard-coded table                                                                       |
+| `cron_dispatch_config` | scheduled-job addresses and shared secret. ⚠️ No policy, no grant: unreachable through PostgREST, read only by `dispatch_cron_post` |
 
-## Dates : la règle qui ne souffre pas d'exception
+⚠️ `job_runs` also records runs **with no effect**: silence is indistinguishable
+from a failure. The `job_health` view goes further — it starts from the list of
+EXPECTED jobs, so a stopped scheduler returns `NEVER_RAN` or `STALE` instead of
+returning nothing at all.
 
-- **Stockage** : `timestamptz`, toujours en UTC.
-- **Conversion** : à la frontière seulement — affichage, calcul d'échéance, bornes de
-  période — et toujours vers `Africa/Algiers` (UTC+1, **sans** heure d'été).
-- **Week-end algérien : vendredi et samedi.** Pas samedi-dimanche. Toute la logique de
-  jours ouvrés en dépend.
-- « Au 20 du mois » signifie **fin de journée à Alger**, pas à UTC.
+## Retention
+
+Since 0028, `documents` carries `archived_offline_at` and `archived_in_backup_id`.
+Beyond the window set by `retention_live_years` (3 by default), the **files** leave
+storage and the **records stay**: fingerprint, size, uploader, access history.
+
+⚠️ That is what lets you say "this document existed, here is its signature, it is
+in the archive of such a date". Deleting the record would make the evidence
+disappear along with the object. `exercise_inventory` shows, per year, how many
+bytes are still online — the only measure that says what archiving would actually
+free.
+
+## Dates: the rule that admits no exception
+
+- **Storage**: `timestamptz`, always in UTC.
+- **Conversion**: at the boundary only — display, due-date calculation, period
+  bounds — and always to `Africa/Algiers` (UTC+1, **no** daylight saving).
+- **The Algerian weekend is Friday and Saturday.** Not Saturday–Sunday. All
+  working-day logic depends on it.
+- "By the 20th of the month" means **end of day in Algiers**, not in UTC.
 
 ## Conventions
 
-- Suppression physique **interdite** sur les données métier : `deleted_at`, filtré au
-  niveau RLS.
-- `SELECT *` interdit dans le code applicatif : colonnes explicites, toujours.
-- `src/types/database.types.ts` est **généré** (`npm run db:types`) et ne s'édite
-  jamais à la main. Toute modification de schéma est suivie de sa régénération **dans
-  le même commit**.
-- Une migration appliquée est **immuable**. On en écrit une nouvelle.
+- Physical deletion **forbidden** on business data: `deleted_at`, filtered at the
+  RLS level.
+- `SELECT *` forbidden in application code: explicit columns, always.
+- `src/types/database.types.ts` is **generated** (`npm run db:types`) and never
+  edited by hand. Any schema change is followed by regenerating it **in the same
+  commit**.
+- An applied migration is **immutable**. You write a new one.

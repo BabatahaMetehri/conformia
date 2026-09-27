@@ -1,151 +1,152 @@
 # Architecture
 
-Ce document explique **pourquoi** le code est disposé ainsi. Les règles elles-mêmes
-sont dans [CLAUDE.md](../CLAUDE.md), qui fait autorité ; ce qui suit les motive et
-donne les contreparties.
+This document explains **why** the code is laid out this way. The rules themselves
+live in [CLAUDE.md](../CLAUDE.md), which is authoritative; what follows motivates
+them and states the trade-offs.
 
-## L'idée qui structure tout
+## The idea that structures everything
 
-**La base de données est l'autorité, pas l'application.**
+**The database is the authority, not the application.**
 
-Ce n'est pas une préférence de style. La plateforme suit des obligations fiscales et
-sociales : une donnée lue par la mauvaise personne, une transition d'état accordée à
-tort, une écriture sans trace ne sont pas des défauts d'affichage — ce sont des
-manquements. Or une garde applicative se contourne par n'importe quel chemin qui ne
-passe pas par elle : un script, une console, un écran qu'on a oublié de protéger, un
-appel direct à PostgREST.
+This is not a style preference. The platform follows tax and social security
+obligations: data read by the wrong person, a state transition granted in error, a
+write with no trace are not display bugs — they are breaches. And an
+application-level guard is bypassed by any path that does not go through it: a
+script, a console, a screen someone forgot to protect, a direct call to PostgREST.
 
-Les garanties tiennent donc **en base** :
+The guarantees therefore live **in the database**:
 
-| Garantie                        | Où elle vit                                         |
-| ------------------------------- | --------------------------------------------------- |
-| Cloisonnement par domaine       | RLS sur chaque table, sans exception (91/91)        |
-| Transitions d'état autorisées   | `status_transition_rules` + `evaluate_transition()` |
-| Séparation préparateur/valideur | `apply_occurrence_transition()`                     |
-| Complétude d'un dossier         | `occurrence_missing_items()`                        |
-| Traçabilité                     | trigger `audit_trigger()`, `audit_log` append-only  |
-| Calcul d'échéance               | ⚠️ exception — en TypeScript, voir plus bas         |
+| Guarantee                      | Where it lives                                      |
+| ------------------------------ | --------------------------------------------------- |
+| Compartmentalisation by domain | RLS on every table, no exception (96/96)            |
+| Permitted state transitions    | `status_transition_rules` + `evaluate_transition()` |
+| Preparer/validator separation  | `apply_occurrence_transition()`                     |
+| Dossier completeness           | `occurrence_missing_items()`                        |
+| Traceability                   | `audit_trigger()`, append-only `audit_log`          |
+| Due-date calculation           | ⚠️ exception — in TypeScript, see below             |
 
-L'application, elle, **explique**. Elle grise un bouton, nomme la pièce manquante,
-propose la bonne action. Si elle se trompe, l'utilisateur est mal guidé ; il n'obtient
-jamais un droit qu'il n'a pas.
+The application, for its part, **explains**. It greys out a button, names the
+missing document, offers the right action. If it gets it wrong, the user is
+poorly guided; they never obtain a right they do not have.
 
-### L'exception assumée : le calcul d'échéance
+### The accepted exception: due-date calculation
 
-`src/services/scheduling/due-dates.ts` est en TypeScript, pas en SQL. C'est la seule
-règle métier hors de la base, et la raison est l'écran de prévisualisation : le
-référentiel montre les six prochaines échéances **pendant la saisie**, avant tout
-enregistrement. Une implémentation SQL exigerait un aller-retour par frappe.
+`src/services/scheduling/due-dates.ts` is TypeScript, not SQL. It is the only
+business rule outside the database, and the reason is the preview screen: the
+referential shows the next six deadlines **while you type**, before anything is
+saved. A SQL implementation would require a round trip per keystroke.
 
-La contrepartie est explicite : ce module est le seul du projet à porter un seuil de
-couverture de **100 %**, branches comprises, et il est en plus éprouvé par des tests
-de propriété (`tests/unit/due-dates.properties.test.ts`). Une échéance fausse produit
-un dépôt hors délai, donc une pénalité réelle.
+The trade-off is explicit: this module is the only one in the project carrying a
+**100 %** coverage threshold, branches included, and it is additionally exercised
+by property tests (`tests/unit/due-dates.properties.test.ts`). A wrong deadline
+produces a late filing, and therefore a real penalty.
 
-## Les couches, et ce qu'elles refusent
+## The layers, and what they refuse
 
 ```
-app/       routage, RSC, layouts
+app/       routing, RSC, layouts
   ↓
-features/  UI métier — cloisonnée par domaine
+features/  business UI — compartmentalised by domain
   ↓
-services/  règles, orchestration, Result<T, AppError>
+services/  rules, orchestration, Result<T, AppError>
   ↓
-data/      accès Supabase, une fonction = une requête
+data/      Supabase access, one function = one query
   ↓
-db/        SQL : tables, RLS, fonctions, triggers
+db/        SQL: tables, RLS, functions, triggers
 ```
 
-Trois interdits, tenus **par ESLint** (`import/no-restricted-paths`) et non par la
-discipline :
+Three prohibitions, held **by ESLint** (`import/no-restricted-paths`) and not by
+discipline:
 
-1. **Aucune dépendance ascendante.** `services/` ignore React ; `data/` ignore les
-   services.
-2. **Aucune dépendance latérale entre features.** `features/documents` n'importe rien
-   de `features/occurrences`. Le partage passe par la couche du dessous — c'est
-   pourquoi `useDirectUpload` vit dans `components/shared` et reçoit ses Server
-   Actions **en paramètre** plutôt que de les importer.
-3. **Aucun composant n'instancie un client Supabase.** Le seul module autorisé est
+1. **No upward dependency.** `services/` knows nothing of React; `data/` knows
+   nothing of the services.
+2. **No lateral dependency between features.** `features/documents` imports
+   nothing from `features/occurrences`. Sharing goes through the layer below —
+   which is why `useDirectUpload` lives in `components/shared` and receives its
+   Server Actions **as parameters** rather than importing them.
+3. **No component instantiates a Supabase client.** The only authorised module is
    `src/lib/supabase/*`.
 
-La règle 3 a une conséquence qu'on découvre en la violant : une tentative d'importer
-`@/data/queries/jobs` depuis un composant de `features/` fait **échouer le build**, pas
-seulement le lint. C'est voulu — une frontière qui ne casse rien n'est pas une
-frontière.
+Rule 3 has a consequence you discover by breaking it: an attempt to import
+`@/data/queries/jobs` from a component in `features/` makes **the build fail**,
+not merely the lint. That is intended — a boundary that breaks nothing is not a
+boundary.
 
-## `Result<T, AppError>` plutôt que des exceptions
+## `Result<T, AppError>` rather than exceptions
 
-Toute fonction de service rend un `Result`. Les exceptions sont réservées aux bugs de
-programmation.
+Every service function returns a `Result`. Exceptions are reserved for programming
+bugs.
 
 ```ts
 type Result<T, E = AppError> = { ok: true; value: T } | { ok: false; error: E };
 ```
 
-Ce que cela achète : l'appelant **ne peut pas oublier** le cas d'échec, le compilateur
-l'y oblige. Ce que cela coûte : plus de lignes. Le compromis est arrêté parce qu'un
-`try/catch` manquant dans un job de génération arrête la production de TOUTES les
-occurrences de la nuit, pas seulement celle qui pose problème.
+What it buys: the caller **cannot forget** the failure case, the compiler makes
+them handle it. What it costs: more lines. The trade is settled because a missing
+`try/catch` in a generation job stops production of ALL of the night's
+occurrences, not just the problematic one.
 
-`AppError` porte un **code** (union littérale) et une **clé i18n**, jamais un message
-rédigé : le texte appartient aux catalogues, l'erreur au domaine. `toClientError()`
-nettoie les détails avant l'envoi au navigateur — chemins de fichiers, piles, causes
-restent côté serveur (`src/lib/errors.ts`, éprouvé par un test dédié).
+`AppError` carries a **code** (a literal union) and an **i18n key**, never a
+written message: the text belongs to the catalogues, the error to the domain.
+`toClientError()` scrubs the details before sending to the browser — file paths,
+stacks and causes stay server-side (`src/lib/errors.ts`, covered by a dedicated
+test).
 
-## Les règles réglementaires sont des DONNÉES
+## Regulatory rules are DATA
 
-Périodicité, calcul d'échéance, pièces requises, seuils, entité responsable : en base.
-Ajouter une obligation ne demande **aucun déploiement**.
+Periodicity, due-date calculation, required documents, thresholds, responsible
+entity: in the database. Adding an obligation requires **no deployment**.
 
 ```ts
-if (obligation.code === "G50") { ... }   // ❌ jamais, nulle part
+if (obligation.code === "G50") { ... }   // ❌ never, nowhere
 ```
 
-Conséquence concrète : `due_rule` est une colonne `jsonb` validée par Zod
-(`DueRuleSchema`), pas un `switch`. Une règle nouvelle qui ne s'exprime pas avec le
-modèle en place fait étendre le **modèle**, jamais le code par cas particulier.
+Concrete consequence: `due_rule` is a `jsonb` column validated by Zod
+(`DueRuleSchema`), not a `switch`. A new rule that cannot be expressed with the
+model in place extends the **model**, never the code with a special case.
 
-## Le middleware : ce qu'il protège, et ce qu'il ne protège pas
+## The middleware: what it protects, and what it does not
 
-`src/middleware.ts` s'exécute avant chaque route. Il porte, dans cet ordre :
+`src/middleware.ts` runs before every route. It carries, in this order:
 
-1. le nonce CSP et les en-têtes de sécurité ;
-2. l'**identifiant de corrélation** (`x-request-id`), qui descend jusqu'à
-   `audit_log.request_id` ;
-3. le rafraîchissement de session ;
-4. la **limitation de débit des écritures** (60/minute/utilisateur) ;
-5. les portes : compte désactivé, liste blanche d'adresses pour ADMIN, second facteur
-   exigé.
+1. the CSP nonce and the security headers;
+2. the **correlation id** (`x-request-id`), which flows down to
+   `audit_log.request_id`;
+3. session refresh;
+4. **write rate limiting** (60/minute/user);
+5. the gates: deactivated account, IP allowlist for ADMIN, second factor required.
 
-⚠️ **Il ne protège pas la donnée.** Un utilisateur qui contournerait toutes ces
-redirections ne verrait toujours aucune ligne : la RLS s'applique en base. Le
-middleware protège l'expérience et la surface HTTP.
+⚠️ **It does not protect the data.** A user who bypassed every one of these
+redirects would still see no rows: RLS applies in the database. The middleware
+protects the experience and the HTTP surface.
 
-## Rendu : serveur par défaut
+## Rendering: server by default
 
-Server Components partout où il n'y a pas d'interaction. `"use client"` se justifie
-au cas par cas — un formulaire, une table triable, une file d'envoi. Le bundle
-partagé mesure **102 kB** gzippés (budget : 200 kB), mesuré par `npm run build`.
+Server Components everywhere there is no interaction. `"use client"` is justified
+case by case — a form, a sortable table, an upload queue. The shared bundle
+measures **102 kB** gzipped (budget: 200 kB), measured by `npm run build`.
 
-Deux pièges rencontrés, tous deux documentés au point où ils mordent :
+Two traps encountered, both documented at the point where they bite:
 
-- **Une fonction ne franchit pas la frontière RSC.** Passer un formateur de date en
-  prop lève « Functions cannot be passed directly to Client Components ». On passe la
-  donnée, le client formate.
-- **`router.refresh()` enchaîné sur une Server Action est annulé.** Voir
-  `src/hooks/use-query-navigation.ts` et `occurrence-checklist.tsx` : la correction
-  qui tient ne repose pas sur un délai mais sur une **condition d'arrêt factuelle** —
-  redemander tant que la page n'a pas vu le changement.
+- **A function does not cross the RSC boundary.** Passing a date formatter as a
+  prop raises "Functions cannot be passed directly to Client Components". Pass the
+  data; the client formats it.
+- **`router.refresh()` chained onto a Server Action is cancelled.** See
+  `src/hooks/use-query-navigation.ts` and `occurrence-checklist.tsx`: the fix that
+  holds does not rest on a delay but on a **factual stop condition** — ask again
+  until the page has seen the change.
 
-## Où trouver quoi
+## Where to find what
 
-| Question                                | Fichier                                            |
-| --------------------------------------- | -------------------------------------------------- |
-| Qui a le droit de quoi                  | [security.md](./security.md)                       |
-| Que contient la base                    | [data-model.md](./data-model.md)                   |
-| Pourquoi tel choix plutôt que tel autre | [decisions.md](./decisions.md)                     |
-| Que faire quand ça casse                | [runbook.md](./runbook.md)                         |
-| Ce que les tests garantissent           | [testing.md](./testing.md)                         |
-| Ce que coûtent les requêtes             | [query-plans.md](./query-plans.md)                 |
-| Sauvegardes et restauration             | [backup-strategy.md](./backup-strategy.md)         |
-| Changer d'hébergeur                     | [hosting-portability.md](./hosting-portability.md) |
+| Question                             | File                                               |
+| ------------------------------------ | -------------------------------------------------- |
+| Who is allowed to do what            | [security.md](./security.md)                       |
+| What the database contains           | [data-model.md](./data-model.md)                   |
+| Why this choice rather than that one | [decisions.md](./decisions.md)                     |
+| What to do when it breaks            | [runbook.md](./runbook.md)                         |
+| What the tests guarantee             | [testing.md](./testing.md)                         |
+| What the queries cost                | [query-plans.md](./query-plans.md)                 |
+| Backups and restore                  | [backup-strategy.md](./backup-strategy.md)         |
+| Changing host                        | [hosting-portability.md](./hosting-portability.md) |
+| How to install it                    | [deployment.md](./deployment.md)                   |
+| The simple, step-by-step version     | [complete-guide.md](./complete-guide.md)           |

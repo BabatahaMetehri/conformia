@@ -1,50 +1,54 @@
-# Gabarits d'import
+# Import templates
+
+> The app is in French; screen names below are given as they appear.
 
 ## `jours-feries.csv`
 
-Calendrier des jours chômés, à importer depuis **Administration → Référentiels**.
+The public holiday calendar, imported from **Administration → Référentiels**.
 
-Format : `date,libellé,récurrent` — la date en `AAAA-MM-JJ`. Une ligne d'en-tête
-est tolérée. `récurrent` accepte `true`, `1` ou `oui`.
+Format: `date,label,recurring` — the date as `YYYY-MM-DD`. A header line is
+tolerated. The recurring column accepts `true`, `1` or `oui`.
 
-### Les deux natures de jours fériés, et pourquoi elles ne se mélangent pas
+⚠️ **The file itself stays in French** — its labels are written into the database
+and shown in a French interface. Only this notice is in English.
 
-**Les cinq fêtes CIVILES** — 1er janvier, Yennayer, 1er mai, 5 juillet,
-1er novembre — reviennent au même jour du même mois. Elles sont marquées
-`true` : saisies **une fois**, elles valent pour toutes les années. Elles sont
-déjà en base ; elles figurent dans le gabarit pour qu'il soit complet, et les
-réimporter ne fait rien de plus que les réécrire à l'identique.
+### The two kinds of public holiday, and why they do not mix
 
-**Les fêtes RELIGIEUSES** — Aïd el-Fitr, Aïd el-Adha, Awal Moharem, Achoura,
-Mawlid Ennabaoui — suivent le calendrier hégirien et sont fixées **chaque année
-par décret**. Elles sont marquées `false` : elles appartiennent à une année et à
-une seule.
+**The five CIVIL feasts** — 1 January, Yennayer, 1 May, 5 July, 1 November —
+return on the same day of the same month. They are marked `true`: entered
+**once**, they apply to every year. They are already in the database; they appear
+in the template so it is complete, and re-importing them does nothing more than
+rewrite them identically.
 
-⚠️ **Ne jamais marquer une fête religieuse `true`.** Elle serait projetée sur
-toutes les années à la même date grégorienne — ce qui est faux par construction —
-et ferait croire au contrôle de couverture que l'année est saisie, éteignant
-l'alerte qui existe précisément pour signaler qu'elle ne l'est pas.
+**The RELIGIOUS feasts** — Aïd el-Fitr, Aïd el-Adha, Awal Moharem, Achoura,
+Mawlid Ennabaoui — follow the Hijri calendar and are set **each year by decree**.
+They are marked `false`: they belong to one year and one only.
 
-### Les dates religieuses ne sont pas fournies, et c'est délibéré
+⚠️ **Never mark a religious feast `true`.** It would be projected onto every year
+at the same Gregorian date — wrong by construction — and would make the coverage
+check believe the year has been entered, switching off the very alert that exists
+to report that it has not.
 
-Les lignes religieuses du gabarit portent `AAAA-MM-JJ` à la place de la date.
-Ce n'est pas un oubli : **aucune formule ne peut les calculer**, et une date
-devinée serait pire que pas de date du tout — elle ne produirait aucune erreur
-visible, seulement une échéance fausse qui a l'air juste.
+### The religious dates are not provided, and that is deliberate
 
-Le placeholder est **refusé par l'import** tant qu'il n'est pas remplacé : la
-ligne est comptée comme illisible et affichée avant l'écriture. C'est le sens
-d'erreur voulu — une ligne rejetée se voit, une date inventée non.
+The religious lines in the template carry `AAAA-MM-JJ` in place of the date. This
+is not an oversight: **no formula can compute them**, and a guessed date would be
+worse than no date at all — it would produce no visible error, only a wrong
+deadline that looks right.
 
-Les dates s'obtiennent auprès du cabinet comptable ou du Journal officiel. Le
-nombre de jours par fête (un ou deux) est lui aussi fixé par décret : ajuster les
-lignes en conséquence plutôt que de supposer.
+The placeholder is **refused by the import** until it is replaced: the line is
+counted as unreadable and shown before anything is written. That is the intended
+direction of failure — a rejected line is visible, an invented date is not.
 
-### Après l'import
+The dates are obtained from the accountants or the Official Journal. The number of
+days per feast (one or two) is also set by decree: adjust the lines accordingly
+rather than assuming.
 
-L'écran annonce, **avant** d'écrire, combien d'échéances seraient déplacées.
-Seuls les dossiers `TODO` bougent — ceux déjà commencés, validés, transmis ou
-archivés ne sont jamais déplacés. Pour contrôler la couverture obtenue :
+### After the import
+
+The screen announces, **before** writing, how many deadlines would move. Only
+`TODO` dossiers move — those already started, validated, filed or archived are
+never touched. To check the coverage obtained:
 
 ```sql
 select * from public.holiday_calendar_coverage;
