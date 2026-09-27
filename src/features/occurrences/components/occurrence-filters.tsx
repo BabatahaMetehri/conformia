@@ -38,6 +38,7 @@ export function OccurrenceFilterBar({
   authorities,
   owners,
   registers,
+  years,
   calendarHref,
   isCalendar = false,
 }: {
@@ -45,6 +46,8 @@ export function OccurrenceFilterBar({
   readonly authorities: readonly { readonly id: string; readonly name: string }[];
   readonly owners: readonly { readonly id: string; readonly fullName: string }[];
   readonly registers: readonly { readonly id: string; readonly label: string }[];
+  /** Annees proposees, de la plus recente a la plus ancienne. */
+  readonly years: readonly string[];
   readonly calendarHref: string;
   readonly isCalendar?: boolean;
 }) {
@@ -104,8 +107,30 @@ export function OccurrenceFilterBar({
       aria-busy={pending}
     >
       <div className="flex flex-wrap items-end gap-3">
-        <div className="w-40 space-y-1.5">
-          <Label htmlFor="filter-period">{tOcc("period")}</Label>
+        {/*
+          ⚠️ L'ANNEE ET LA PERIODE PRECISE ECRIVENT LE MEME PARAMETRE, et c'est
+          voulu : `period` filtre par PREFIXE. « 2026 » retient toute l'annee,
+          « 2026-03 » le seul mois de mars. Le selecteur n'affiche donc que les
+          quatre premiers caracteres de ce qui est filtre — choisir une annee
+          elargit a l'annee entiere, taper un mois precise a l'interieur.
+
+          Sans ce selecteur, filtrer par annee supposait de deviner qu'un champ
+          libre acceptait « 2026 ». Personne ne le devinait.
+        */}
+        <FilterSelect
+          disabled={busy}
+          id="filter-year"
+          label={t("year")}
+          allLabel={t("allYears")}
+          value={params.get("period")?.slice(0, 4) ?? null}
+          items={years.map((year) => ({ value: year, label: year }))}
+          onChange={(value) => {
+            apply({ period: value });
+          }}
+        />
+
+        <div className="w-36 space-y-1.5">
+          <Label htmlFor="filter-period">{t("preciseePeriod")}</Label>
           <Input
             id="filter-period"
             defaultValue={params.get("period") ?? ""}

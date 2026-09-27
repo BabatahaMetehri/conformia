@@ -12,39 +12,27 @@ export type Database = {
       app_settings: {
         Row: {
           description: string
-          email_provider: string
           key: string
-          notification_sender: string
           updated_at: string
           updated_by: string | null
           value: Json
           value_type: string
-          weekly_digest_day: number
-          weekly_digest_hour: number
         }
         Insert: {
           description: string
-          email_provider?: string
           key: string
-          notification_sender?: string
           updated_at?: string
           updated_by?: string | null
           value: Json
           value_type: string
-          weekly_digest_day?: number
-          weekly_digest_hour?: number
         }
         Update: {
           description?: string
-          email_provider?: string
           key?: string
-          notification_sender?: string
           updated_at?: string
           updated_by?: string | null
           value?: Json
           value_type?: string
-          weekly_digest_day?: number
-          weekly_digest_hour?: number
         }
         Relationships: [
           {

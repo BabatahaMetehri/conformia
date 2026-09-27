@@ -36,6 +36,7 @@ import {
 import { renderEmail } from "@/emails";
 import { createEmailProvider, type EmailProvider } from "@/services/notifications/providers";
 import { logger } from "@/lib/logger";
+import { emailTranslator, type EmailTranslator } from "@/lib/translator";
 import { AppError } from "@/lib/errors";
 import { err, ok, type Result } from "@/lib/result";
 
@@ -129,6 +130,40 @@ export function groupPending(
   return [...groups.values()];
 }
 
+/**
+ * Forme d'une cle i18n : `notifications.backupStale.subject`.
+ *
+ * Volontairement etroite. Un sujet redige commence par une majuscule et contient
+ * des espaces ; il ne peut pas ressembler a ceci par accident.
+ */
+const I18N_KEY = /^[a-z][A-Za-z0-9]*(?:\.[A-Za-z0-9]+)+$/;
+
+/**
+ * Resout un libelle stocke sous forme de CLE.
+ *
+ * ⚠️ CERTAINES NOTIFICATIONS SONT CREEES EN SQL, ET LE SQL NE TRADUIT PAS.
+ * L'alerte de sauvegarde (migration 0015) range `notifications.backupStale.subject`
+ * dans la colonne `subject`, faute de pouvoir faire mieux depuis un trigger. Le
+ * repartiteur envoyait cette chaine telle quelle : les administrateurs recevaient
+ * un courriel dont l'objet etait le nom technique de la cle.
+ *
+ * ⚠️ UNE CLE INCONNUE EST RENDUE TELLE QUELLE, JAMAIS REMPLACEE PAR UN TEXTE
+ * GENERIQUE. « Notification » a la place d'un objet manquant serait plus joli et
+ * strictement moins utile : on perdrait la seule information permettant de
+ * retrouver la cle fautive.
+ */
+function resolveLabel(value: string, t: EmailTranslator): string {
+  if (!I18N_KEY.test(value)) return value;
+  try {
+    // @ts-expect-error — la cle vient de la base, donc hors du typage statique
+    // de next-intl. Le `try` couvre exactement ce que le typage ne peut pas.
+    const resolved = t(value);
+    return typeof resolved === "string" && resolved.length > 0 ? resolved : value;
+  } catch {
+    return value;
+  }
+}
+
 async function buildMessage(group: readonly PendingEmail[]): Promise<OutgoingMessage | null> {
   const first = group[0];
   if (first === undefined) return null;
@@ -139,14 +174,19 @@ async function buildMessage(group: readonly PendingEmail[]): Promise<OutgoingMes
   // a déjà échoué deux fois.
   const attemptsUsed = group.reduce((worst, row) => Math.max(worst, row.retryCount), 0);
 
+  const t = emailTranslator();
+
   if (group.length === 1) {
+    const subject = resolveLabel(first.subject, t);
+    const text = resolveLabel(first.bodyText, t);
     return {
       ids,
       to: first.recipientEmail,
       toName: first.recipientName,
-      subject: first.subject,
-      html: first.bodyHtml ?? first.bodyText,
-      text: first.bodyText,
+      subject,
+      // Le corps HTML peut etre absent : le texte resolu en tient lieu.
+      html: first.bodyHtml ?? text,
+      text,
       attemptsUsed,
     };
   }
@@ -157,7 +197,7 @@ async function buildMessage(group: readonly PendingEmail[]): Promise<OutgoingMes
     // Le sujet de chaque alerte fait la ligne de la liste : il porte déjà le
     // libellé de l'obligation et l'échéance, et il a été rédigé pour être lu
     // seul.
-    items: group.map((row) => row.subject),
+    items: group.map((row) => resolveLabel(row.subject, t)),
     listUrl: `${env.NEXT_PUBLIC_APP_URL}/${DEFAULT_LOCALE}/echeancier`,
   });
 

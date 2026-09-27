@@ -271,24 +271,60 @@ export interface NotificationSettings {
   readonly weeklyDigestHour: number;
 }
 
+/**
+ * Réglages de notification, lus dans les LIGNES clé/valeur.
+ *
+ * ⚠️ PAS DANS DES COLONNES, ET C'EST UNE CORRECTION. `app_settings` a porté un
+ * temps quatre colonnes doublant ces mêmes réglages. L'écran Administration →
+ * Réglages écrivait la ligne, cette fonction lisait la colonne : changer le
+ * fournisseur depuis l'administration ne produisait aucun effet — pas une
+ * erreur, pas un refus, juste un réglage qui s'enregistre et ne change rien.
+ *
+ * Pire, les colonnes étaient portées par CHAQUE ligne de la table et la lecture
+ * se faisait sans tri : elle prenait une copie quelconque. La migration 0026 a
+ * supprimé les colonnes ; il ne reste qu'une vérité.
+ */
 export async function loadNotificationSettings(
   client: NotificationClient,
 ): Promise<Result<NotificationSettings>> {
   const { data, error } = await client
     .from("app_settings")
-    .select("email_provider, notification_sender, weekly_digest_day, weekly_digest_hour")
-    .limit(1)
-    .single();
+    .select("key, value")
+    .in("key", [
+      "email_provider",
+      "notification_sender",
+      "weekly_digest_day",
+      "weekly_digest_hour",
+    ]);
 
   if (error !== null) return err(mapPostgrestError(error));
 
+  const byKey = new Map(data.map((row) => [row.key, row.value]));
+
+  /*
+   * Les défauts ne sont PAS des valeurs de confort : ils ne servent que si la
+   * ligne manque, ce que la migration 0026 rend impossible et que son contrôle
+   * final vérifie. Les écrire ici évite seulement qu'une base à moitié migrée
+   * fasse tomber le lot entier de notifications.
+   */
+  const asText = (key: string, fallback: string): string => {
+    const raw = byKey.get(key);
+    return typeof raw === "string" && raw.length > 0 ? raw : fallback;
+  };
+  const asNumber = (key: string, fallback: number): number => {
+    const raw = byKey.get(key);
+    return typeof raw === "number" && Number.isFinite(raw) ? raw : fallback;
+  };
+
+  const provider = asText("email_provider", "resend");
+
   return ok({
-    // La colonne porte une contrainte CHECK sur ces deux valeurs ; le cast dit
-    // au type ce que la base garantit déjà.
-    emailProvider: data.email_provider as "resend" | "smtp",
-    sender: data.notification_sender,
-    weeklyDigestDay: data.weekly_digest_day,
-    weeklyDigestHour: data.weekly_digest_hour,
+    // Le déclencheur `app_settings_validate` borne la valeur en base ; ce test
+    // protège le cas d'une base antérieure à 0026, où rien ne la bornait.
+    emailProvider: provider === "smtp" ? "smtp" : "resend",
+    sender: asText("notification_sender", "conformia@agroespace.dz"),
+    weeklyDigestDay: asNumber("weekly_digest_day", 1),
+    weeklyDigestHour: asNumber("weekly_digest_hour", 7),
   });
 }
 

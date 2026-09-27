@@ -648,3 +648,25 @@ export function daysUntil(target: Date, from?: Date): number {
   const fromZoned = from === undefined ? nowInAppTz() : toAppTz(from);
   return differenceInCalendarDays(toAppTz(target), fromZoned);
 }
+
+/**
+ * Années proposées au filtre de l'échéancier, de la plus récente à la plus
+ * ancienne.
+ *
+ * ⚠️ LA LISTE SUIT LA FENÊTRE DE CONSERVATION, ET CE N'EST PAS UNE COÏNCIDENCE.
+ * La plateforme garde trois exercices clos plus l'exercice courant ; proposer
+ * une année au-delà ferait chercher des dossiers qui ont été archivés hors
+ * ligne, et le résultat vide ressemblerait à « il n'y a rien eu cette
+ * année-là ».
+ *
+ * L'année suivante est incluse : les dossiers de janvier sont générés en
+ * décembre, et l'on veut pouvoir les regarder avant qu'ils ne commencent.
+ */
+export function selectableYears(instant?: Date): string[] {
+  const current = toAppTz(instant ?? new Date()).getFullYear();
+  const years: string[] = [];
+  for (let year = current + 1; year >= current - 3; year -= 1) {
+    years.push(String(year));
+  }
+  return years;
+}

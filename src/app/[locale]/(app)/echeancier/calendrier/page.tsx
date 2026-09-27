@@ -4,6 +4,7 @@ import { SectionHeader } from "@/components/layout/section";
 import { ErrorState } from "@/components/shared/states";
 import type { Criticality, OccurrenceStatus } from "@/config/constants";
 import { OccurrenceCalendar } from "@/features/occurrences/components/occurrence-calendar";
+import { selectableYears } from "@/lib/dates";
 import { OccurrenceFilterBar } from "@/features/occurrences/components/occurrence-filters";
 import { listAssignableProfiles } from "@/data/queries/profiles-directory";
 import { getFormOptions } from "@/services/obligations";
@@ -74,6 +75,7 @@ export default async function Page({
           options.ok ? options.value.authorities.map((a) => ({ id: a.id, name: a.name })) : []
         }
         owners={assignees.ok ? assignees.value : []}
+        years={selectableYears()}
         registers={
           registers.ok
             ? registers.value.map((r) => ({ id: r.id, label: `${r.rcNumber} — ${r.label}` }))

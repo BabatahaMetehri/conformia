@@ -147,7 +147,17 @@ async function attendreMessagesInternes(
 
 /** Bascule le fournisseur d'envoi. C'est un RÉGLAGE EN BASE, pas une variable. */
 async function choisirFournisseur(nom: "smtp" | "resend"): Promise<void> {
-  await scope.pool.query("update public.app_settings set email_provider = $1", [nom]);
+  /*
+   * ⚠️ LA LIGNE, PAS UNE COLONNE. `app_settings` a porte un temps une colonne
+   * `email_provider` doublant cette ligne clé/valeur. L'ecran ecrivait la ligne,
+   * le repartiteur lisait la colonne : la bascule n'avait aucun effet. La
+   * migration 0026 a supprime la colonne ; ce test ecrit desormais la seule
+   * source qui existe.
+   */
+  await scope.pool.query(
+    "update public.app_settings set value = to_jsonb($1::text) where key = 'email_provider'",
+    [nom],
+  );
 }
 
 /**
@@ -279,7 +289,9 @@ afterAll(async () => {
   await scope.pool.query(
     "delete from public.backup_runs where detail = 'TEST-notification-delivery'",
   );
-  await scope.pool.query("update public.app_settings set email_provider = 'resend'");
+  await scope.pool.query(
+    "update public.app_settings set value = to_jsonb('resend'::text) where key = 'email_provider'",
+  );
   delete process.env["RESEND_BASE_URL"];
   await shim.stop();
   await destroyTestScope(scope);

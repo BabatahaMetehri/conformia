@@ -1032,7 +1032,10 @@
       "mineOnly": "Mes dossiers",
       "reset": "Réinitialiser",
       "switchToCalendar": "Calendrier",
-      "switchToList": "Liste"
+      "switchToList": "Liste",
+      "year": "Année",
+      "allYears": "Toutes les années",
+      "preciseePeriod": "Période précise"
     },
     "calendar": {
       "previous": "Période précédente",
