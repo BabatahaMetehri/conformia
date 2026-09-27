@@ -1,324 +1,390 @@
-# Décisions
+# Decisions
 
-Chaque entrée dit **ce qui a été décidé**, **ce que cela coûte** et **ce qui la
-ferait reconsidérer**. Une décision dont on ne sait pas dire le prix n'a pas été prise,
-elle a été subie.
+Each entry says **what was decided**, **what it costs** and **what would make us
+reconsider**. A decision whose price you cannot state was not taken, it was
+suffered.
 
-## Écarts assumés
+## Accepted gaps
 
-Certaines entrées ne décrivent pas un choix d'architecture mais un **écart connu**,
-mesuré, dont on a décidé qu'il ne valait pas son correctif. Les taire les
-transformerait en dette invisible ; les corriger coûterait plus que ce qu'ils
-coûtent. Elles portent la mention en tête. À ce jour : § 15 (statut 404).
-
----
-
-## 1 · La base est l'autorité, l'application explique
-
-**Décidé.** Cloisonnement, transitions, complétude et traçabilité vivent en SQL. Le
-code applicatif grise des boutons et nomme ce qui manque.
-
-**Pourquoi.** Une garde applicative se contourne par tout chemin qui ne passe pas par
-elle. Les données suivies sont des déclarations fiscales et sociales.
-
-**Coût.** Écrire du SQL, tester avec une base réelle, accepter que la couverture
-unitaire des services d'orchestration reste basse.
-
-**Reconsidérer si.** Jamais pour du confort. Éventuellement si la plateforme cessait
-d'être multi-domaines — mais alors le produit aurait changé de nature.
+Some entries do not describe an architectural choice but a **known gap**,
+measured, which we decided was not worth its fix. Leaving them unsaid would turn
+them into invisible debt; fixing them would cost more than they cost. They carry
+the label at the top. As of today: § 15 (404 status).
 
 ---
 
-## 2 · ADMIN n'a ni `occurrence.read` ni `document.read`
+## 1 · The database is the authority, the application explains
 
-**Décidé.** L'administrateur technique gère comptes, rôles, réglages et référentiel.
-Il ne lit aucun dossier ni aucune pièce.
+**Decided.** Compartmentalisation, transitions, completeness and traceability live
+in SQL. Application code greys out buttons and names what is missing.
 
-**Pourquoi.** Sinon la personne qui installe le logiciel devient la mieux informée de
-l'entreprise. Un incident se diagnostique avec `audit_log` et l'identifiant de
-corrélation, pas avec le contenu d'une déclaration.
+**Why.** An application-level guard is bypassed by any path that does not go
+through it. The data tracked here is tax and social security filings.
 
-**Coût.** Le support est un peu moins direct. Une question sur un dossier passe par
-quelqu'un du domaine.
+**Cost.** Writing SQL, testing against a real database, accepting that unit
+coverage of the orchestration services stays low.
 
-**Reconsidérer si.** La Direction l'exige explicitement — et alors en le traçant comme
-une décision, pas comme une commodité. Détail complet dans [security.md](./security.md).
+**Reconsider if.** Never for convenience. Possibly if the platform stopped being
+multi-domain — but then the product would have changed in nature.
+
+---
+
+## 2 · ADMIN has neither `occurrence.read` nor `document.read`
+
+**Decided.** The technical administrator manages accounts, roles, settings and the
+referential. They read no dossier and no document.
+
+**Why.** Otherwise the person who installs the software becomes the best-informed
+person in the company. An incident is diagnosed with `audit_log` and the
+correlation id, not with the contents of a filing.
+
+**Cost.** Support is a little less direct. A question about a dossier goes through
+someone in the domain.
+
+**Reconsider if.** Direction explicitly requires it — and then by recording it as a
+decision, not as a convenience. Full detail in [security.md](./security.md).
 
 ---
 
 ## 3 · `style-src 'unsafe-inline'`, `script-src` strict
 
-**Décidé.** La CSP garde un nonce par requête et `'strict-dynamic'` sur `script-src`.
-`style-src` admet `'unsafe-inline'`.
+**Decided.** The CSP keeps a per-request nonce and `'strict-dynamic'` on
+`script-src`. `style-src` allows `'unsafe-inline'`.
 
-**Pourquoi.** Mesuré : avec un nonce, les attributs `style="…"` rendus par le serveur
-sont refusés — un nonce ne s'attache pas à un attribut. Sur un dossier « 0 sur 2 », la
-barre de complétude s'affichait **pleine**. Toutes les jauges annonçaient « complet ».
+**Why.** Measured: with a nonce, server-rendered `style="…"` attributes are
+refused — a nonce does not attach to an attribute. On a dossier at "0 of 2", the
+completeness bar displayed **full**. Every gauge announced "complete".
 
-**Coût.** Une injection CSS devient possible _si_ une faille d'injection existe par
-ailleurs. Aucun script ne s'exécute pour autant.
+**Cost.** A CSS injection becomes possible _if_ an injection flaw exists
+elsewhere. No script executes as a result.
 
-**Reconsidérer si.** Les jauges passent à un rendu qui n'emploie aucun attribut de
-style — un `<rect>` SVG en pourcentage, par exemple. Le nonce redeviendrait alors
-posable sans rien casser.
-
----
-
-## 4 · Les corps des fonctions RLS sont dupliqués
-
-**Décidé.** `session_gates()` et ses voisines répètent leur logique au lieu de
-déléguer à une variante `_for(p_user)`.
-
-**Pourquoi.** Mesuré : la factorisation a fait passer `pending_validation_count()` de
-**92 ms à plus de 30 s**. `security definer` + `set search_path` empêchent PostgreSQL
-d'inliner, et l'appel devient une barrière d'optimisation dans une policy évaluée par
-ligne.
-
-**Coût.** Deux corps à tenir synchronisés. Un test de parité les compare.
-
-**Reconsidérer si.** PostgreSQL apprend à inliner ces fonctions. À vérifier par la
-mesure, pas par la note de version.
+**Reconsider if.** The gauges move to a rendering that uses no style attribute —
+an SVG `<rect>` in percentages, for instance. The nonce could then be reinstated
+without breaking anything.
 
 ---
 
-## 5 · Le calcul d'échéance est en TypeScript
+## 4 · The RLS function bodies are duplicated
 
-**Décidé.** Seule règle métier hors de la base.
+**Decided.** `session_gates()` and its neighbours repeat their logic instead of
+delegating to a `_for(p_user)` variant.
 
-**Pourquoi.** L'écran de référentiel prévisualise six échéances **pendant la saisie**.
-En SQL, ce serait un aller-retour par frappe.
+**Why.** Measured: factoring them out took `pending_validation_count()` from
+**92 ms to over 30 s**. `security definer` + `set search_path` stop PostgreSQL
+inlining, and the call becomes an optimisation barrier inside a policy evaluated
+per row.
 
-**Coût.** Une règle qui n'est pas gardée par la base. Compensé par le seul seuil de
-couverture à **100 %** du projet, des tests de propriété (fast-check), et le fait
-qu'une échéance fausse produit une date visible — pas une fuite.
+**Cost.** Two bodies to keep in step. A parity test compares them.
 
-**Reconsidérer si.** La prévisualisation disparaît, ou si une règle réglementaire
-devient assez complexe pour mériter d'être appliquée à l'écriture.
-
----
-
-## 6 · Aucune colonne de montant
-
-**Décidé.** La plateforme suit la démarche, pas les chiffres.
-
-**Pourquoi.** Un montant appelle un rapprochement, donc une exactitude comptable, donc
-une seconde source de vérité à tenir avec la comptabilité.
-
-**Coût.** Les rapports ne chiffrent pas l'exposition financière.
-
-**Reconsidérer si.** La Direction le demande — et alors en décidant d'abord **qui**
-fait foi, de la comptabilité ou d'ici.
+**Reconsider if.** PostgreSQL learns to inline these functions. To be verified by
+measurement, not by the release notes.
 
 ---
 
-## 7 · La limitation de débit est posée dans le middleware
+## 5 · Due-date calculation is in TypeScript
 
-**Décidé.** Une borne unique sur l'en-tête `next-action`, 60 écritures par minute et
-par utilisateur, compteur en base.
+**Decided.** The only business rule outside the database.
 
-**Pourquoi.** C'est le seul point par lequel passent les soixante et une Server
-Actions. Une garde recopiée soixante et une fois est une garde qu'on oublie une fois.
+**Why.** The referential screen previews six deadlines **while you type**. In SQL
+that would be a round trip per keystroke.
 
-**Coût.** Un appel de base supplémentaire sur chaque écriture. Les lectures n'en
-paient rien.
+**Cost.** A rule not guarded by the database. Offset by the project's only
+**100 %** coverage threshold, property tests (fast-check), and the fact that a
+wrong deadline produces a visible date — not a leak.
 
-**Reconsidérer si.** Un usage légitime dépasse le seuil — un import en masse, par
-exemple. Le seuil est alors à relever pour ce chemin, pas à supprimer.
-
----
-
-## 8 · Les écritures anonymes ne sont pas limitées par IP
-
-**Décidé.** Sans session, aucune borne de débit. La connexion garde la sienne, par
-courriel ET par IP.
-
-**Pourquoi.** Mesuré : une borne par IP a refusé la moitié des ouvertures de session
-de la suite de bout en bout, qui se connecte depuis une adresse unique. Un bureau
-derrière un accès partagé subit exactement la même chose : vingt personnes comptées
-comme une seule.
-
-**Coût.** Une salve anonyme sur une action non authentifiée n'est pas bornée. La seule
-action de ce type est la connexion, déjà protégée.
-
-**Reconsidérer si.** Une écriture anonyme est ajoutée — formulaire public, webhook. Il
-faudrait alors une borne propre à ce chemin.
+**Reconsider if.** The preview disappears, or a regulatory rule becomes complex
+enough to deserve being enforced at write time.
 
 ---
 
-## 9 · Les navigations sont RELANCÉES, pas retardées
+## 6 · No amount column
 
-**Décidé.** `useQueryNavigation` et l'onglet « Dossier » redemandent la page tant
-qu'elle n'a pas vu le changement, avec un temps d'attente qui double, borné.
+**Decided.** The platform tracks the process, not the figures.
 
-**Pourquoi.** Mesuré sur une quinzaine d'exécutions : `router.refresh()` ou
-`router.replace()` enchaîné sur la fin d'une Server Action est **annulé** par le
-navigateur (`net::ERR_ABORTED`). Selon la vitesse de la machine, l'écran se met à jour
-ou reste figé. Trois formes ont été essayées et mesurées intermittentes — dont
+**Why.** An amount calls for reconciliation, therefore accounting accuracy,
+therefore a second source of truth to keep in step with the accounts.
+
+**Cost.** Reports do not quantify financial exposure.
+
+**Reconsider if.** Direction asks for it — and then by first deciding **which** is
+authoritative, the accounts or this.
+
+---
+
+## 7 · Rate limiting is applied in the middleware
+
+**Decided.** A single limit on the `next-action` header, 60 writes per minute per
+user, counter in the database.
+
+**Why.** It is the one point through which all sixty-one Server Actions pass. A
+guard copied sixty-one times is a guard forgotten once.
+
+**Cost.** One extra database call on every write. Reads pay nothing for it.
+
+**Reconsider if.** A legitimate use exceeds the threshold — a bulk import, for
+example. The threshold would then be raised for that path, not removed.
+
+---
+
+## 8 · Anonymous writes are not rate-limited by IP
+
+**Decided.** With no session, no rate limit. Sign-in keeps its own, by email AND
+by IP.
+
+**Why.** Measured: a per-IP limit refused half the sign-ins of the end-to-end
+suite, which connects from a single address. An office behind a shared connection
+suffers exactly the same: twenty people counted as one.
+
+**Cost.** An anonymous burst on an unauthenticated action is unbounded. The only
+action of that kind is sign-in, already protected.
+
+**Reconsider if.** An anonymous write is added — a public form, a webhook. That
+path would then need its own limit.
+
+---
+
+## 9 · Navigations are RETRIED, not delayed
+
+**Decided.** `useQueryNavigation` and the "Dossier" tab ask for the page again
+until it has seen the change, with a doubling wait, bounded.
+
+**Why.** Measured over about fifteen runs: `router.refresh()` or `router.replace()`
+chained onto the end of a Server Action is **cancelled** by the browser
+(`net::ERR_ABORTED`). Depending on machine speed, the screen updates or stays
+frozen. Three shapes were tried and measured intermittent — including
 `startTransition(async () => { await run(); router.refresh(); })`.
 
-**Coût.** Quelques requêtes de plus dans le cas dégradé. QUATRE formes plus simples
-ont été essayées et mesurées fausses :
+**Cost.** A few extra requests in the degraded case. FOUR simpler shapes were
+tried and measured wrong:
 
-1. cadence fixe — elle doublait sa propre navigation en vol ;
-2. garde sur `pending` seul — une navigation abandonnée laisse `pending` figé à vrai
-   POUR TOUJOURS, et la relance n'était alors jamais émise : blocage définitif, champ
-   grisé, URL figée ;
-3. borne en NOMBRE d'essais — quota épuisé en deux secondes, précisément quand la
-   machine chargée aurait eu besoin qu'on insiste ;
-4. condition lue dans le corps de l'effet — l'effet ne se réexécute pas, `Date.now()`
-   n'étant pas une dépendance.
+1. fixed cadence — it duplicated its own in-flight navigation;
+2. guarding on `pending` alone — an abandoned navigation leaves `pending` stuck at
+   true FOREVER, and the retry was then never issued: permanent deadlock, greyed
+   field, frozen URL;
+3. a limit in NUMBER of attempts — the quota exhausted in two seconds, exactly
+   when a loaded machine would have needed us to persist;
+4. the condition read in the effect body — the effect does not re-run, `Date.now()`
+   not being a dependency.
 
-La forme retenue combine les quatre leçons : borne en DURÉE (vingt secondes), attente
-doublante, `pending` lu par RÉFÉRENCE dans la minuterie, et réarmement à chaque
-battement. Une borne en nombre vaut la même chose sur une machine au repos et sur une
-machine saturée ; une borne en temps s'adapte.
+The shape retained combines all four lessons: a limit in DURATION (twenty
+seconds), a doubling wait, `pending` read by REFERENCE inside the timer, and
+rearming on every beat. A limit in number means the same thing on an idle machine
+and on a saturated one; a limit in time adapts.
 
-**Reconsidérer si.** Next.js corrige l'annulation. La condition d'arrêt étant
-factuelle — l'URL porte-t-elle ce qu'on a demandé — le code resterait correct, il
-cesserait simplement de relancer.
-
----
-
-## 10 · Next.js 15, pas 16
-
-**Décidé.** Rester sur la version pinée par CLAUDE.md §2, malgré trois vulnérabilités
-`high` corrigées en 16.
-
-**Pourquoi.** Exposition vérifiée nulle : `next/image` n'est employé nulle part, aucun
-motif d'image distante n'est déclaré, `postcss` ne traite que nos feuilles au build.
-Une montée de version majeure décidée seule, en fin de phase, coûterait plus que ce
-qu'elle corrige.
-
-**Coût.** `npm audit` reste rouge, et il faut savoir pourquoi pour ne pas s'y habituer.
-
-**Reconsidérer si.** Une des trois vulnérabilités devient atteignable — l'ajout d'un
-`next/image` suffirait — ou à la première fenêtre de maintenance planifiée.
+**Reconsider if.** Next.js fixes the cancellation. The stop condition being
+factual — does the URL carry what we asked for — the code would stay correct, it
+would simply stop retrying.
 
 ---
 
-## 11 · `zustand` est déclaré mais inutilisé
+## 10 · Next.js 15, not 16
 
-**Constaté** par `depcheck`, pas décidé.
+**Decided.** Stay on the line pinned by CLAUDE.md §2, while taking every patch
+release on it.
 
-CLAUDE.md §2 le retient pour l'état d'interface éphémère, « usage minimal ». Aucun
-écran n'en a eu besoin : l'état vit dans l'URL (partageable) ou dans un `useState`
-local. La dépendance reste installée parce qu'elle fait partie de la pile approuvée ;
-la retirer est une décision de charte, pas de code.
+**Why.** Exposure to the remaining advisories is verified nil: `next/image` is used
+nowhere, no remote image pattern is declared, `postcss` only processes our own
+stylesheets at build time. A major version bump decided alone, at the end of a
+phase, would cost more than it fixes.
 
-**À trancher** à la prochaine revue de dépendances.
+⚠️ **Updated 2026-09-27.** This entry used to say "three `high` vulnerabilities
+fixed in 16" and implied nothing could be done on the 15 line. That had stopped
+being true: `next` carried a **CRITICAL** advisory with a patch release available.
+`15.5.22 → 15.5.26` was applied, along with `vitest` and `@vitest/coverage-v8`
+`4.1.10 → 4.1.11`. Nine advisories became five; the critical one is gone.
 
----
+**Cost.** `npm audit` still shows five, and you have to know why in order not to
+get used to it.
 
-## 12 · Couverture : seuils sur les modules purs seulement
+⚠️ **The lesson is about the entry, not the package.** "No fix exists" ages into a
+reason not to look. Patch releases on the pinned line are taken as they ship; only
+the major bump waits for a maintenance window.
 
-**Décidé.** Seuils par fichier sur le calcul, la validation, la machine à états, les
-dates, `Result` et les erreurs. Les services qui orchestrent la base en sont exclus.
-
-**Pourquoi.** Les couvrir supposerait de simuler le client Supabase : le test
-mesurerait la simulation, pas la règle — et la règle vit dans la RLS et les fonctions
-SQL. Ces modules sont éprouvés par `vitest.integration.mts` (base réelle) et par
-Playwright (application réelle), dont la couverture ne se lit pas dans ce rapport.
-
-**Coût.** Le chiffre global du rapport unitaire ne décrit pas tout le projet. D'où
-[testing.md](./testing.md), qui dit ce que chaque suite garantit.
-
-**Reconsidérer si.** Un service d'orchestration prend une décision qui n'est pas
-gardée en base. Il faudrait alors la déplacer, ou le tester pour de bon.
+**Reconsider if.** One of the remaining advisories becomes reachable — adding a
+`next/image` would be enough — or at the first planned maintenance window.
 
 ---
 
-## 13 · La locale voyage par en-tête, posé par notre middleware
+## 11 · `zustand` is declared but unused
 
-**Décidé.** `src/middleware.ts` pose `x-app-locale`, et `getRequestConfig` le lit
-avant de se replier sur `requestLocale`.
+**Observed** by `depcheck`, not decided.
 
-**Pourquoi.** next-intl alimente `requestLocale` depuis SON middleware, que ce projet
-ne monte pas — le sien porte la session, la CSP, la corrélation et la limitation de
-débit. `requestLocale` restait donc vide et `resolveLocale(undefined)` retombait sur
-le français : **toute l'application rendait en français, quelle que soit l'URL**, et
-les 1416 clés du catalogue arabe n'ont jamais été lues.
+CLAUDE.md §2 keeps it for ephemeral UI state, "minimal use". No screen has needed
+it: state lives in the URL (shareable) or in a local `useState`. The dependency
+stays installed because it is part of the approved stack; removing it is a charter
+decision, not a code one.
 
-Le défaut était invisible : `lang` et `dir` viennent de `params` et basculaient
-correctement en `ar`/`rtl`. La page avait TOUT l'air d'être en arabe, sauf le texte.
-
-`setRequestLocale` a été essayé d'abord et ne suffit pas : la page peut résoudre ses
-traductions avant que la disposition ne l'ait appelé. L'en-tête, lui, est posé avant
-tout rendu et ne dépend d'aucun ordre d'exécution.
-
-**Coût.** Un en-tête de plus, et une dépendance à notre middleware — assumée : il est
-déjà le point de passage obligé de chaque requête.
-
-**Reconsidérer si.** `next/root-params` se stabilise. Il remplacerait à la fois cet
-en-tête et les deux dispenses de dépréciation qui l'accompagnent.
+**To settle** at the next dependency review.
 
 ---
 
-## 14 · Les règles de notification sont exposées, pas modifiables
+## 12 · Coverage: thresholds on pure modules only
 
-**Décidé.** `/admin/notifications` affiche rappels et escalades en lecture. Les
-politiques d'écriture existent en base, réservées à `settings.manage` ; aucun
-formulaire ne les emploie.
+**Decided.** Per-file thresholds on calculation, validation, the state machine,
+dates, `Result` and errors. Services that orchestrate the database are excluded.
 
-**Pourquoi.** Une règle éteinte par mégarde ne casse rien de visible : elle supprime
-des rappels, et le défaut ne se découvre qu'à la première échéance manquée. À
-l'inverse, ne rien montrer oblige à ouvrir la base pour répondre à « la règle
-existe-t-elle ? » — la première question posée quand une alerte n'arrive pas.
+**Why.** Covering them would mean mocking the Supabase client: the test would
+measure the mock, not the rule — and the rule lives in RLS and SQL functions.
+Those modules are exercised by `vitest.integration.mts` (real database) and by
+Playwright (real application), whose coverage does not appear in this report.
 
-**Coût.** Changer un jalon demande une migration, donc un déploiement. C'est plus lent
-qu'un clic, et c'est le but.
+**Cost.** The overall figure in the unit report does not describe the whole
+project. Hence [testing.md](./testing.md), which says what each suite guarantees.
 
-**Reconsidérer si.** Le besoin d'ajuster un jalon devient courant. Il faudrait alors
-un formulaire AVEC confirmation explicite et trace d'audit — pas un simple
-interrupteur.
+**Reconsider if.** An orchestration service takes a decision that is not guarded in
+the database. It would then have to be moved, or genuinely tested.
+
 ---
 
-## 15 · Une fiche introuvable répond 200, pas 404
+## 13 · The locale travels by header, set by our middleware
 
-> **Écart assumé.** Ce qui suit n'est pas un choix d'architecture : c'est un défaut
-> connu qu'on garde, avec son prix chiffré.
+**Decided.** `src/middleware.ts` sets `x-app-locale`, and `getRequestConfig` reads
+it before falling back to `requestLocale`.
 
-**Décidé.** `notFound()` sur une fiche — occurrence, document, obligation, registre —
-rend l'écran « ressource introuvable » avec un statut HTTP **200**. On le laisse tel
-quel, et on ne déplace pas le contrôle d'existence dans le middleware.
+**Why.** next-intl populates `requestLocale` from ITS middleware, which this
+project does not mount — ours carries the session, the CSP, correlation and rate
+limiting. `requestLocale` therefore stayed empty and `resolveLocale(undefined)`
+fell back to French: **the whole application rendered in French whatever the URL**,
+and the 1,416 keys of the Arabic catalogue were never read.
 
-**Pourquoi.** L'exigence réelle n'était pas le code de statut : c'était
-l'**indistinguabilité** entre « la ressource n'existe pas » et « vous n'y avez pas
-droit ». Distinguer les deux transformerait chaque fiche en oracle : on devine un
-identifiant, on lit la différence, et on apprend quels dossiers existent dans les
-domaines qu'on n'a pas le droit de voir. La liste des obligations d'une entreprise
-en dit long sur ses ennuis.
+The defect was invisible: `lang` and `dir` come from `params` and switched
+correctly to `ar`/`rtl`. The page looked entirely Arabic, except the text.
 
-Cette propriété-là est établie et **testée** — même statut, corps rendu identique,
-temps de réponse comparable (`e2e/security.spec.ts`). Aucune information ne fuit.
-L'objectif de sécurité est atteint.
+`setRequestLocale` was tried first and is not enough: a page can resolve its
+translations before the layout has called it. The header is set before any
+rendering and depends on no execution order.
 
-Ce qui reste est une imprécision de sémantique HTTP, dont les conséquences réelles
-se comptent :
+**Cost.** One more header, and a dependency on our middleware — accepted: it is
+already the mandatory passage point of every request.
 
-| Conséquence redoutée | Ici                                                                                                         |
-| -------------------- | ----------------------------------------------------------------------------------------------------------- |
-| Référencement        | Application privée, derrière authentification. Aucun moteur n'y entre.                                      |
-| Consommateurs d'API  | Il n'y en a pas.                                                                                            |
-| Cache                | Pages dynamiques authentifiées, jamais mises en cache partagé.                                              |
-| Surveillance externe | Une sonde pointée sur l'URL d'une fiche compterait mal. Ce cas ne se présente pas — voir `docs/runbook.md`. |
+**Reconsider if.** `next/root-params` stabilises. It would replace both this header
+and the two deprecation waivers that accompany it.
 
-**La cause, mesurée.** `notFound()` ne fixe le code que s'il est levé AVANT que la
-réponse ne commence à s'écrire. L'attrape-tout de la zone authentifiée y parvient :
-c'est un composant synchrone, il lève avant tout. Une fiche, elle, doit d'abord lire
-la session puis la base pour savoir si la ressource existe et si l'appelant y a
-droit ; sur une route rendue dynamiquement, ces attentes suffisent à engager la
-réponse. Vérifié : retirer les `loading.tsx` du segment ET de son parent n'y change
-rien, il n'existe aucune autre frontière de suspension dans la coquille, et
-`notFound()` depuis `generateMetadata` échoue aussi — Next 15 diffuse les
-métadonnées.
+---
 
-**Coût.** Le correctif étanche demanderait de porter le contrôle dans le middleware,
-donc **une lecture de base par requête**. C'est précisément le motif qu'on vient de
-retirer des politiques RLS au prix de plusieurs heures de travail. Le réintroduire
-pour une exactitude cosmétique serait un mauvais échange : on paierait à chaque
-requête de chaque écran pour un chiffre que personne ne lit.
+## 14 · Notification rules are exposed, not editable
 
-**Reconsidérer si.** L'application s'ouvre à des consommateurs d'API, ou une
-surveillance externe doit distinguer « disparu » de « en panne » sur une ressource
-précise. Le premier cas changerait la nature du produit ; le second se règle avec
-`/api/health`, sans toucher au rendu.
+**Decided.** `/admin/notifications` shows reminders and escalations read-only. The
+write policies exist in the database, reserved to `settings.manage`; no form uses
+them.
+
+**Why.** A rule switched off by mistake breaks nothing visible: it removes
+reminders, and the defect is only discovered at the first missed deadline.
+Conversely, showing nothing forces you to open the database to answer "does the
+rule exist?" — the first question asked when an alert does not arrive.
+
+**Cost.** Changing an offset requires a migration, therefore a deployment. That is
+slower than a click, and that is the point.
+
+**Reconsider if.** Adjusting an offset becomes routine. It would then need a form
+WITH explicit confirmation and an audit trail — not a plain toggle.
+
+---
+
+## 15 · A missing record answers 200, not 404
+
+> **Accepted gap.** What follows is not an architectural choice: it is a known
+> defect we are keeping, with its price quantified.
+
+**Decided.** `notFound()` on a record — occurrence, document, obligation, register
+— renders the "resource not found" screen with HTTP status **200**. We leave it as
+is, and we do not move the existence check into the middleware.
+
+**Why.** The real requirement was not the status code: it was
+**indistinguishability** between "the resource does not exist" and "you are not
+allowed to see it". Distinguishing the two would turn every record into an oracle:
+guess an id, read the difference, and learn which dossiers exist in domains you are
+not allowed to see. The list of a company's obligations says a great deal about its
+troubles.
+
+That property is established and **tested** — same status, identical rendered body,
+comparable response time (`e2e/security.spec.ts`). No information leaks. The
+security objective is met.
+
+What remains is an imprecision of HTTP semantics, whose real consequences can be
+counted:
+
+| Feared consequence  | Here                                                                                                 |
+| ------------------- | ---------------------------------------------------------------------------------------------------- |
+| Search indexing     | Private application, behind authentication. No crawler gets in.                                      |
+| API consumers       | There are none.                                                                                      |
+| Caching             | Dynamic authenticated pages, never put in a shared cache.                                            |
+| External monitoring | A probe aimed at a record URL would count wrongly. That case does not arise — see `docs/runbook.md`. |
+
+**The cause, measured.** `notFound()` only sets the code if it is thrown BEFORE the
+response starts being written. The authenticated area's catch-all manages it: it is
+a synchronous component, it throws before anything. A record, however, must first
+read the session then the database to know whether the resource exists and whether
+the caller may see it; on a dynamically rendered route, those awaits are enough to
+commit the response. Verified: removing the `loading.tsx` files from the segment AND
+its parent changes nothing, there is no other suspension boundary in the shell, and
+`notFound()` from `generateMetadata` also fails — Next 15 streams metadata.
+
+**Cost.** A watertight fix would mean moving the check into the middleware, so **one
+database read per request**. That is exactly the pattern we just removed from the
+RLS policies at the cost of several hours' work. Reintroducing it for cosmetic
+accuracy would be a bad trade: we would pay on every request of every screen for a
+number nobody reads.
+
+**Reconsider if.** The application opens to API consumers, or external monitoring
+needs to distinguish "gone" from "broken" on a specific resource. The first would
+change the nature of the product; the second is answered by `/api/health`, without
+touching the rendering.
+
+---
+
+## 16 · Scheduled-job configuration lives in a table, not in a Postgres setting
+
+**Decided.** The addresses and the shared secret used by `pg_cron` live in
+`cron_dispatch_config`, a table with **no policy and no grant**, read only by
+`dispatch_cron_post` in `security definer`. Written by `npm run cron:config`.
+
+**Why.** The original design used custom parameters
+(`current_setting('app.…_url')`). Storing one durably requires SUPERUSER, which
+Supabase grants neither on the hosted offering nor on the local stack — so the
+setting would have stayed NULL for ever. Measured: `alter database … set app.x`
+answers `permission denied to set parameter`.
+
+`app_settings` was the other candidate and was rejected: it is readable by every
+holder of `settings.manage`, and the shared secret has no business being visible to
+an administrator.
+
+**Cost.** One more table, and a script to run at each deployment or address change.
+The script refuses a local address when the database is remote — a hosted database
+calling `localhost` calls itself.
+
+⚠️ **The function raises rather than posting without the secret.** Posting anyway
+would produce a 401 lost inside `net._http_response`; an exception is recorded by
+pg_cron in `cron.job_run_details`. The silence becomes a red line.
+
+**Reconsider if.** Supabase grants a way to store a durable parameter, or a secrets
+manager is introduced. Neither would change the guarantee, only where the value is
+kept.
+
+---
+
+## 17 · Retention removes the files, keeps the records
+
+**Decided.** Beyond `retention_live_years` (3 by default), document **files** leave
+object storage; their **records** stay in `documents`, marked
+`archived_offline_at` with a link to the archive that holds them.
+
+**Why.** What takes up space is the attachments, not the rows: a year of activity
+is a few hundred rows. And a record carries the SHA-256 fingerprint and the access
+history — deleting it would make the evidence disappear along with the object. On a
+compliance platform, being able to say "this document existed, here is its
+signature, it is in the archive of such a date" is the whole point.
+
+It also keeps CLAUDE.md's rule intact: no physical deletion of business data.
+
+**Cost.** Consulting an old document requires restoring an archive. The link
+`archived_in_backup_id` says which one — without it, you would restore archives one
+by one until you found it.
+
+⚠️ **Archiving is refused without a verified archive**: incomplete, unencrypted,
+never restored, or **older than the last document of the year**. That last one is
+the condition people forget, and the only one whose omission destroys data.
+
+**Reconsider if.** Storage stops being the cost driver, or a legal obligation
+requires immediate availability beyond three years. The setting changes without a
+deployment.
