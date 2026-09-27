@@ -1,161 +1,173 @@
-# Stratégie de sauvegarde
+# Backup strategy
 
-> La panne classique n'est pas la sauvegarde qui échoue : celle-là se voit. C'est
-> celle qui échoue **silencieusement** pendant huit mois, et qu'on découvre le
-> jour où il faut restaurer. Tout ce document est organisé autour de cette
-> phrase.
+> The classic failure is not the backup that fails: that one is visible. It is
+> the one that fails **silently** for eight months, and is discovered the day you
+> have to restore. This whole document is organised around that sentence.
 
-## Ce qu'il y a à perdre
+## What there is to lose
 
-| Donnée                                 | Où elle vit                                    | Reconstituable ?                                   |
-| -------------------------------------- | ---------------------------------------------- | -------------------------------------------------- |
-| Référentiel des obligations            | PostgreSQL                                     | Oui, mais au prix d'un arbitrage cabinet comptable |
-| Occurrences, transitions, affectations | PostgreSQL                                     | **Non**                                            |
-| Journal d'audit                        | PostgreSQL, partitionné, en ajout seul         | **Non** — et c'est lui qu'un contrôleur lit        |
-| Pièces déposées                        | Stockage objet (bucket `compliance-documents`) | **Non**                                            |
-| Comptes et habilitations               | `auth.users` + `public.profiles`               | Partiellement                                      |
+| Data                                  | Where it lives                                 | Rebuildable?                                   |
+| ------------------------------------- | ---------------------------------------------- | ---------------------------------------------- |
+| Obligations referential               | PostgreSQL                                     | Yes, but at the cost of an accountant's ruling |
+| Occurrences, transitions, assignments | PostgreSQL                                     | **No**                                         |
+| Audit log                             | PostgreSQL, partitioned, append-only           | **No** — and it is what an inspector reads     |
+| Uploaded documents                    | Object storage (`compliance-documents` bucket) | **No**                                         |
+| Accounts and permissions              | `auth.users` + `public.profiles`               | Partially                                      |
 
-⚠️ **La base seule ne suffit pas.** Une restauration sans le stockage rend une
-application où chaque dossier existe et où chaque pièce a disparu : les écrans
-fonctionnent, les liens de téléchargement échouent un par un. C'est pourquoi
-`scripts/backup.ts` **refuse de s'exécuter** sans `BACKUP_STORAGE_SOURCE`, sauf
-`BACKUP_ALLOW_DB_ONLY=true` posé sciemment.
+⚠️ **The database alone is not enough.** A restore without storage gives you an
+application where every dossier exists and every document is gone: the screens
+work, the download links fail one by one. That is why `scripts/backup.ts`
+**refuses to run** without `BACKUP_STORAGE_SOURCE`, unless `BACKUP_ALLOW_DB_ONLY=true`
+is set knowingly.
 
 ---
 
-## Les trois niveaux
+## The three levels
 
-### Niveau 1 — Sauvegarde continue managée
+### Level 1 — Managed continuous backup
 
-Point-in-time recovery de l'hébergeur, **rétention 7 jours**.
+The host's point-in-time recovery, **7-day retention**.
 
-- Couvre l'erreur humaine récente : un `DELETE` malheureux, une migration ratée.
-- Granularité à la seconde, restauration par l'hébergeur.
-- **Ne couvre pas** la perte du compte hébergeur, ni une décision de
-  localisation légale des données. D'où le niveau 2.
+- Covers recent human error: an unfortunate `DELETE`, a failed migration.
+- Second-level granularity, restored by the host.
+- **Does not cover** losing the hosting account, nor a legal decision about where
+  data must live. Hence level 2.
 
-À activer dans la console Supabase : _Database → Backups → Point in Time
-Recovery_. Sur une instance auto-hébergée, l'équivalent est
-`wal-g` / `pgBackRest` configuré sur le serveur PostgreSQL.
+Enable it in the Supabase console: _Database → Backups → Point in Time Recovery_.
+On a self-hosted instance the equivalent is `wal-g` / `pgBackRest` configured on
+the PostgreSQL server.
 
-### Niveau 2 — Export logique quotidien, rapatrié et chiffré
+### Level 2 — Daily logical export, pulled back and encrypted
 
-`scripts/backup.ts`, **03 h 00 heure d'Alger**.
+`scripts/backup.ts`, **03:00 Algiers time**.
 
-1. `pg_dump --clean --if-exists --format=plain`, comprimé en gzip.
-2. Copie du stockage documentaire (rclone, ou chemin monté).
-3. Assemblage en `.tar`, puis **chiffrement AES-256-GCM**.
-4. Transfert vers un support **contrôlé par AGROESPACE** — répertoire local du
-   serveur d'entreprise, ou remote rclone (NAS).
-5. **Relecture à destination** : taille et empreinte SHA-256 revérifiées.
-6. Consignation dans `backup_runs` **et** `job_runs`.
+1. `pg_dump --clean --if-exists --format=plain`, gzipped.
+2. Copy of the document storage (rclone, or a mounted path).
+3. Assembled into a `.tar`, then **AES-256-GCM encrypted**.
+4. Transferred to media **controlled by AGROESPACE** — a local directory on the
+   company server, or an rclone remote (NAS).
+5. **Read back at the destination**: size and SHA-256 re-checked.
+6. Recorded in `backup_runs` **and** `job_runs`.
 
-⚠️ L'étape 5 est celle qu'on saute et qu'il ne faut pas sauter. Un `cp` qui rend
-0 dit que l'écriture a été **acceptée**, pas que les octets sont **lisibles** :
-disque plein en fin de copie, montage réseau qui tombe, quota atteint. Sans
-relecture, `verified_at` reste nul — et une ligne `SUCCEEDED` sans `verified_at`
-doit être lue comme un doute, pas comme un succès.
+⚠️ Step 5 is the one people skip and must not. A `cp` returning 0 says the write
+was **accepted**, not that the bytes are **readable**: disk full at the end of the
+copy, a network mount dropping, a quota reached. Without the read-back,
+`verified_at` stays null — and a `SUCCEEDED` row with no `verified_at` should be
+read as a doubt, not a success.
 
-### Niveau 3 — Archive mensuelle, conservée 24 mois
+### Level 3 — Monthly archive, kept 24 months
 
-La sauvegarde du 1er du mois est copiée dans un emplacement à rotation lente.
-Vingt-quatre mois : la durée pendant laquelle un contrôle fiscal peut réclamer un
-exercice révolu.
+The backup taken on the 1st of the month is copied to slow-rotation storage.
+Twenty-four months: how long a tax inspection can ask about a closed financial
+year.
 
 ---
 
 ## Rotation
 
-| Cadence      | Conservées | Couvre                                |
-| ------------ | ---------- | ------------------------------------- |
-| Quotidienne  | 7          | l'incident de la semaine              |
-| Hebdomadaire | 4          | l'erreur découverte au bout d'un mois |
-| Mensuelle    | 12         | l'exercice en cours                   |
-| Archive      | 24 mois    | le contrôle sur exercice révolu       |
+| Cadence | Kept      | Covers                         |
+| ------- | --------- | ------------------------------ |
+| Daily   | 7         | this week's incident           |
+| Weekly  | 4         | the error found a month later  |
+| Monthly | 12        | the current financial year     |
+| Archive | 24 months | an inspection on a closed year |
 
-La rotation n'est **pas** faite par le script : elle est déléguée à l'outil qui
-détient l'espace (politique de cycle de vie du NAS, `rclone` avec
-`--max-age`, ou `logrotate`). Un script de sauvegarde qui supprime des
-sauvegardes est un script qui peut supprimer la mauvaise.
-
----
-
-## Chiffrement
-
-- **AES-256-GCM**, clé dérivée par `scrypt` d'un sel aléatoire par archive.
-- Format : `[sel 16][vecteur 12][chiffré …][marqueur d'authenticité 16]`.
-- GCM et non CBC : il **authentifie** en plus de chiffrer. Une archive modifiée
-  d'un octet fait échouer le déchiffrement au lieu de rendre des données fausses.
-
-⚠️ **La clé ne voyage jamais avec l'archive.** `BACKUP_ENCRYPTION_KEY` vit dans
-l'environnement du serveur qui sauvegarde, et **dans le coffre de l'entreprise**.
-Une archive chiffrée déposée à côté de sa clé est une archive en clair.
-
-⚠️ **Perdre la clé, c'est perdre les archives.** Il n'existe aucune récupération.
-La consigner hors ligne fait partie de la mise en service, pas des « bonnes
-pratiques à faire un jour ».
+Rotation is **not** done by the script: it is delegated to whatever owns the
+space (NAS lifecycle policy, `rclone` with `--max-age`, or `logrotate`). A backup
+script that deletes backups is a script that can delete the wrong one.
 
 ---
 
-## L'alerte — le vrai sujet
+## Encryption
 
-Une notification part vers **tous les ADMIN et la DIRECTION**, en interne _et_
-par courriel, dès qu'**aucune sauvegarde n'a réussi depuis 36 heures**.
+- **AES-256-GCM**, key derived with `scrypt` from a random per-archive salt.
+- Format: `[salt 16][iv 12][ciphertext …][auth tag 16]`.
+- GCM and not CBC: it **authenticates** as well as encrypts. An archive altered
+  by one byte fails decryption instead of returning wrong data.
 
-- Portée par `notify_admins_of_stale_backup()`, appelée à **chaque cycle horaire
-  de notification** — pas par une tâche dédiée. Une alerte de sauvegarde portée
-  par son propre planificateur dépendrait d'un dispositif dont personne ne
-  surveille la santé, et se tairait exactement quand elle devrait parler.
-- **L'absence totale de sauvegarde déclenche l'alerte au même titre** qu'une
-  sauvegarde périmée. Une installation neuve alerte donc dès la première heure,
-  et c'est voulu : une table vide traitée comme « tout va bien » est la forme la
-  plus pure du dispositif décoratif.
-- Une alerte par personne et par canal toutes les 24 h. Répétée toutes les
-  heures, elle ne serait plus lue au bout de deux jours.
-- 36 h et non 24 : un incident isolé et rattrapé ne réveille personne ; deux
-  échecs consécutifs, si.
+⚠️ **The key never travels with the archive.** `BACKUP_ENCRYPTION_KEY` lives in
+the environment of the server that backs up, and **in the company safe**. An
+encrypted archive stored next to its key is a plaintext archive.
 
-Le bandeau du tableau de bord existe aussi, mais il ne suffit pas — il faut
-ouvrir un écran d'administration pour le voir.
+⚠️ **Losing the key means losing the archives.** There is no recovery. Recording
+it offline is part of commissioning, not part of "good practices to get to one
+day".
+
+---
+
+## The alert — the real subject
+
+A notification goes to **every ADMIN and to DIRECTION**, both in-app _and_ by
+email, as soon as **no backup has succeeded for 36 hours**.
+
+- Carried by `notify_admins_of_stale_backup()`, called on **every hourly
+  notification cycle** — not by a dedicated job. A backup alert carried by its own
+  scheduler would depend on a mechanism whose health nobody watches, and would go
+  quiet exactly when it should speak.
+- **A total absence of backups triggers the alert just as much** as a stale one.
+  A fresh installation therefore alerts from the first hour, and that is intended:
+  an empty table treated as "all is well" is the purest form of decorative
+  safeguard.
+- One alert per person per channel every 24 h. Repeated hourly, it would stop
+  being read after two days.
+- 36 h and not 24: an isolated failure that was caught up wakes nobody; two
+  consecutive failures do.
+
+The dashboard banner exists too, but it is not enough — you have to open an
+admin screen to see it.
 
 ---
 
 ## Configuration
 
 ```bash
-# Obligatoires
-BACKUP_ENCRYPTION_KEY="…"          # 32 caractères minimum, hors de l'application
-BACKUP_DESTINATION="/srv/backups"  # OU BACKUP_RCLONE_REMOTE
-BACKUP_STORAGE_SOURCE="…"          # chemin monté, ou remote rclone du bucket
+# Required
+BACKUP_ENCRYPTION_KEY="…"          # 32 characters minimum, kept outside the app
+BACKUP_DESTINATION="/srv/backups"  # OR BACKUP_RCLONE_REMOTE
+BACKUP_STORAGE_SOURCE="…"          # mounted path, or rclone remote of the bucket
 
-# Facultatifs
+# Optional
 BACKUP_RCLONE_REMOTE="nas:conformia"
 BACKUP_WORK_DIR="/var/tmp/conformia-backup"
-BACKUP_ALLOW_DB_ONLY="false"       # ⚠️ développement uniquement
+BACKUP_ALLOW_DB_ONLY="false"       # ⚠️ development only
 ```
 
 ```bash
-npm run backup                     # quotidienne
-npm run backup -- --kind=MONTHLY   # archive mensuelle
+npm run backup                     # daily
+npm run backup -- --kind=MONTHLY   # monthly archive
 ```
 
-Prérequis sur le serveur de sauvegarde : `pg_dump`, `tar`, et `rclone` si un
-remote est employé. Le script nomme précisément l'outil manquant.
+Prerequisites on the backup machine: `pg_dump`, `tar`, and `rclone` if a remote
+is used. The script names the missing tool precisely.
 
 ---
 
-## Vérifier que ça marche
+## ⚠️ The backup is NOT scheduled by the database
+
+It used to be listed as a `pg_cron` job. It never worked, and migration 0025
+removed it: a backup writes to a disk that the hosted application cannot reach,
+and it needs `pg_dump`, which a Route Handler does not have. Leaving the job in
+the list was worse than not having it — it made the backup look automated when it
+was not.
+
+It is scheduled by the **operating system** of a machine you control. See
+`docs/complete-guide.md`, part 8, for the Windows Task Scheduler and `crontab`
+entries.
+
+---
+
+## Checking it works
 
 ```sql
--- Les dix dernières exécutions
+-- The last ten runs
 select started_at, kind, status, verified_at,
-       pg_size_pretty(size_bytes) as taille, destination
+       pg_size_pretty(size_bytes) as size, destination
 from public.backup_runs order by started_at desc limit 10;
 ```
 
-Une ligne saine porte `status = 'SUCCEEDED'` **et** `verified_at` non nul.
+A healthy row has `status = 'SUCCEEDED'` **and** a non-null `verified_at`.
 
-Pour éprouver l'alerte sans attendre 36 heures :
+To exercise the alert without waiting 36 hours:
 
 ```sql
 update public.backup_runs set finished_at = now() - interval '40 hours'
@@ -163,18 +175,18 @@ where id = (select max(id) from public.backup_runs where status = 'SUCCEEDED');
 select public.notify_admins_of_stale_backup(36);
 ```
 
-Le test d'intégration `tests/integration/exports-backups.test.ts` couvre ce
-scénario, l'absence totale de sauvegarde, et la non-répétition horaire.
+The integration test `tests/integration/exports-backups.test.ts` covers this
+scenario, the total absence of backups, and the absence of hourly repetition.
 
 ---
 
-## Ce qui reste à faire à la mise en service
+## What is left to do at commissioning
 
-- [ ] Activer le PITR chez l'hébergeur (niveau 1).
-- [ ] Choisir et monter le support de rapatriement (niveau 2).
-- [ ] Générer `BACKUP_ENCRYPTION_KEY` et la déposer dans le coffre.
-- [ ] Planifier `npm run backup` à 03 h 00 Alger — pg_cron le fait déjà si
-      `pg_net` est disponible ; sinon, `cron` système.
-- [ ] Configurer la rotation sur le support.
-- [ ] **Exécuter une restauration d'épreuve** (voir `restore-procedure.md`) et
-      consigner sa durée réelle.
+- [ ] Enable PITR at the host (level 1).
+- [ ] Choose and mount the pull-back media (level 2).
+- [ ] Generate `BACKUP_ENCRYPTION_KEY` and put it in the safe.
+- [ ] Schedule `npm run backup` at 03:00 Algiers **through the OS scheduler** —
+      the database does not do it, see above.
+- [ ] Configure rotation on the media.
+- [ ] **Run a restore drill** (see `restore-procedure.md`) and record its real
+      duration.

@@ -1,92 +1,95 @@
-# Retour arrière des migrations
+# Migration rollback
 
-⚠️ **Une migration sans retour arrière documenté est une décision irréversible
-prise sans le dire.** Ce fichier existe pour que la question « peut-on revenir ? »
-ait une réponse **avant** l'incident, et non pendant.
+⚠️ **A migration with no documented rollback is an irreversible decision taken
+without saying so.** This file exists so that "can we go back?" has an answer
+**before** the incident, not during it.
 
-**Règle de tenue :** toute migration nouvelle ajoute sa ligne ici, **dans le même
-commit**. Une ligne manquante se remarque en revue ; une ligne écrite trois
-semaines plus tard est écrite de mémoire.
-
----
-
-## Les trois natures de retour arrière
-
-Toutes les migrations ne se défont pas de la même façon, et confondre les trois
-est la meilleure façon de perdre des données en croyant les sauver.
-
-| Nature                       | Ce que cela veut dire                                                                  | Comment on revient                                                            |
-| ---------------------------- | -------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------- |
-| **Réversible**               | Objets ajoutés, rien de détruit.                                                       | On les supprime. Aucune donnée perdue.                                        |
-| **Réversible avec perte**    | Colonne, table ou ligne supprimée, ou réécrite.                                        | On restaure depuis la sauvegarde. La perte est **ce qui a été écrit depuis**. |
-| **Irréversible en pratique** | Le retour arrière casserait le code déployé, ou l'information d'origine n'existe plus. | On ne revient pas : on corrige **en avant**, par une migration suivante.      |
-
-⚠️ **« Irréversible » ne veut pas dire « dangereux ».** Cela veut dire que le
-plan de secours est un correctif, pas un retour — et qu'il faut donc l'avoir
-répété en pré-production.
+**Upkeep rule:** every new migration adds its row here, **in the same commit**. A
+missing row is noticed in review; a row written three weeks later is written from
+memory.
 
 ---
 
-## Avant tout retour arrière — sans exception
+## The three kinds of rollback
+
+Not all migrations undo the same way, and confusing the three is the best way to
+lose data while believing you are saving it.
+
+| Kind                         | What it means                                                                | How you go back                                                      |
+| ---------------------------- | ---------------------------------------------------------------------------- | -------------------------------------------------------------------- |
+| **Reversible**               | Objects added, nothing destroyed.                                            | Drop them. No data lost.                                             |
+| **Reversible with loss**     | A column, table or row was dropped or rewritten.                             | Restore from backup. The loss is **whatever was written since**.     |
+| **Irreversible in practice** | The rollback would break deployed code, or the original information is gone. | You do not go back: you fix **forward**, with a follow-up migration. |
+
+⚠️ **"Irreversible" does not mean "dangerous".** It means the fallback plan is a
+fix, not a rollback — and that it therefore has to have been rehearsed in
+staging.
+
+---
+
+## Before any rollback — no exceptions
 
 ```bash
-npm run backup      # même si « ça ne prendra qu'une minute »
+npm run backup      # even if "it will only take a minute"
 ```
 
-Un retour arrière est une écriture. Une écriture non sauvegardée est un pari.
+A rollback is a write. An unbacked-up write is a bet.
 
 ---
 
-## Le tableau
+## The table
 
-| #    | Migration                        | Nature           | Retour arrière                                                                                                                                                                                                                                                                                        |
-| ---- | -------------------------------- | ---------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| 0001 | `core_schema`                    | **Irréversible** | Le socle : entités, domaines, obligations, occurrences. Défaire, c'est vider la base. Aucun retour — restauration complète.                                                                                                                                                                           |
-| 0002 | `identity_rls`                   | **Irréversible** | Rôles, permissions, RLS. Les retirer ouvrirait toutes les tables. Correction en avant, jamais en arrière.                                                                                                                                                                                             |
-| 0003 | `audit_documents`                | **Irréversible** | `audit_log` est append-only et partitionné. Le défaire détruirait la traçabilité — c'est-à-dire la raison d'être du produit.                                                                                                                                                                          |
-| 0004 | `auth_hardening`                 | Réversible       | `drop` des triggers de durcissement et de `auth_attempts`. ⚠️ Rouvre la porte au bourrage de mots de passe : à ne faire qu'en pré-production.                                                                                                                                                         |
-| 0005 | `navigation_search`              | Réversible       | `drop function global_search`, `drop` des index de recherche. Aucune donnée métier touchée.                                                                                                                                                                                                           |
-| 0006 | `obligations_module`             | **Avec perte**   | Colonnes du référentiel. Les supprimer perd les règles d'échéance saisies. Restauration.                                                                                                                                                                                                              |
-| 0007 | `occurrence_workspace`           | Réversible       | `drop` des vues d'espace de travail et des statistiques. Recalculables.                                                                                                                                                                                                                               |
-| 0008 | `occurrence_detail`              | **Avec perte**   | Commentaires et listes de contrôle. Leur suppression perd le travail des utilisateurs.                                                                                                                                                                                                                |
-| 0009 | `documents_module`               | **Irréversible** | Le stockage contient des pièces réelles ; la base porte leurs empreintes. Défaire séparerait les deux.                                                                                                                                                                                                |
-| 0010 | `workflow`                       | **Irréversible** | Machine à états et immuabilité des archives. Sans elle, un dossier archivé redevient modifiable — la garantie la plus forte du produit.                                                                                                                                                               |
-| 0011 | `dashboard_admin`                | Réversible       | `drop` des vues de tableau de bord et de la garde de désactivation.                                                                                                                                                                                                                                   |
-| 0012 | `validation_queue_scale`         | Réversible       | `drop` des index de la file. ⚠️ Le seul effet est une file lente : c'est de la performance, pas de la donnée.                                                                                                                                                                                         |
-| 0013 | `generation_engine`              | Réversible       | `drop` des fonctions de génération. Les occurrences déjà créées demeurent.                                                                                                                                                                                                                            |
-| 0014 | `notifications`                  | **Avec perte**   | Règles, escalades, file d'envoi. Perdre `notifications` perd l'historique des alertes — et la déduplication avec lui : les alertes déjà envoyées repartiraient.                                                                                                                                       |
-| 0015 | `exports_backups`                | Réversible       | `drop` de `export_runs` et `backup_runs`. ⚠️ Perd l'historique qui prouve **quand** on a sauvegardé — au moment précis où on en aurait besoin.                                                                                                                                                        |
-| 0016 | `observability`                  | Réversible       | `drop` de `job_runs` et des verrous. ⚠️ Aveugle la supervision : à ne faire qu'accompagné d'un retour arrière applicatif.                                                                                                                                                                             |
-| 0017 | `rate_limit`                     | Réversible       | `drop` des compteurs. Rouvre les écritures sans limite.                                                                                                                                                                                                                                               |
-| 0018 | `assignment_registers`           | **Avec perte**   | Registres de commerce et triade d'affectation. Les registres saisis sont des données réelles d'entreprise.                                                                                                                                                                                            |
-| 0019 | `authorization_model`            | **Irréversible** | Matrice de rôles refondue, 92 politiques réécrites, `domain_id` dénormalisé. Revenir en arrière restaurerait des politiques que le code ne connaît plus.                                                                                                                                              |
-| 0020 | `registers_assignments`          | Réversible       | `drop` des vues et fonctions d'affectation ; les colonnes restent.                                                                                                                                                                                                                                    |
-| 0021 | `assignment_ui`                  | Réversible       | `drop function reassign_occurrence_triad`, `documents_search` revient à sa forme de 0020. ⚠️ La valeur `REGISTERS` ajoutée à `export_kind` **ne se retire pas** : PostgreSQL ne supprime pas une valeur d'énumération. Elle demeure, inutilisée.                                                      |
-| 0022 | `notification_triad`             | **Avec perte**   | Audiences et chaîne d'alerte. Les valeurs d'énumération ajoutées (`RESPONSIBLE`, `DEPUTY`, `SUPERVISOR`, `WHATSAPP`) **ne se retirent pas**. Le retour arrière consiste à redéfinir `notification_audience_members` et les règles, pas à défaire l'énumération.                                       |
-| 0023 | `notification_recipient_filters` | Réversible       | Redéfinir `due_notification_candidates` dans sa forme 0022. ⚠️ **À ne pas faire** : c'est cette version qui rétablit la préférence de canal, le contrôle des comptes désactivés, l'écart des profils sans adresse et la révocation d'accès à `authenticated`. Revenir, c'est réintroduire les quatre. |
-
----
-
-## Ce qui ne se défait jamais, quelle que soit la migration
-
-Trois catégories, à connaître avant de promettre un retour arrière :
-
-1. **Les valeurs d'énumération.** PostgreSQL n'a pas de `DROP VALUE`. Une valeur
-   ajoutée reste. Le retour arrière consiste à cesser de l'employer, pas à la
-   supprimer.
-2. **Les partitions d'audit déjà écrites.** `audit_log` est append-only par
-   trigger. Un retour arrière qui prétendrait les effacer échouerait — et c'est
-   voulu.
-3. **Les objets du stockage.** Une pièce déposée existe hors de la base. Défaire
-   une migration ne la reprend pas ; restaurer une base sans restaurer le
-   stockage donne une base qui référence des documents disparus. C'est pourquoi
-   `scripts/backup.ts` **refuse** de s'exécuter sans `BACKUP_STORAGE_SOURCE`.
+| #    | Migration                        | Kind             | Rollback                                                                                                                                                                                                                                                                                        |
+| ---- | -------------------------------- | ---------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 0001 | `core_schema`                    | **Irreversible** | The foundation: entities, domains, obligations, occurrences. Undoing it means emptying the database. No rollback — full restore.                                                                                                                                                                |
+| 0002 | `identity_rls`                   | **Irreversible** | Roles, permissions, RLS. Removing them would open every table. Fix forward, never back.                                                                                                                                                                                                         |
+| 0003 | `audit_documents`                | **Irreversible** | `audit_log` is append-only and partitioned. Undoing it would destroy traceability — that is, the product's reason to exist.                                                                                                                                                                     |
+| 0004 | `auth_hardening`                 | Reversible       | `drop` the hardening triggers and `auth_attempts`. ⚠️ Reopens the door to password stuffing: staging only.                                                                                                                                                                                      |
+| 0005 | `navigation_search`              | Reversible       | `drop function global_search`, drop the search indexes. No business data touched.                                                                                                                                                                                                               |
+| 0006 | `obligations_module`             | **With loss**    | Referential columns. Dropping them loses the due-date rules that were entered. Restore.                                                                                                                                                                                                         |
+| 0007 | `occurrence_workspace`           | Reversible       | `drop` the workspace views and statistics. Recomputable.                                                                                                                                                                                                                                        |
+| 0008 | `occurrence_detail`              | **With loss**    | Comments and checklists. Dropping them loses users' work.                                                                                                                                                                                                                                       |
+| 0009 | `documents_module`               | **Irreversible** | Storage holds real documents; the database holds their fingerprints. Undoing it would separate the two.                                                                                                                                                                                         |
+| 0010 | `workflow`                       | **Irreversible** | State machine and archive immutability. Without it an archived dossier becomes editable again — the product's strongest guarantee.                                                                                                                                                              |
+| 0011 | `dashboard_admin`                | Reversible       | `drop` the dashboard views and the deactivation guard.                                                                                                                                                                                                                                          |
+| 0012 | `validation_queue_scale`         | Reversible       | `drop` the queue indexes. ⚠️ The only effect is a slow queue: that is performance, not data.                                                                                                                                                                                                    |
+| 0013 | `generation_engine`              | Reversible       | `drop` the generation functions. Occurrences already created remain.                                                                                                                                                                                                                            |
+| 0014 | `notifications`                  | **With loss**    | Rules, escalations, send queue. Losing `notifications` loses the alert history — and deduplication with it: alerts already sent would go out again.                                                                                                                                             |
+| 0015 | `exports_backups`                | Reversible       | `drop` `export_runs` and `backup_runs`. ⚠️ Loses the history proving **when** you backed up — at the precise moment you would need it.                                                                                                                                                          |
+| 0016 | `observability`                  | Reversible       | `drop` `job_runs` and the locks. ⚠️ Blinds monitoring: only alongside an application rollback.                                                                                                                                                                                                  |
+| 0017 | `rate_limit`                     | Reversible       | `drop` the counters. Reopens unlimited writes.                                                                                                                                                                                                                                                  |
+| 0018 | `assignment_registers`           | **With loss**    | Commercial registers and the assignment triad. Entered registers are real company data.                                                                                                                                                                                                         |
+| 0019 | `authorization_model`            | **Irreversible** | Role matrix rebuilt, 92 policies rewritten, `domain_id` denormalised. Going back would restore policies the code no longer knows about.                                                                                                                                                         |
+| 0020 | `registers_assignments`          | Reversible       | `drop` the assignment views and functions; the columns stay.                                                                                                                                                                                                                                    |
+| 0021 | `assignment_ui`                  | Reversible       | `drop function reassign_occurrence_triad`, return `documents_search` to its 0020 form. ⚠️ The `REGISTERS` value added to `export_kind` **cannot be removed**: PostgreSQL does not drop enum values. It stays, unused. ⚠️ Its appendix also adds the triad enum values — see 0022.               |
+| 0022 | `notification_triad`             | **With loss**    | Audiences and escalation chain. The enum values added (`RESPONSIBLE`, `DEPUTY`, `SUPERVISOR`, `WHATSAPP`) **cannot be removed**. The rollback is to redefine `notification_audience_members` and the rules, not to undo the enum.                                                               |
+| 0023 | `notification_recipient_filters` | Reversible       | Redefine `due_notification_candidates` in its 0022 form. ⚠️ **Do not**: this version is what restores channel preference, the deactivated-account check, the exclusion of profiles with no address, and the revocation of `authenticated` access. Going back reintroduces all four.             |
+| 0024 | `holiday_calendar_coverage`      | Reversible       | `drop view holiday_calendar_coverage`, and redefine `dashboard_alerts` without the `HOLIDAYS_INCOMPLETE` branch. ⚠️ **Do not**: that branch is the only thing that reports an empty holiday calendar, whose absence is silent by nature.                                                        |
+| 0025 | `cron_dispatch_auth`             | **Irreversible** | Undoing it returns to scheduled jobs that cannot authenticate, cannot store their address, and have no `pg_net`. That is not a rollback, it is the original outage. Fix forward. ⚠️ `drop table cron_dispatch_config` also loses the shared secret — re-run `npm run cron:config`.              |
+| 0026 | `settings_single_source`         | **With loss**    | Re-adding the four columns to `app_settings` would restore the divergence they caused: the screen wrote the row, the code read the column. The values live in the rows; re-adding the columns would create empty duplicates.                                                                    |
+| 0027 | `security_hardening`             | Reversible       | Re-grant `truncate, references, trigger` to `anon, authenticated`, and `execute` on `health_snapshot`. ⚠️ **Do not**: that re-opens a public health probe and grants a privilege RLS does not filter.                                                                                           |
+| 0028 | `exercise_retention`             | Reversible       | `drop view exercise_inventory`, `drop function mark_exercise_archived`, drop the two `documents` columns. ⚠️ Dropping `archived_in_backup_id` loses the link saying **which archive** holds a file taken offline — the fiches remain, but finding the file means restoring archives one by one. |
+| 0029 | `profile_contact_fields`         | Reversible       | Return `handle_new_auth_user` to its 0001 form and drop the two `user_invitations` columns. Phone numbers and job titles already copied onto profiles remain.                                                                                                                                   |
 
 ---
 
-## Répéter avant d'en avoir besoin
+## What never undoes, whatever the migration
 
-Un retour arrière écrit et jamais exécuté est une hypothèse. En pré-production,
-au moins une fois : appliquer la dernière migration, la défaire, vérifier que
-l'application démarre encore. Ce qui casse à ce moment-là aurait cassé en
-production, un jour de crise, avec quelqu'un qui attend.
+Three categories, worth knowing before promising a rollback:
+
+1. **Enum values.** PostgreSQL has no `DROP VALUE`. An added value stays. The
+   rollback is to stop using it, not to remove it.
+2. **Audit partitions already written.** `audit_log` is append-only by trigger. A
+   rollback claiming to erase them would fail — and that is intended.
+3. **Storage objects.** An uploaded document exists outside the database. Undoing
+   a migration does not take it back; restoring a database without restoring
+   storage gives you a database referencing documents that are gone. That is why
+   `scripts/backup.ts` **refuses** to run without `BACKUP_STORAGE_SOURCE`.
+
+---
+
+## Rehearse before you need it
+
+A rollback written and never executed is a hypothesis. In staging, at least once:
+apply the latest migration, undo it, check the application still starts. Whatever
+breaks then would have broken in production, on a bad day, with someone waiting.

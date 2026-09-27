@@ -1,54 +1,55 @@
-# Manuel d'exploitation
+# Operations runbook
 
-À lire quand quelque chose ne va pas, ou avant d'y toucher.
+Read this when something is wrong, or before touching it.
 
-## Vérifier l'état en dix secondes
+> Screen names are given as they appear in the app, which is in French.
+
+## Check the state in ten seconds
 
 ```bash
 curl -s http://localhost:3000/api/health | jq
 ```
 
-Trois verdicts possibles :
+Three possible verdicts:
 
-| `status`   | Signification                                    | Code HTTP |
-| ---------- | ------------------------------------------------ | --------- |
-| `ok`       | Tout répond, tout a tourné récemment             | 200       |
-| `degraded` | La plateforme sert, mais une tâche est en retard | 200       |
-| `down`     | Base ou stockage injoignable                     | **503**   |
+| `status`   | Meaning                                     | HTTP code |
+| ---------- | ------------------------------------------- | --------- |
+| `ok`       | Everything answers, everything ran recently | 200       |
+| `degraded` | The platform serves, but a job is behind    | 200       |
+| `down`     | Database or storage unreachable             | **503**   |
 
-Le détail (dates, ancienneté, compteurs) n'est rendu qu'avec l'en-tête
-`x-cron-secret` : « la dernière sauvegarde date de six jours » n'est pas une phrase à
-publier.
+The detail (dates, staleness, counters) is only returned with the
+`x-cron-secret` header: "the last backup is six days old" is not a sentence to
+publish.
 
 ```bash
 curl -s -H "x-cron-secret: $CRON_SECRET" http://localhost:3000/api/health | jq .detail
 ```
 
-L'écran **Administration → Travaux planifiés** (`/fr/admin/jobs`) dit la même chose en
-plus lisible, avec l'historique des exécutions.
+The **Administration → Travaux planifiés** screen (`/fr/admin/jobs`) says the same
+thing more legibly, with the run history.
 
-### ⚠️ Ce sur quoi une surveillance externe NE DOIT PAS être pointée
+### ⚠️ What external monitoring MUST NOT be pointed at
 
-Si une sonde externe est mise en place un jour, elle interroge **`/api/health`**, et
-rien d'autre.
+If an external probe is ever set up, it queries **`/api/health`**, and nothing
+else.
 
-En particulier : **ne pas pointer une sonde sur l'URL d'une fiche** —
-`/fr/echeancier/<identifiant>`, `/fr/documents/<identifiant>` — pour détecter la
-disparition d'une ressource. Ces écrans rendent l'état « introuvable » avec un
-statut **200**, délibérément : voir `docs/decisions.md` § 15. Une sonde qui compte
-les codes de statut y verrait toujours un succès, y compris après la suppression de
-la fiche — elle rassurerait au lieu d'alerter, ce qui est pire qu'une absence de
-sonde.
+In particular: **do not point a probe at a record URL** —
+`/fr/echeancier/<id>`, `/fr/documents/<id>` — to detect that a resource has
+disappeared. Those screens render the "not found" state with status **200**,
+deliberately: see `docs/decisions.md` § 15. A probe counting status codes would
+always see success there, including after the record was deleted — it would
+reassure instead of alerting, which is worse than having no probe at all.
 
-Une fiche exige de surcroît une session valide : sans elle, la réponse est une
-redirection 307 vers la connexion, et la sonde mesurerait l'authentification, pas la
-disponibilité.
+A record also requires a valid session: without one the answer is a 307 redirect
+to the login page, and the probe would be measuring authentication, not
+availability.
 
-## Les symptômes, et ce qu'ils veulent dire
+## Symptoms, and what they mean
 
-### « Les échéances du mois n'apparaissent pas »
+### "This month's deadlines are not showing up"
 
-La génération n'a pas tourné. Vérifier :
+Generation did not run. Check:
 
 ```sql
 select job_name, status, started_at, finished_at, processed_count, error_count
@@ -56,97 +57,97 @@ from public.job_runs where job_name = 'generate-occurrences'
 order by started_at desc limit 5;
 ```
 
-- **Aucune ligne** → le planificateur ne déclenche plus. Vérifier `pg_cron` :
+- **No rows** → the scheduler no longer fires. Check `pg_cron`:
   `select * from cron.job;`
-- **Statut `RUNNING` figé** → un processus interrompu. Le verrou consultatif se libère
-  à la fin de la session ; redémarrer la tâche suffit normalement.
-- **Statut `PARTIAL`** → certaines obligations ont échoué, les autres ont abouti.
-  `details` porte lesquelles. C'est délibéré : dire « réussi » masquerait les
-  obligations non traitées, dire « échoué » masquerait les autres.
+- **Status stuck at `RUNNING`** → an interrupted process. The advisory lock is
+  released when the session ends; restarting the job is normally enough.
+- **Status `PARTIAL`** → some obligations failed, the rest succeeded. `details`
+  says which. That is deliberate: saying "succeeded" would hide the obligations
+  that were not processed, saying "failed" would hide the ones that were.
 
-Relance manuelle :
+Manual re-run:
 
 ```bash
 curl -X POST -H "x-cron-secret: $CRON_SECRET" http://localhost:3000/api/cron/generate
 ```
 
-⚠️ **La relance est idempotente.** Elle ne crée pas de doublon : la clé
-`(entité, obligation, période)` est unique.
+⚠️ **Re-running is idempotent.** It creates no duplicates: the
+`(entity, obligation, period)` key is unique.
 
-### « Les rappels ne partent plus »
+### "Reminders have stopped going out"
 
 ```sql
 select count(*) from public.notifications where sent_at is null and scheduled_for <= now();
 ```
 
-Un nombre qui grimpe = le distributeur ne tourne plus. Même diagnostic que ci-dessus
-avec `job_name = 'process-notifications'`. Relance :
+A climbing number means the dispatcher is no longer running. Same diagnosis as
+above with `job_name = 'process-notifications'`. Re-run:
 
 ```bash
 curl -X POST -H "x-cron-secret: $CRON_SECRET" http://localhost:3000/api/cron/notifications
 ```
 
-⚠️ **Un échec d'envoi n'interrompt jamais le lot** : la notification est marquée en
-échec, `retry_count` augmente, et le traitement continue. Une adresse invalide ne doit
-pas priver quarante personnes de leur rappel.
+⚠️ **A send failure never interrupts the batch**: the notification is marked
+failed, `retry_count` goes up, and processing continues. One invalid address must
+not deprive forty people of their reminder.
 
-### « Un utilisateur ne voit pas un dossier qu'il devrait voir »
+### "A user cannot see a dossier they should see"
 
-Dans l'ordre, sans en sauter :
+In order, skipping none:
 
-1. **Son rôle porte-t-il la permission ?** → `/fr/admin/roles`
-2. **Son rôle couvre-t-il le domaine ?** `user_roles.domain_id` — `NULL` = tous.
-3. **Le rôle est-il actif ?** `revoked_at is null` et `expires_at` non dépassé.
-4. **La RLS rend-elle la ligne ?** À vérifier SOUS SA SESSION, jamais en `postgres` :
+1. **Does their role carry the permission?** → `/fr/admin/roles`
+2. **Does their role cover the domain?** `user_roles.domain_id` — `NULL` = all.
+3. **Is the role still live?** `revoked_at is null` and `expires_at` not past.
+4. **Does RLS return the row?** Check UNDER THEIR SESSION, never as `postgres`:
 
 ```sql
 begin;
-select set_config('request.jwt.claims', '{"sub":"<son-uuid>","role":"authenticated"}', true);
+select set_config('request.jwt.claims', '{"sub":"<their-uuid>","role":"authenticated"}', true);
 set local role authenticated;
 select id, period_key, status from public.obligation_occurrences where id = '<dossier>';
 rollback;
 ```
 
-Zéro ligne ici = la RLS refuse, et c'est la réponse. Le problème est alors dans
-l'affectation, pas dans l'application.
+Zero rows here means RLS is refusing, and that is the answer. The problem is then
+in the assignment, not in the application.
 
-### « Un administrateur est bloqué sur l'écran d'enrôlement »
+### "An administrator is stuck on the enrolment screen"
 
-C'est le fonctionnement prévu : `ADMIN` et `DIRECTION` ne passent pas sans second
-facteur. Deux causes réelles :
+That is the intended behaviour: `ADMIN` and `DIRECTION` do not get through
+without a second factor. Two real causes:
 
-1. **TOTP désactivé côté Supabase.** Symptôme : l'écran affiche « Une erreur
-   inattendue est survenue » au lieu du QR. Vérifier `[auth.mfa.totp]` —
-   `enroll_enabled` ET `verify_enabled` à `true`. C'est la panne la plus sévère du
-   système : elle verrouille tous les comptes d'administration.
-2. **Facteur perdu** (téléphone changé). Réinitialisation par un autre porteur de
-   `user.manage` : `/fr/admin/users` → réinitialiser le second facteur. L'action est
-   tracée (`MFA_RESET`) et exige un motif.
+1. **TOTP disabled on the Supabase side.** Symptom: the screen shows "An
+   unexpected error occurred" instead of the QR code. Check `[auth.mfa.totp]` —
+   both `enroll_enabled` AND `verify_enabled` set to `true`. This is the most
+   severe failure in the system: it locks out every administrator account.
+2. **Lost factor** (changed phone). Reset by another holder of `user.manage`:
+   `/fr/admin/users` → reset the second factor. The action is traced
+   (`MFA_RESET`) and requires a written reason.
 
-⚠️ **Si plus AUCUN administrateur ne peut entrer**, la sortie de secours passe par la
-base :
+⚠️ **If NO administrator can get in any more**, the escape hatch goes through the
+database:
 
 ```sql
--- Retire l'exigence le temps de rétablir un facteur. À REMETTRE ensuite.
+-- Lifts the requirement long enough to restore a factor. PUT IT BACK afterwards.
 update public.app_settings set value = 'false' where key = 'require_mfa_all_users';
-delete from auth.mfa_factors where user_id = '<uuid de l administrateur>';
+delete from auth.mfa_factors where user_id = '<the administrator uuid>';
 ```
 
-### « L'écran ne se met pas à jour après une action »
+### "The screen does not update after an action"
 
-Défaut connu et corrigé, mais dont la forme peut réapparaître ailleurs :
-`router.refresh()` enchaîné sur une Server Action **est annulé** par le navigateur.
-La correction retenue ne repose pas sur un délai mais sur une condition d'arrêt
-factuelle — redemander la page tant qu'elle n'a pas vu le changement, en nombre borné.
-Voir `src/hooks/use-query-navigation.ts` et `occurrence-checklist.tsx`.
+A known defect, fixed, but whose shape can reappear elsewhere:
+`router.refresh()` chained onto a Server Action **is cancelled** by the browser.
+The fix chosen does not rest on a delay but on a factual stop condition — ask for
+the page again until it has seen the change, a bounded number of times. See
+`src/hooks/use-query-navigation.ts` and `occurrence-checklist.tsx`.
 
-Si un nouvel écran présente le symptôme, chercher un `router.refresh()` ou un
-`router.replace()` appelé dans la foulée d'une action.
+If a new screen shows the symptom, look for a `router.refresh()` or
+`router.replace()` called right after an action.
 
-### « Trop de requêtes » (429)
+### "Too many requests" (429)
 
-L'utilisateur a dépassé 60 écritures en une minute. Dans l'usage réel, cela signale
-presque toujours un onglet resté ouvert sur une action qui se relance seule. Vérifier :
+The user exceeded 60 writes in one minute. In real use this almost always signals
+a tab left open on an action that re-fires by itself. Check:
 
 ```sql
 select subject, count(*) from public.rate_limit_hits
@@ -154,93 +155,95 @@ where occurred_at > now() - interval '5 minutes'
 group by subject order by count(*) desc limit 5;
 ```
 
-## Sauvegardes
+## Backups
 
-Procédure complète : [backup-strategy.md](./backup-strategy.md) et
+Full procedure: [backup-strategy.md](./backup-strategy.md) and
 [restore-procedure.md](./restore-procedure.md).
 
-⚠️ **L'alerte qui compte** : aucune sauvegarde réussie depuis 36 heures déclenche une
-notification aux administrateurs (`notify_admins_of_stale_backup`). Tant que personne
-n'alimente `backup_runs`, cette alerte est allumée **en permanence** — c'est voulu :
-un dispositif de sauvegarde absent ne doit pas ressembler à un dispositif silencieux.
+⚠️ **The alert that matters**: no successful backup for 36 hours triggers a
+notification to administrators (`notify_admins_of_stale_backup`). As long as
+nobody feeds `backup_runs`, that alert stays on **permanently** — and that is the
+intent: an absent backup system must not look like a silent one.
 
-Épreuve de restauration mensuelle : `npm run restore:test`. C'est **la seule chose qui
-transforme « on a des sauvegardes » en fait** ; le reste dit qu'un fichier existe.
+Monthly restore drill: `npm run restore:test`. That is **the only thing that
+turns "we have backups" into a fact**; everything else says a file exists.
 
-### Durée de restauration — à remplir après la première restauration réelle
+### Restore duration — to be filled in after the first real restore
 
-⚠️ **Une durée inconnue est une durée qu'on découvrira le jour de l'incident**,
-devant quelqu'un qui attend une réponse. Le chiffre ci-dessous se mesure une fois,
-puis se vérifie à chaque épreuve mensuelle.
+⚠️ **An unknown duration is a duration you will discover on the day of the
+incident**, in front of someone waiting for an answer. The figure below is
+measured once, then confirmed at each monthly drill.
 
-| Mesuré le   | Volume base | Volume pièces | Durée totale | Par qui |
-| ----------- | ----------- | ------------- | ------------ | ------- |
-| _à remplir_ |             |               |              |         |
+| Measured on  | Database size | Documents size | Total duration | By whom |
+| ------------ | ------------- | -------------- | -------------- | ------- |
+| _to fill in_ |               |                |                |         |
 
-Ce qu'il faut chronométrer : **de la décision de restaurer à l'application qui
-répond**, pas la seule commande. Le téléchargement de l'archive depuis le NAS et
-la remise en route en font partie — ce sont eux qui surprennent.
+What to time: **from the decision to restore to the application answering**, not
+just the command. Downloading the archive from the NAS and bringing the service
+back up are part of it — and they are the parts that surprise.
 
-⚠️ Reporter aussi cette durée dans le plan de retour arrière
-(`docs/go-live.md`, section G) : c'est là qu'on la cherchera.
+⚠️ Copy this duration into the rollback plan as well
+(`docs/go-live.md`, section G): that is where it will be looked for.
 
-## Diagnostiquer avec l'audit
+## Diagnosing with the audit log
 
-Toute écriture métier laisse une ligne. Depuis la migration 0016, elle porte
-l'**identifiant de corrélation** de la requête.
+Every business write leaves a row. Since migration 0016 it carries the request's
+**correlation id**.
 
 ```sql
--- Tout ce qu'une même requête a produit
+-- Everything one request produced
 select occurred_at, action, entity_table, entity_id_ref, actor_email
 from public.audit_log where request_id = '<uuid>' order by occurred_at;
 
--- Tout ce qu'une personne a fait aujourd'hui
+-- Everything one person did today
 select occurred_at, action, entity_table, entity_id_ref
 from public.audit_log
 where actor_email = 'x@agroespace.dz' and occurred_at > current_date
 order by occurred_at desc;
 ```
 
-L'identifiant est aussi rendu dans l'en-tête `x-request-id` de chaque réponse : un
-utilisateur qui signale un incident peut le donner, et le journal serveur, la ligne
-d'audit et sa capture d'écran se rejoignent sans enquête.
+The id is also returned in the `x-request-id` header of every response: a user
+reporting an incident can quote it, and the server log, the audit row and their
+screenshot line up without any investigation.
 
-⚠️ `audit_log` est **append-only**, garanti par trigger. Aucun `UPDATE`, aucun
-`DELETE`, y compris en `postgres` sans désactiver explicitement le trigger.
+⚠️ `audit_log` is **append-only**, enforced by trigger. No `UPDATE`, no `DELETE`,
+including as `postgres` without explicitly disabling the trigger.
 
-## Mesurer avant d'optimiser
+## Measure before optimising
 
 ```bash
-npm run db:plans      # docs/query-plans.md, sous session utilisateur (RLS appliquée)
-npm run load-test     # 50 sessions simultanées
+npm run db:plans      # docs/query-plans.md, under a user session (RLS applied)
+npm run load-test     # 50 concurrent sessions
 ```
 
-⚠️ Un plan relevé en `postgres` ne dit rien d'utile : les fonctions `security definer`
-de la RLS ne s'inlinent pas, et l'écart atteint un à deux ordres de grandeur.
+⚠️ A plan captured as `postgres` says nothing useful: the `security definer`
+functions behind RLS are not inlined, and the gap reaches one to two orders of
+magnitude.
 
-Référence mesurée sur le poste de développement (une instance Node, base locale) :
+Reference measured on the development machine (one Node instance, local
+database):
 
-| Mesure                        | Valeur    |
-| ----------------------------- | --------- |
-| Page, un utilisateur seul     | ~100 ms   |
-| Page, 50 sessions simultanées | p95 2,0 s |
-| Débit                         | ~31 req/s |
-| Échecs sur 200 requêtes       | 0         |
+| Measure                      | Value     |
+| ---------------------------- | --------- |
+| Page, single user            | ~100 ms   |
+| Page, 50 concurrent sessions | p95 2.0 s |
+| Throughput                   | ~31 req/s |
+| Failures out of 200 requests | 0         |
 
-La médiane à 1,6 s sous rafale n'est **pas** une latence par requête : c'est la file
-d'attente d'un processus unique servant cinquante demandes arrivées ensemble. Le coût
-serveur par page reste d'environ 30 ms.
+The 1.6 s median under burst is **not** a per-request latency: it is the queue of
+a single process serving fifty requests that arrived together. Server cost per
+page stays around 30 ms.
 
-## Avant toute annonce de mise en production
+## Before announcing any production release
 
 ```bash
 npm run typecheck && npm run lint && npm test && npm run test:rls && npm run test:e2e
 ```
 
-Et vérifier :
+And check:
 
-- [ ] `[auth.mfa.totp]` activé sur le projet hébergé ;
-- [ ] `CRON_SECRET`, `BACKUP_ENCRYPTION_KEY` posés, et **la clé de chiffrement stockée
-      ailleurs que les sauvegardes** ;
-- [ ] une première sauvegarde réussie, et une épreuve de restauration passée ;
-- [ ] `/api/health` interrogé par la supervision de l'hébergeur.
+- [ ] `[auth.mfa.totp]` enabled on the hosted project;
+- [ ] `CRON_SECRET` and `BACKUP_ENCRYPTION_KEY` set, and **the encryption key
+      stored somewhere other than the backups**;
+- [ ] a first successful backup, and a restore drill passed;
+- [ ] `/api/health` polled by the host's monitoring.

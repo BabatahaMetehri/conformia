@@ -1,76 +1,81 @@
-# Procédure de restauration
+# Restore procedure
 
-> Une sauvegarde jamais restaurée n'est pas une sauvegarde : c'est un fichier
-> dont on espère qu'il est lisible.
+> A backup that has never been restored is not a backup: it is a file you hope is
+> readable.
 
-Cette procédure est écrite pour être suivie par **quelqu'un qui n'a pas écrit
-l'application**. Si une étape suppose un savoir non écrit ici, c'est un défaut de
-ce document — le signaler.
+This procedure is written to be followed by **someone who did not write the
+application**. If a step assumes knowledge not written here, that is a defect in
+this document — report it.
 
-**Durée totale estimée : 35 à 50 minutes** pour une base de quelques gigaoctets.
-Reporter la durée réelle constatée en fin de document.
+> The scripts print their messages in French. Expected output is quoted verbatim
+> below so you can match it; the explanation around it is in English.
 
----
-
-## Avant de commencer
-
-| Il vous faut                            | Où le trouver                                              |
-| --------------------------------------- | ---------------------------------------------------------- |
-| L'archive `.tar.enc`                    | Support de rapatriement (`BACKUP_DESTINATION` ou le NAS)   |
-| `BACKUP_ENCRYPTION_KEY`                 | **Coffre de l'entreprise.** Elle n'est pas avec l'archive. |
-| Une base PostgreSQL vide et **jetable** | Voir étape 2                                               |
-| `psql`, `pg_dump`, `tar`, Node 22+      | Poste ou serveur d'exploitation                            |
-
-⚠️ **Ne restaurez jamais sur la base de production.** Le script refuse une cible
-dont le nom ne contient pas `restore`, `test` ou `staging`, et n'accepte une
-adresse locale que par exception. Ce refus est délibéré : il coûte une minute,
-son absence coûterait l'entreprise.
+**Estimated total: 35 to 50 minutes** for a database of a few gigabytes. Record
+the real duration at the end of this document.
 
 ---
 
-## Étape 1 — Vérifier que l'archive est lisible _(2 min)_
+## Before you start
 
-**Avant tout le reste.** Cette étape n'écrit nulle part.
+| You need                                  | Where to find it                                  |
+| ----------------------------------------- | ------------------------------------------------- |
+| The `.tar.enc` archive                    | Pull-back media (`BACKUP_DESTINATION` or the NAS) |
+| `BACKUP_ENCRYPTION_KEY`                   | **The company safe.** It is not with the archive. |
+| An empty and **disposable** PostgreSQL db | See step 2                                        |
+| `psql`, `pg_dump`, `tar`, Node 22+        | Workstation or operations server                  |
+
+⚠️ **Never restore onto the production database.** The script refuses a target
+whose name does not contain `restore`, `test` or `staging`, and only accepts a
+local address by exception. That refusal is deliberate: it costs a minute, its
+absence would cost the company.
+
+---
+
+## Step 1 — Check the archive is readable _(2 min)_
+
+**Before anything else.** This step writes nowhere.
 
 ```bash
 npm run restore -- --archive=/srv/backups/conformia-20260902T030000.tar.enc --verify-only
 ```
 
-**Point de contrôle** — la sortie doit afficher :
+**Checkpoint** — the output must show:
 
 ```
 ARCHIVE LISIBLE — déchiffrée, extraite, export présent.
 Aucune écriture effectuée (--verify-only).
 ```
 
-**Si le déchiffrement échoue** : soit la clé n'est pas celle qui a servi à
-chiffrer, soit l'archive est corrompue. Le message le dit. Comparez l'empreinte
-affichée avec `sha256` de la ligne correspondante :
+("Archive readable — decrypted, extracted, dump present. No write performed.")
+
+**If decryption fails**: either the key is not the one used to encrypt, or the
+archive is corrupt. The message says which. Compare the printed fingerprint with
+the `sha256` of the matching row:
 
 ```sql
 select started_at, sha256, destination from public.backup_runs
 where status = 'SUCCEEDED' order by started_at desc limit 5;
 ```
 
-Empreintes différentes → l'archive a été altérée depuis le transfert. Prenez la
-sauvegarde de la veille et signalez l'incident.
+Different fingerprints → the archive was altered after transfer. Take the
+previous day's backup and report the incident.
 
 ---
 
-## Étape 2 — Préparer une base jetable _(3 min)_
+## Step 2 — Prepare a disposable database _(3 min)_
 
 ```bash
 createdb conformia_restore
-# ou, en SQL :
+# or, in SQL:
 # CREATE DATABASE conformia_restore;
 ```
 
-**Point de contrôle** : `psql "postgresql://…/conformia_restore" -c '\dt'` répond
-sans erreur et ne liste aucune table.
+**Checkpoint**: `psql "postgresql://…/conformia_restore" -c '\dt'` answers without
+error and lists no tables.
 
 ---
 
-## Étape 3 — Restaurer _(15 à 30 min selon le volume)_
+## Step 3 — Restore _(15 to 30 min depending on size)_
 
 ```bash
 npm run restore -- \
@@ -79,14 +84,14 @@ npm run restore -- \
   --storage=/srv/restore/storage
 ```
 
-Le script enchaîne : empreinte → déchiffrement → extraction → `psql
---single-transaction` → contrôles.
+The script chains: fingerprint → decryption → extraction → `psql
+--single-transaction` → checks.
 
-⚠️ `--single-transaction` : la restauration réussit **entièrement** ou ne laisse
-**rien**. Une base à moitié restaurée est le pire résultat possible — elle a
-l'air de fonctionner.
+⚠️ `--single-transaction`: the restore either succeeds **entirely** or leaves
+**nothing**. A half-restored database is the worst possible outcome — it looks
+like it works.
 
-**Point de contrôle** — la sortie se termine par un tableau de comptages :
+**Checkpoint** — the output ends with a table of counts:
 
 ```
 RESTAURATION TERMINÉE
@@ -100,127 +105,129 @@ RESTAURATION TERMINÉE
   occurrence_transitions         2103
 ```
 
-**Toute table à 0 fait échouer le script** avec le code de sortie 1. Une base
-restaurée dont une table métier est vide n'est pas une restauration réussie.
+**Any table at 0 fails the script** with exit code 1. A restored database with an
+empty business table is not a successful restore.
 
 ---
 
-## Étape 4 — Comparer à la production _(5 min)_
+## Step 4 — Compare against production _(5 min)_
 
-Les comptages doivent être **cohérents avec la production à la date de la
-sauvegarde**, pas identiques à aujourd'hui.
+The counts must be **consistent with production as of the backup date**, not
+identical to today.
 
 ```sql
--- Sur la base restaurée ET sur la production
+-- On the restored database AND on production
 select 'obligation_occurrences' as t, count(*) from public.obligation_occurrences
 union all select 'documents', count(*) from public.documents
 union all select 'audit_log', count(*) from public.audit_log;
 ```
 
-**Point de contrôle** : l'écart s'explique par l'activité depuis la sauvegarde.
-Un écart de plusieurs milliers de lignes sur une nuit ne s'explique pas — arrêtez
-et cherchez.
+**Checkpoint**: the difference is explained by activity since the backup. A gap of
+several thousand rows over one night is not explained — stop and investigate.
 
 ---
 
-## Étape 5 — Vérifier des pièces réelles _(5 min)_
+## Step 5 — Check real documents _(5 min)_
 
-La base peut être parfaite et les documents absents. C'est le scénario le plus
-courant, et le plus coûteux.
+The database can be perfect and the documents absent. That is the most common
+scenario, and the most expensive.
 
 ```bash
-# Combien de fichiers ont été restaurés ?
+# How many files were restored?
 find /srv/restore/storage -type f | wc -l
 ```
 
-Comparez à :
+Compare with:
 
 ```sql
 select count(*) from public.documents where deleted_at is null;
 ```
 
-Puis vérifiez **l'intégrité de trois pièces au hasard** : le chemin de stockage
-est dans `documents.storage_path`, l'empreinte attendue dans `documents.sha256`.
+Then check **the integrity of three random documents**: the storage path is in
+`documents.storage_path`, the expected fingerprint in `documents.sha256`.
 
 ```bash
 sha256sum /srv/restore/storage/<storage_path>
 ```
 
-**Point de contrôle** : les trois empreintes correspondent. Si l'une diverge, la
-pièce a été altérée **avant** la sauvegarde — c'est un incident d'intégrité
-documentaire, pas de restauration ; le contrôle mensuel d'intégrité aurait dû le
-signaler.
+**Checkpoint**: all three fingerprints match. If one differs, the document was
+altered **before** the backup — that is a document integrity incident, not a
+restore problem; the monthly integrity check should have flagged it.
 
 ---
 
-## Étape 6 — Consigner _(2 min)_
+## Step 6 — Record it _(2 min)_
 
 ```sql
-select public.start_restore_test(<id de la ligne backup_runs>);
--- puis, une fois les contrôles faits :
+select public.start_restore_test(<id of the backup_runs row>);
+-- then, once the checks are done:
 select public.finish_restore_test(
-  <id rendu ci-dessus>, 'PASSED',
+  <the id returned above>, 'PASSED',
   '{"obligation_occurrences": 846, "documents": 391}'::jsonb,
   3, 3, '[]'::jsonb, 412,
   'Restauration d''épreuve manuelle, conforme.');
 ```
 
-La tâche mensuelle le fait seule (voir plus bas) ; en restauration manuelle,
-c'est à vous. Une restauration réussie et non consignée ne prouve rien le jour
-où on demande la dernière date d'épreuve.
+The monthly job does this by itself (see below); in a manual restore it is on
+you. A successful restore that is not recorded proves nothing on the day someone
+asks for the date of the last drill.
 
 ---
 
-## Étape 7 — Détruire la base d'épreuve _(1 min)_
+## Step 7 — Destroy the test database _(1 min)_
 
 ```bash
 dropdb conformia_restore
 rm -rf /srv/restore/storage .restore-work
 ```
 
-⚠️ Elle contient **toutes** les données de l'entreprise, sans les protections de
-la production. La laisser traîner annule le bénéfice de tout le reste.
+⚠️ It contains **all** the company's data, without production's protections.
+Leaving it lying around cancels the benefit of everything else.
 
 ---
 
-## Restauration réelle après sinistre
+## Real restore after a disaster
 
-Même procédure, à trois différences près :
+Same procedure, with three differences:
 
-1. **Étape 1 obligatoire et sur plusieurs archives** : vérifiez la plus récente
-   _et_ celle de la veille avant de choisir.
-2. La cible est la nouvelle base de production. Le garde-fou de nom la refusera :
-   passez par une base `…_restore`, contrôlez, **puis** renommez. Ne modifiez pas
-   le garde-fou.
-3. Après restauration, régénérer les types (`npm run db:types`) et relancer les
-   migrations postérieures à la sauvegarde (`npm run db:migrate`).
+1. **Step 1 is mandatory and on several archives**: verify the most recent one
+   _and_ the previous day's before choosing.
+2. The target is the new production database. The name guard will refuse it: go
+   through a `…_restore` database, check, **then** rename. Do not modify the
+   guard.
+3. After restoring, regenerate the types (`npm run db:types`) and apply any
+   migrations created after the backup (`npm run db:migrate`).
 
-**Le stockage se restaure avant de rouvrir l'application.** Des utilisateurs sur
-une base sans pièces déposent des doublons.
+**Storage is restored before reopening the application.** Users on a database
+with no documents will upload duplicates.
 
 ---
 
-## Épreuve mensuelle automatique
+## Monthly drill
 
-`npm run restore:test` restaure la dernière sauvegarde dans une base jetable,
-compte les tables principales, vérifie l'intégrité d'un échantillon de documents,
-et écrit son verdict dans `restore_tests`.
+`npm run restore:test` restores the latest backup into a disposable database,
+counts the main tables, checks the integrity of a sample of documents, and writes
+its verdict to `restore_tests`.
 
-Planifiée le 1er de chaque mois à 04 h 00 Alger.
+⚠️ **It is not scheduled by the database.** It was listed as a `pg_cron` job and
+never worked — migration 0025 removed it. Like the backup itself, it is a script
+needing a disk and `pg_dump`, which the hosted application does not have. Schedule
+it through the **operating system**, on the 1st of each month; see
+`docs/complete-guide.md`, part 8.
 
 ```sql
 select started_at, status, duration_seconds, documents_verified, documents_sampled, failures
 from public.restore_tests order by started_at desc limit 12;
 ```
 
-Une colonne `failures` vide (`[]`) et un statut `PASSED` : la dernière sauvegarde
-est restaurable, à cette date. C'est la seule affirmation que ce projet accepte
-de faire sur ses sauvegardes.
+An empty `failures` column (`[]`) and a `PASSED` status: the latest backup is
+restorable, as of that date. That is the only claim this project is willing to
+make about its backups.
 
 ---
 
-## Durées réelles constatées
+## Real durations observed
 
-| Date                                | Volume base | Volume stockage | Durée | Par |
-| ----------------------------------- | ----------- | --------------- | ----- | --- |
-| _(à remplir à la première épreuve)_ |             |                 |       |     |
+| Date                              | Database size | Storage size | Duration | By  |
+| --------------------------------- | ------------- | ------------ | -------- | --- |
+| _(to fill in at the first drill)_ |               |              |          |     |
