@@ -1,135 +1,135 @@
 # Tests
 
-Quatre suites. Chacune garantit quelque chose que les autres ne peuvent pas garantir,
-et **aucune ne suffit seule**. Ce document dit laquelle répond à quelle question — et
-ce qu'aucune ne couvre.
+Four suites. Each guarantees something the others cannot, and **none is
+sufficient alone**. This document says which one answers which question — and what
+none of them covers.
 
-## Ce que chaque suite établit
+## What each suite establishes
 
-| Suite                       | Commande           | Ce qu'elle établit                                          |
-| --------------------------- | ------------------ | ----------------------------------------------------------- |
-| Unitaire (Vitest)           | `npm test`         | Les modules PURS calculent juste                            |
-| Propriété (fast-check)      | incluse ci-dessus  | Ce qui doit rester vrai POUR TOUTE entrée                   |
-| Intégration (Vitest + `pg`) | `npm run test:rls` | La RLS, les triggers et les fonctions SQL refusent vraiment |
-| Bout en bout (Playwright)   | `npm run test:e2e` | Les écrans, enchaînés, font ce qu'ils promettent            |
+| Suite                       | Command            | What it establishes                                 |
+| --------------------------- | ------------------ | --------------------------------------------------- |
+| Unit (Vitest)               | `npm test`         | The PURE modules compute correctly                  |
+| Property (fast-check)       | included above     | What must stay true FOR ANY input                   |
+| Integration (Vitest + `pg`) | `npm run test:rls` | RLS, triggers and SQL functions genuinely refuse    |
+| End-to-end (Playwright)     | `npm run test:e2e` | The screens, chained together, do what they promise |
 
-État au dernier relevé : **582 tests unitaires**, **120 tests de bout en bout** sur
-deux moteurs, aucun ignoré.
+State at the last count: **711 unit tests**, **418 integration tests**, **141
+end-to-end tests** across two engines, none skipped.
 
-## Unitaire — les modules purs
+## Unit — the pure modules
 
-`tests/unit/`, plus les tests colocalisés dans `src/`.
+`tests/unit/`, plus the tests colocated in `src/`.
 
-Le rapport de couverture ne porte **que** sur les modules purs : `src/lib/`,
-`src/config/`, `src/services/scheduling/`, la machine à états et le calcul de
-complétude. Relevé : **94,9 % d'instructions, 88,6 % de branches**.
+The coverage report covers **only** the pure modules: `src/lib/`, `src/config/`,
+`src/services/scheduling/`, the state machine and the completeness calculation.
+Measured: **94.9 % of statements, 88.6 % of branches**.
 
-Seuils par fichier, tenus par `vitest.config.mts` :
+Per-file thresholds, enforced by `vitest.config.mts`:
 
-| Module                                           | Seuil     | Pourquoi ce niveau                                                              |
-| ------------------------------------------------ | --------- | ------------------------------------------------------------------------------- |
-| `services/scheduling/due-dates.ts`               | **100 %** | Une échéance fausse produit un dépôt en retard, donc une pénalité               |
-| `services/workflow/state-machine.ts`             | **100 %** | Un refus mal traduit envoie l'utilisateur chercher un document qui n'existe pas |
-| `services/occurrences/completeness.ts`           | **100 %** | Décide ce que l'écran déclare manquant                                          |
-| `lib/dates.ts`, `lib/result.ts`, `lib/errors.ts` | 95 %      | Tout le reste en dépend                                                         |
-| `services/scheduling/due-rule.ts`                | 95 %      | Portier du référentiel                                                          |
-| Ensemble des modules retenus                     | 92 / 85   | Empêche qu'un module pur arrive sans test                                       |
+| Module                                           | Threshold | Why that level                                                                       |
+| ------------------------------------------------ | --------- | ------------------------------------------------------------------------------------ |
+| `services/scheduling/due-dates.ts`               | **100 %** | A wrong deadline produces a late filing, therefore a penalty                         |
+| `services/workflow/state-machine.ts`             | **100 %** | A badly translated refusal sends the user looking for a document that does not exist |
+| `services/occurrences/completeness.ts`           | **100 %** | Decides what the screen declares missing                                             |
+| `lib/dates.ts`, `lib/result.ts`, `lib/errors.ts` | 95 %      | Everything else depends on them                                                      |
+| `services/scheduling/due-rule.ts`                | 95 %      | Gatekeeper of the referential                                                        |
+| All retained modules together                    | 92 / 85   | Stops a pure module arriving untested                                                |
 
-### ⚠️ Pourquoi les services d'orchestration sont EXCLUS
+### ⚠️ Why the orchestration services are EXCLUDED
 
-`services/documents/upload.ts`, `services/export/*`, `services/dashboard/*` et leurs
-voisins affichent 0 % dans ce rapport. Ce n'est pas un oubli.
+`services/documents/upload.ts`, `services/export/*`, `services/dashboard/*` and
+their neighbours show 0 % in that report. That is not an oversight.
 
-Ces modules n'ont presque aucune logique propre : ils appellent une fonction SQL et
-traduisent son résultat. Les couvrir en unitaire supposerait de **simuler le client
-Supabase** — le test mesurerait alors la simulation, et passerait au vert le jour où
-la policy réelle changerait. La règle vit dans la RLS et dans les fonctions SQL ; elle
-s'éprouve donc contre une base réelle.
+These modules have almost no logic of their own: they call a SQL function and
+translate its result. Covering them in unit tests would mean **mocking the
+Supabase client** — the test would then measure the mock, and would go green on
+the day the real policy changed. The rule lives in RLS and in the SQL functions;
+it is therefore exercised against a real database.
 
-Ce que ces modules garantissent est vérifié par les deux autres suites. Le chiffre de
-couverture unitaire ne décrit pas leur qualité, il décrit la nature du code.
+What these modules guarantee is verified by the other two suites. The unit
+coverage figure does not describe their quality, it describes the nature of the
+code.
 
-## Propriété — ce qui doit rester vrai pour TOUTE entrée
+## Property — what must stay true for ANY input
 
-`tests/unit/due-dates.properties.test.ts`, avec fast-check.
+`tests/unit/due-dates.properties.test.ts`, with fast-check.
 
-Les tests par l'exemple éprouvent les cas auxquels on a pensé. Les défauts de
-calendrier vivent exactement là où l'on n'a pas pensé : un 31 dans un mois de 30
-jours, un 29 février décalé d'un an, un férié collé au week-end **algérien** —
-vendredi-samedi. Ici, la machine cherche le contre-exemple sur des milliers de
-combinaisons et le réduit au plus petit cas reproductible.
+Example-based tests exercise the cases you thought of. Calendar defects live
+exactly where you did not: a 31st in a 30-day month, a 29 February shifted by a
+year, a holiday next to the **Algerian** weekend — Friday–Saturday. Here the
+machine hunts for the counter-example across thousands of combinations and shrinks
+it to the smallest reproducible case.
 
-Propriétés tenues :
+Properties held:
 
-- le calcul ne lève jamais — tout refus passe par un `Result` ;
-- l'échéance légale ne tombe ni un week-end ni un férié quand la règle l'interdit ;
-- le report va dans le sens déclaré, jamais dans l'autre ;
-- `shiftReason` est renseigné **exactement** quand la date a bougé ;
-- l'échéance interne n'est jamais postérieure à la légale ;
-- le calcul est déterministe ;
-- `addBusinessDays` n'atterrit jamais un jour chômé, et avancer puis reculer d'autant
-  ramène au même jour ouvré.
+- the calculation never throws — every refusal goes through a `Result`;
+- the legal deadline falls on neither a weekend nor a holiday when the rule forbids
+  it;
+- the shift goes in the declared direction, never the other;
+- `shiftReason` is set **exactly** when the date moved;
+- the internal deadline is never later than the legal one;
+- the calculation is deterministic;
+- `addBusinessDays` never lands on a non-working day, and going forward then back
+  by the same amount returns to the same working day.
 
-⚠️ **Une propriété écrite d'abord était fausse.** « `resolveLeadDays` rend toujours une
-marge strictement positive » : fast-check l'a réduite en vingt-huit tirages au
-contre-exemple `["LOW", 0]`. La marge d'une criticité basse vaut zéro **par décision**.
-C'est le test qui avait tort, pas le code — et c'est exactement le service que rend
-cette suite.
+⚠️ **One property written first was wrong.** "`resolveLeadDays` always returns a
+strictly positive margin": fast-check shrank it in twenty-eight draws to the
+counter-example `["LOW", 0]`. A low criticality's margin is zero **by decision**.
+The test was wrong, not the code — and that is exactly the service this suite
+provides.
 
-## Intégration — la base refuse-t-elle vraiment ?
+## Integration — does the database really refuse?
 
-`tests/integration/`, contre la base locale, sous session utilisateur
-(`set local role authenticated` + revendications JWT).
+`tests/integration/`, against the local database, under a user session
+(`set local role authenticated` + JWT claims).
 
-⚠️ **Sous session, jamais en `postgres`.** Un test qui interroge la base en
-superutilisateur ne mesure aucune policy : il mesure une base sans RLS.
+⚠️ **Under a session, never as `postgres`.** A test querying the database as
+superuser measures no policy: it measures a database without RLS.
 
-Couvre : matrice RLS rôle × table × opération, triggers d'audit et d'append-only,
-génération d'occurrences, dépôt et intégrité documentaire, machine à états complète,
-notifications, exports, sauvegardes, tableau de bord.
+Covers: the RLS matrix role × table × operation, audit and append-only triggers,
+occurrence generation, document upload and integrity, the full state machine,
+notifications, exports, backups, dashboard.
 
-`rls.test.ts` échoue si **une seule** table apparaît sans RLS — c'est ce qui rend
-tenable la promesse « 91 tables, 91 protégées ».
+`rls.test.ts` fails if **a single** table appears without RLS — that is what makes
+the promise "96 tables, 96 protected" sustainable.
 
-`authorization-model.test.ts` compare la **matrice rôle → permissions en entier**,
-et non par sondage : c'est l'octroi _en trop_ qui est dangereux, et lui seul
-échappe à un test par échantillon. Il vérifie aussi **structurellement** — sur
-`pg_policies` et `pg_proc` — qu'aucune politique n'appelle une fonction
-d'habilitation sans l'envelopper, et que les quinze fonctions d'habilitation
-restent `STABLE PARALLEL SAFE`.
+`authorization-model.test.ts` compares the **whole role → permission matrix**, not
+a sample: it is the grant _in excess_ that is dangerous, and only that one escapes
+a sampled test. It also verifies **structurally** — over `pg_policies` and
+`pg_proc` — that no policy calls an authorisation function without wrapping it, and
+that the fifteen authorisation functions stay `STABLE PARALLEL SAFE`.
 
-### L'isolation par entité — la règle qui rend la suite utilisable
+### Isolation by entity — the rule that makes the suite usable
 
-⚠️ **La suite s'exécute sur une base AVEC le référentiel AGROESPACE chargé.**
-C'est l'état de production ; tester sur une base vide, c'est éprouver une
-situation qui n'existera jamais.
+⚠️ **The suite runs against a database WITH the AGROESPACE referential loaded.**
+That is the production state; testing against an empty database exercises a
+situation that will never exist.
 
-Cela n'a pas toujours été le cas, et le prix en était lourd : plusieurs tests
-affirmaient sur des **comptages globaux** — `select count(*) from
-obligation_occurrences` — c'est-à-dire sur l'état de la base plutôt que sur leur
-propre comportement. Ils passaient sur une base vide, échouaient au chargement
-des 23 obligations réelles, et **disposer d'une application utilisable et d'une
-suite verte étaient deux états incompatibles**. La seule façon de les concilier
-était de retirer le référentiel, donc de ne plus rien éprouver de réaliste.
+It was not always so, and the price was heavy: several tests asserted on **global
+counts** — `select count(*) from obligation_occurrences` — that is, on the state of
+the database rather than on their own behaviour. They passed on an empty database,
+failed once the 23 real obligations were loaded, and **having a usable application
+and a green suite were two incompatible states**. The only way to reconcile them
+was to remove the referential, and therefore to stop exercising anything realistic.
 
-#### Le mécanisme
+#### The mechanism
 
-`entity_id` existe sur toutes les tables métier depuis la migration 0001, avec
-un défaut pointant l'entité AGROESPACE. La colonne avait été prévue pour un
-cloisonnement multi-sites à venir ; elle donne l'isolation des tests **sans une
-ligne de schéma en plus**.
+`entity_id` has existed on every business table since migration 0001, with a
+default pointing at the AGROESPACE entity. The column was meant for future
+multi-site compartmentalisation; it gives test isolation **without one extra line
+of schema**.
 
-Chaque fichier crée sa **propre entité**, y range tout ce qu'il fabrique, et
-n'affirme que sur elle. Trois formes sont admises, et une seule idée — _rien de
-ce qu'un fichier affirme ne doit dépendre de ce qu'il n'a pas produit_ :
+Each file creates its **own entity**, puts everything it builds inside it, and
+asserts only on that. Three shapes are allowed, and one idea — _nothing a file
+asserts may depend on what it did not produce_:
 
-| Forme                                  | Quand                                             | Comment                                                 |
-| -------------------------------------- | ------------------------------------------------- | ------------------------------------------------------- |
-| `createTestScope()`                    | **tout nouveau fichier**                          | `tests/helpers/test-scope.ts`                           |
-| constante `ENTITY` dans le jeu d'essai | fichiers antérieurs au helper                     | entité créée en tête du `SEED`, rattachement en queue   |
-| état de référence                      | fichiers dont le SUJET est le référentiel partagé | relever l'état AVANT d'agir, n'affirmer que sur l'écart |
+| Shape                            | When                                          | How                                                        |
+| -------------------------------- | --------------------------------------------- | ---------------------------------------------------------- |
+| `createTestScope()`              | **every new file**                            | `tests/helpers/test-scope.ts`                              |
+| an `ENTITY` constant in the seed | files predating the helper                    | entity created at the top of `SEED`, attachment at the end |
+| a reference state                | files whose SUBJECT is the shared referential | record the state BEFORE acting, assert only on the delta   |
 
-#### Écrire un nouveau test
+#### Writing a new test
 
 ```ts
 import { createTestScope, destroyTestScope, type TestScope } from "../helpers/test-scope";
@@ -143,64 +143,64 @@ afterAll(async () => {
 }, 120_000);
 
 it("…", async () => {
-  const superviseur = await scope.createUserWithRole("SUPERVISEUR");
+  const supervisor = await scope.createUserWithRole("SUPERVISEUR");
   const obligation = await scope.createObligation({ domain: "FISCAL" });
   const dossier = await scope.createOccurrence({ obligationId: obligation, periodKey: "2026-04" });
 
-  await scope.asUser(superviseur, async (client) => {
-    // …sous session utilisateur, RLS appliquée, transaction annulée à la fin.
+  await scope.asUser(supervisor, async (client) => {
+    // …under a user session, RLS applied, transaction rolled back at the end.
   });
 });
 ```
 
-Les fabriques couvrent le modèle complet : obligation (portée `ENTITY` ou
-`PER_REGISTER`), registre de commerce, occurrence, document, profil, rôle,
-absence, délégation. `scope.asRole("SUPERVISEUR")` rend un client Supabase
-**réellement authentifié** — il passe par `signInWithPassword`, donc par le vrai
-jeton et la vraie chaîne PostgREST, là où un client `service_role` contournerait
-les politiques.
+The factories cover the whole model: obligation (`ENTITY` or `PER_REGISTER`
+scope), commercial register, occurrence, document, profile, role, absence,
+delegation. `scope.asRole("SUPERVISEUR")` returns a **genuinely authenticated**
+Supabase client — it goes through `signInWithPassword`, so through the real token
+and the real PostgREST chain, where a `service_role` client would bypass the
+policies.
 
-`createTestScope()` **balaie au passage** les entités de test qu'une exécution
-interrompue aurait laissées — plus vieilles de dix minutes, pour ne jamais
-toucher à une exécution en cours. Sans cela, un `afterAll` qui n'aboutit pas
-abandonnait son entité, et la seule façon de s'en défaire redevenait la
-réinitialisation de la base — ce que ce mécanisme existe pour éviter.
+`createTestScope()` **sweeps up** test entities that an interrupted run left
+behind — older than ten minutes, so it never touches a run in progress. Without
+that, an `afterAll` that does not complete abandoned its entity, and the only way
+to get rid of it was resetting the database — which is what this mechanism exists
+to avoid.
 
-#### Ce qui est interdit, et pourquoi
+#### What is forbidden, and why
 
-`tests/integration/suite-hygiene.test.ts` le fait respecter **mécaniquement**,
-en nommant le fichier et la ligne. Il n'existe volontairement **aucune liste
-d'exemption** : un fichier qui ne peut pas satisfaire ces règles est un fichier
-dont les assertions dépendent de l'état initial de la base.
+`tests/integration/suite-hygiene.test.ts` enforces it **mechanically**, naming the
+file and the line. There is deliberately **no exemption list**: a file that cannot
+satisfy these rules is a file whose assertions depend on the database's initial
+state.
 
-- ❌ **Compter une table métier entière.** `select count(*) from
-obligation_occurrences` mesure la vacuité de la base, pas le cloisonnement.
-- ❌ **Lire une table métier sans le moindre filtre.** Elle ramène ce que les
-  autres ont créé.
-- ❌ **Un fichier qui ne borne ses données à aucune entité.**
+- ❌ **Counting a whole business table.** `select count(*) from
+obligation_occurrences` measures how empty the database is, not
+  compartmentalisation.
+- ❌ **Reading a business table with no filter at all.** It returns what others
+  created.
+- ❌ **A file that bounds its data to no entity.**
 
-Deux choses restent **permises**, et le sont pour de bonnes raisons :
+Two things remain **allowed**, for good reasons:
 
-- ✅ **Un comptage global attendu à ZÉRO.** « cet administrateur ne voit aucun
-  dossier, dans la base entière » est _plus fort_ qu'un comptage borné : cela ne
-  peut devenir faux que si le cloisonnement cède — précisément ce qu'on veut
-  apprendre.
-- ✅ **Les tables de RÉFÉRENCE** — `roles`, `permissions`, `domains`,
-  `status_transition_rules`. Leur nombre est une décision, pas un état ; c'est
-  même ce que vérifie la matrice des rôles.
+- ✅ **A global count expected to be ZERO.** "this administrator sees no dossier, in
+  the entire database" is _stronger_ than a bounded count: it can only become false
+  if compartmentalisation gives way — precisely what we want to learn.
+- ✅ **REFERENCE tables** — `roles`, `permissions`, `domains`,
+  `status_transition_rules`. Their count is a decision, not a state; it is exactly
+  what the role matrix checks.
 
-La garde se vérifie elle-même : un de ses tests lui soumet une entorse
-fabriquée et exige qu'elle la nomme. Une garde qu'on n'a jamais vue échouer
-n'est pas une garde — une expression rationnelle trop stricte ou un chemin qui
-ne trouve aucun fichier en font un vert permanent qui ne protège rien.
+The guard verifies itself: one of its tests feeds it a manufactured violation and
+requires it to name it. A guard you have never seen fail is not a guard — an
+over-strict regular expression or a path matching no file makes a permanent green
+that protects nothing.
 
-#### ⚠️ Un défaut d'ENVIRONNEMENT à connaître : « the database system is in recovery mode »
+#### ⚠️ An ENVIRONMENT defect to know about: "the database system is in recovery mode"
 
-Si la suite se met à échouer par grappes, sur des fichiers différents à chaque
-exécution, avec l'erreur **« the database system is in recovery mode »**, le
-coupable n'est pas le code : **le conteneur PostgreSQL local plante**.
+If the suite starts failing in clusters, on different files each run, with the
+error **"the database system is in recovery mode"**, the culprit is not the code:
+**the local PostgreSQL container is crashing**.
 
-Symptôme dans le journal du conteneur :
+Symptom in the container log:
 
 ```
 LOG: server process (PID …) was terminated by signal 11: Segmentation fault
@@ -208,326 +208,336 @@ DETAIL: Failed process was running: select * from public.exportable_occurrences(
 LOG: all server processes terminated; reinitializing
 ```
 
-Le défaut a été **isolé** : une fonction TÉMOIN créée pour l'occasion — un
-`select n` de trois mots, sans droit d'exécution pour `authenticated` — fait
-tomber le serveur dès qu'on l'appelle sous ce rôle. Autrement dit, **tout refus
-de droit sur un appel de fonction** peut faire planter ce PostgreSQL, quel que
-soit le contenu de la fonction. Aucune migration du projet n'y est pour quelque
-chose, et plusieurs tests ATTENDENT légitimement un « permission denied » — ils
-en sont les victimes désignées.
+The defect was **isolated**: a WITNESS function created for the purpose — a
+three-word `select n`, with no execute right for `authenticated` — brings the
+server down as soon as it is called under that role. In other words, **any
+permission refusal on a function call** can crash this PostgreSQL, whatever the
+function contains. No migration in the project is responsible, and several tests
+legitimately EXPECT a "permission denied" — they are the designated victims.
 
-L'état n'apparaît qu'après un certain temps d'usage du conteneur ; il survit à
-`supabase db reset`, qui recrée la base sans redémarrer le processus.
+The state only appears after the container has been in use for a while; it
+survives `supabase db reset`, which recreates the database without restarting the
+process.
 
-**Remède** — redémarrer la pile, pas seulement la base :
+**Remedy** — restart the stack, not just the database:
 
 ```bash
 npx supabase stop && npx supabase start
 ```
 
-Pour vérifier après coup qu'aucun plantage n'a eu lieu pendant une exécution :
+To check afterwards that no crash happened during a run:
 
 ```bash
 docker logs supabase_db_conformia 2>&1 | grep -c "Segmentation fault"
 ```
 
-Zéro est la seule réponse acceptable. Un résultat non nul invalide l'exécution
-ENTIÈRE : les échecs qu'elle rapporte sont des dommages collatéraux, et les
-succès n'ont pas plus de valeur.
+Zero is the only acceptable answer. A non-zero result invalidates the ENTIRE run:
+the failures it reports are collateral damage, and its successes are worth no
+more.
 
-#### Lancer la suite
-
-```bash
-npm run test:integration          # sur la base telle qu'elle est
-npm run test:integration:fresh    # db reset + db:seed + tests — l'état de référence
-npm run test:integration:slow     # les seuls tests @slow
-```
-
-La suite doit passer **deux fois de suite sans réinitialisation** : c'est la
-preuve que chaque fichier nettoie derrière lui.
-
-### Les tests marqués `@slow`
-
-Un test dont le nom porte `@slow` construit un volume réaliste avant de mesurer :
-`dashboard-performance.test.ts` charge **50 000 dossiers** puis chronomètre les
-écrans. Il fait partie de `npm run test:rls` et n'en est pas séparé — un budget
-de performance qu'on ne lance pas est un budget qu'on ne tient pas.
-
-Le marqueur sert à les **choisir** quand on ne veut qu'eux, ou à les écarter
-d'une boucle de développement serrée :
+#### Running the suite
 
 ```bash
-npx vitest run --config vitest.integration.mts -t "@slow"     # ceux-là seuls
-npx vitest run --config vitest.integration.mts -t "^(?!.*@slow)"  # tous les autres
+npm run test:integration          # against the database as it stands
+npm run test:integration:fresh    # db reset + db:seed + tests — the reference state
+npm run test:integration:slow     # the @slow tests only
 ```
 
-⚠️ **Le budget porte sur DEUX grandeurs, et la seconde compte plus.** La file de
-validation doit tenir sous **200 ms** _et_ sous **10 000 accès tampon**. Le temps
-dépend de la machine ; les accès tampon, non. Une politique dont un appel cesse
-d'être enveloppé dans `(select ...)` refait exploser le nombre de blocs lus bien
-avant que le chronomètre ne s'en émeuve sur une machine rapide.
+The suite must pass **twice in a row without a reset**: that is the proof each
+file cleans up after itself.
 
-⚠️ Le chargement se termine par un `VACUUM ANALYZE`. Ce n'est pas un confort : le
-nettoyage de fin de fichier laisse 50 000 versions mortes derrière lui, et un
-second lancement mesurait alors le ballonnement au lieu du coût de la requête —
-18 535 accès au deuxième passage contre moins de 10 000 au premier, sur un code
-identique.
+### Tests marked `@slow`
 
-### L'envoi de courriels — vraiment envoyés, vraiment reçus
+A test whose name carries `@slow` builds a realistic volume before measuring:
+`dashboard-performance.test.ts` loads **50,000 dossiers** then times the screens.
+It is part of `npm run test:rls` and is not separated from it — a performance
+budget you do not run is a budget you do not hold.
 
-`tests/integration/notification-delivery.test.ts` fait tourner `runNotificationJob`
-et va **relever la boîte**. Mailpit — la boîte aux lettres locale de Supabase,
-interface sur `54324`, SMTP sur `54325` — reçoit de vrais messages et les rend
-interrogeables par API. `tests/helpers/mailpit.ts` encapsule cet accès.
-
-⚠️ **Aucun `vi.mock` du fournisseur.** Un mock vérifie qu'on a appelé une
-fonction ; il ne vérifie ni que le message part, ni qu'il porte le bon
-destinataire, ni que le corps HTML tient debout, ni que le texte brut existe. Or
-c'est exactement ce qui casse. Avant ce fichier, `runNotificationJob` n'était
-appelé par aucun test, les deux fournisseurs n'étaient jamais instanciés et les
-onze gabarits n'étaient jamais rendus par le chemin qui les rend en production.
-
-#### Les deux fournisseurs, les mêmes scénarios
-
-Le fichier exécute son cœur de scénarios **deux fois**, une par valeur de
-`app_settings.email_provider` :
-
-| Réglage  | Chemin réellement parcouru                                             |
-| -------- | ---------------------------------------------------------------------- |
-| `smtp`   | `SmtpProvider` → nodemailer → SMTP → Mailpit                           |
-| `resend` | `ResendProvider` → SDK `resend` → HTTP → relais local → SMTP → Mailpit |
-
-Le relais est `tests/helpers/resend-shim.ts` : un serveur HTTP qui implémente
-`POST /emails` et remet le message à Mailpit. Le SDK le trouve seul, par la
-variable `RESEND_BASE_URL` qu'il lit à la construction du client — **aucune ligne
-de `resend.ts` ni de la fabrique n'a été modifiée pour le test**. Ce qui est
-éprouvé est donc l'interchangeabilité du code de production, et non celle d'une
-variante écrite pour l'occasion.
-
-Le relais sait aussi **refuser** une adresse (422, comme Resend pour une adresse
-invalide) et **répondre de travers** (200 sans identifiant). C'est ce qui permet
-d'éprouver les reprises, l'échec définitif et le filet de `ResendProvider` sans
-simuler quoi que ce soit de notre côté.
-
-⚠️ Une règle ESLint interdit désormais d'importer `resend` ou `nodemailer`
-ailleurs que dans `providers/{resend,smtp}.ts`. Sans elle, la promesse « changer
-de fournisseur ne touche aucun autre fichier » tenait à la seule discipline.
-
-#### Ce que la suite établit
-
-Volume et destinataires conformes à l'audience ; **déduplication** — deux cycles,
-un seul message, et le test échoue si l'on retire `notifications_rule_dedup_key` ;
-silence sur un dossier déposé, archivé ou sans objet ; **regroupement horaire** ;
-chaîne standard J+1 / J+3 / J+7 et chaîne accélérée `CRITICAL` J+0 / J+2 ;
-**déroutement vers le suppléant** d'un absent, mention comprise, l'in-app restant
-à l'absent ; reprises à temporisation croissante et alerte aux administrateurs
-après épuisement ; cinquante destinataires dont un invalide, quarante-neuf
-servis ; panne totale du fournisseur — les notifications in-app subsistent — puis
-reprise au cycle suivant ; canaux dormants écartés à la source.
-
-#### Couverture
+The marker exists to **select** them when you want only those, or to exclude them
+from a tight development loop:
 
 ```bash
-npm run test:integration:coverage   # seuils sur resend.ts et smtp.ts
-npm test -- --coverage              # seuils sur src/emails/**
+npx vitest run --config vitest.integration.mts -t "@slow"          # those alone
+npx vitest run --config vitest.integration.mts -t "^(?!.*@slow)"   # all the others
 ```
 
-⚠️ **La couverture des fournisseurs se mesure dans la suite d'intégration**, pas
-dans l'unitaire : leur seul comportement intéressant est ce qu'ils font d'un vrai
-serveur. Celle des gabarits se mesure dans l'unitaire, où `renderEmail` est une
-fonction pure.
+⚠️ **The budget covers TWO quantities, and the second matters more.** The
+validation queue must stay under **200 ms** _and_ under **10,000 buffer hits**.
+Time depends on the machine; buffer hits do not. A policy whose call stops being
+wrapped in `(select ...)` blows the block count back up long before the stopwatch
+notices on a fast machine.
 
-#### Trois filtres perdus, et ce qu'ils enseignent
+⚠️ The load ends with a `VACUUM ANALYZE`. That is not a comfort: the end-of-file
+cleanup leaves 50,000 dead tuples behind, and a second run then measured the bloat
+instead of the query cost — 18,535 hits on the second pass against fewer than
+10,000 on the first, on identical code.
 
-La réécriture de `due_notification_candidates` en 0022 — pour y ajouter le
-déroutement — est repartie de la version de 0014 et en a **perdu quatre
-garanties** : la préférence de canal du destinataire, le contrôle de
-`deactivated_at`, l'écart des profils sans adresse, et la révocation de
-`execute` à `authenticated`. Une seule était couverte par un test ; c'est elle
-qui a dénoncé la régression, dès que la suite de diffusion a existé. `0023` les
-rétablit, et les trois premières ont désormais leur scénario.
+⚠️ **This test is sensitive to CPU contention.** Observed during this work: it
+failed at 18,720 ms against a 10,000 ms budget while a build and two servers were
+running in parallel, and passed in 8.5 s on its own. If it fails, run it alone
+before believing it.
 
-⚠️ **Une fonction SQL réécrite en entier ne dit pas ce qu'elle a cessé de faire.**
-Relire un `create or replace` de cent lignes ne fait pas apparaître la clause
-absente. Quand une migration réécrit une fonction existante, comparer la liste
-de ses clauses `where` avec la version précédente coûte deux minutes.
+### Email sending — genuinely sent, genuinely received
 
-## Bout en bout — les écrans, enchaînés
+`tests/integration/notification-delivery.test.ts` runs `runNotificationJob` and
+then **checks the mailbox**. Mailpit — Supabase's local mailbox, UI on `54324`,
+SMTP on `54325` — receives real messages and makes them queryable by API.
+`tests/helpers/mailpit.ts` wraps that access.
 
-`e2e/`, Playwright, contre un **build de production**.
+⚠️ **No `vi.mock` of the provider.** A mock verifies that a function was called; it
+verifies neither that the message leaves, nor that it carries the right recipient,
+nor that the HTML body holds together, nor that the plain text exists. And that is
+exactly what breaks. Before this file, `runNotificationJob` was called by no test,
+neither provider was ever instantiated and the eleven templates were never rendered
+through the path that renders them in production.
 
-⚠️ Contre le build de production, pas le mode développement : l'accessibilité, la CSP
-et le découpage des bundles ne se vérifient que sur le rendu réel.
+#### The two providers, the same scenarios
 
-### Les huit parcours critiques
+The file runs its core scenarios **twice**, once per value of
+`app_settings.email_provider`:
 
-`e2e/critical-journeys.spec.ts` tourne sur **Chromium ET Firefox**. Ce n'est pas de la
-redondance : les deux moteurs divergent sur l'hydratation, la sérialisation des dates
-et l'instant exact où une navigation en remplace une autre. Un parcours qui passe sur
-l'un et casse sur l'autre est un défaut réel — et c'est exactement ce que le reste de
-la suite ne peut pas voir.
+| Setting  | Path actually travelled                                               |
+| -------- | --------------------------------------------------------------------- |
+| `smtp`   | `SmtpProvider` → nodemailer → SMTP → Mailpit                          |
+| `resend` | `ResendProvider` → `resend` SDK → HTTP → local relay → SMTP → Mailpit |
 
-1. Un ADMIN enrôle son second facteur par l'interface, puis s'en sert pour entrer.
-2. Cycle complet : dépôt, soumission, validation, dépôt auprès de l'organisme.
-3. Le préparateur ne peut pas valider son propre dossier.
-4. Un agent RH n'atteint pas un dossier fiscal — **même par URL directe** — et la
-   réponse est indiscernable de celle d'un identifiant inexistant.
-5. Un ADMIN n'atteint aucune occurrence ni aucun document.
-6. Une rectificative naît d'un dossier archivé, l'original reste intact.
-7. Cycle d'une pièce : dépôt, remplacement, téléchargement par URL **signée**.
-8. Une notification produite en base apparaît dans le centre et sur la cloche.
+The relay is `tests/helpers/resend-shim.ts`: an HTTP server implementing
+`POST /emails` and handing the message to Mailpit. The SDK finds it on its own,
+through the `RESEND_BASE_URL` variable it reads when the client is constructed —
+**no line of `resend.ts` or of the factory was modified for the test**. What is
+exercised is therefore the interchangeability of production code, not of a variant
+written for the occasion.
 
-### L'arabe
+The relay can also **refuse** an address (422, like Resend for an invalid address)
+and **answer wrongly** (200 with no id). That is what makes it possible to exercise
+retries, permanent failure and `ResendProvider`'s safety net without mocking
+anything on our side.
 
-`e2e/arabic.spec.ts` — cinq parcours, sur Chromium.
+⚠️ An ESLint rule now forbids importing `resend` or `nodemailer` anywhere other
+than `providers/{resend,smtp}.ts`. Without it, the promise "changing provider
+touches no other file" rested on discipline alone.
 
-⚠️ **Ce fichier a trouvé un vrai défaut** : les catalogues étaient tenus clé pour clé,
-1416 contre 1416, et l'arabe restait **inatteignable** — le sélecteur de langue était
-figé sur le français, et `requestLocale` étant vide, toute l'application rendait en
-français même sous `/ar/`. Une comparaison de clés n'aurait rien vu : les deux
-fichiers étaient parfaits.
+#### What the suite establishes
 
-Il vérifie donc ce qui ne se déduit d'aucune comparaison : le menu propose réellement
-les deux langues, le choix survit à la navigation suivante (cookie, pas état local),
-`dir="rtl"` est posé, les écrans rendent de l'arabe, **la mise en page ne déborde pas
-horizontalement**, et l'on peut revenir au français.
+Volume and recipients matching the audience; **deduplication** — two cycles, one
+message, and the test fails if `notifications_rule_dedup_key` is removed; silence
+on a dossier filed, archived or marked not applicable; **hourly grouping**; the
+standard D+1 / D+3 / D+7 chain and the accelerated `CRITICAL` D+0 / D+2 chain;
+**rerouting to the stand-in** of an absent person, mention included, the in-app
+staying with the absentee; retries with increasing backoff and an alert to
+administrators after exhaustion; fifty recipients including one invalid,
+forty-nine served; total provider outage — the in-app notifications survive — then
+recovery on the next cycle; dormant channels excluded at source.
 
-⚠️ Le changement de langue s'y fait **au clavier**. Ce n'est pas un contournement :
-un clic de souris sur l'entrée d'un sous-menu Radix est intercepté dans un navigateur
-piloté, et le geste au clavier éprouve en plus l'accessibilité du sélecteur.
+#### Coverage
 
-### Les écrans qui étaient des coquilles
+```bash
+npm run test:integration:coverage   # thresholds on resend.ts and smtp.ts
+npm test -- --coverage              # thresholds on src/emails/**
+```
 
-`e2e/completed-screens.spec.ts` — « Mon profil », le sommaire d'Administration et les
-règles de notification rendaient un marque-place « Cette section n'est pas encore
-construite ». Le fichier vérifie qu'ils portent des **données réelles**, pas seulement
-un titre — une page qui affiche son en-tête et rien d'autre passerait un test
-d'existence tout en restant vide.
+⚠️ **Provider coverage is measured in the integration suite**, not the unit one:
+their only interesting behaviour is what they do with a real server. Template
+coverage is measured in the unit suite, where `renderEmail` is a pure function.
 
-Il porte aussi le garde-fou de régression : aucun écran atteignable ne doit rendre de
-marque-place. Un marque-place est confortable à poser et facile à oublier ; il a l'air
-d'une fonctionnalité et rien ne le signale.
+#### Four filters lost, and what they teach
 
-### Durcissement
+Rewriting `due_notification_candidates` in 0022 — to add rerouting — started from
+the 0014 version and **lost four guarantees**: the recipient's channel preference,
+the `deactivated_at` check, the exclusion of profiles with no address, and the
+revocation of `execute` from `authenticated`. Only one was covered by a test; it
+is the one that reported the regression, as soon as the delivery suite existed.
+`0023` restores them, and the first three now have their own scenario.
 
-`e2e/security.spec.ts` : en-têtes présents, nonce **différent à chaque réponse**,
-**zéro violation CSP** sur les écrans de travail, une jauge à zéro s'affiche vide, et
-les routes handler éprouvées dans les trois situations — sans session, avec une
-session insuffisante, avec la bonne.
+⚠️ **A SQL function rewritten whole does not say what it stopped doing.** Reading a
+hundred-line `create or replace` does not make the missing clause appear. When a
+migration rewrites an existing function, comparing its `where` clauses with the
+previous version costs two minutes.
 
-### Accessibilité
+## End-to-end — the screens, chained together
 
-`@axe-core/playwright` sur chaque écran principal. Les violations trouvées ont été
-corrigées, jamais mises en liste d'exception.
+`e2e/`, Playwright, against a **production build**.
 
-## Tests statiques — ce qu'aucune exécution ne montre
+⚠️ Against the production build, not development mode: accessibility, CSP and
+bundle splitting can only be verified on the real rendering.
 
-Trois vérifications lisent le code lui-même :
+⚠️ **After any Next.js upgrade, delete `.next` first.** Observed on
+`15.5.22 → 15.5.26`: the stale build directory made the server fail to start with
+a `webpack-runtime` error that looks exactly like broken application code.
 
-| Test                           | Ce qu'il empêche                                             |
-| ------------------------------ | ------------------------------------------------------------ |
-| `server-action-guards.test.ts` | Une Server Action sans garde de permission                   |
-| `rls.test.ts`                  | Une table sans RLS                                           |
-| `logical-properties.test.ts`   | Une classe Tailwind **physique** (`ml-`, `pr-`, `text-left`) |
+### The eight critical journeys
 
-Le troisième prépare le passage en arabe : les propriétés logiques (`ms-`, `pe-`,
-`text-start`) se retournent seules. La dette serait invisible jusqu'au jour où elle
-coûterait une relecture complète de l'interface.
+`e2e/critical-journeys.spec.ts` runs on **Chromium AND Firefox**. That is not
+redundancy: the two engines diverge on hydration, date serialisation and the exact
+moment one navigation replaces another. A journey that passes on one and breaks on
+the other is a real defect — and exactly what the rest of the suite cannot see.
 
-⚠️ Chacun de ces tests porte une liste de **dispenses avec motif écrit**, et un
-contrôle qui échoue si une dispense devient inutile. Une dérogation qu'on oublie de
-retirer est une règle qui s'éteint.
+1. An ADMIN enrols their second factor through the interface, then uses it to get
+   in.
+2. Full cycle: upload, submission, validation, filing with the authority.
+3. The preparer cannot validate their own dossier.
+4. An HR agent cannot reach a fiscal dossier — **not even by direct URL** — and the
+   response is indistinguishable from that of a non-existent id.
+5. An ADMIN reaches no occurrence and no document.
+6. An amendment is born from an archived dossier, the original stays intact.
+7. A document's cycle: upload, replacement, download by **signed** URL.
+8. A notification created in the database appears in the centre and on the bell.
 
-## Ce qu'aucune suite ne couvre
+### Arabic
 
-Dit ici pour que personne ne le découvre en production :
+`e2e/arabic.spec.ts` — five journeys, on Chromium.
 
-- **Le rendu navigateur mesuré** — LCP, INP, CLS. `npm run load-test` mesure le
-  serveur (~100 ms par page seul, p95 2,0 s à cinquante sessions simultanées, 0 échec
-  sur 200 requêtes) ; il ne lance aucun navigateur.
-- **La restauration en conditions réelles.** `npm run restore:test` restaure dans une
-  base jetable — c'est déjà beaucoup plus que rien, ce n'est pas un exercice de
-  bascule.
-- **La montée en charge au-delà de cinquante sessions.**
+⚠️ **This file found a real defect**: the catalogues were kept key for key, 1,416
+against 1,416, and Arabic stayed **unreachable** — the language selector was stuck
+on French, and since `requestLocale` was empty the whole application rendered in
+French even under `/ar/`. A key comparison would have seen nothing: both files were
+perfect.
 
-## Une intermittence élucidée, une tolérance assumée
+It therefore checks what no comparison can deduce: the menu really offers both
+languages, the choice survives the next navigation (cookie, not local state),
+`dir="rtl"` is set, the screens render Arabic, **the layout does not overflow
+horizontally**, and you can go back to French.
 
-### Filtres et tri : la cause a fini par se laisser voir
+⚠️ The language change is done **from the keyboard**. That is not a workaround: a
+mouse click on a Radix submenu item is intercepted in a driven browser, and the
+keyboard gesture additionally exercises the selector's accessibility.
 
-Trois tests ont échoué au fil des exécutions — `obligations.spec.ts:142`,
-`occurrences.spec.ts:225`, `occurrences.spec.ts:210` — toujours de la même façon :
-l'URL ne recevait pas ce qu'on lui demandait. Longtemps traité comme une flakiness
-liée à la charge, c'était un **vrai défaut**, et il touchait les utilisateurs.
+### The screens that were shells
 
-Le relevé a fini par le montrer sans ambiguïté : la requête de navigation part, le
-routeur l'**abandonne** (`net::ERR_ABORTED`), et la transition React qui la portait
-ne se termine alors **jamais**. `pending` reste vrai indéfiniment ; or les contrôles
-sont désactivés pendant qu'une navigation est en cours. Mesuré : champ de recherche
-grisé et URL figée **huit secondes** après la frappe, sans reprise.
+`e2e/completed-screens.spec.ts` — "Mon profil", the Administration index and the
+notification rules used to render a placeholder, "this section is not built yet".
+The file checks they carry **real data**, not just a title — a page showing its
+header and nothing else would pass an existence test while staying empty.
 
-Quatre formes ont été essayées, chacune fausse pour une raison propre :
+It also carries the regression guard: no reachable screen may render a
+placeholder. A placeholder is comfortable to put in and easy to forget; it looks
+like a feature and nothing flags it.
 
-| Forme                                  | Pourquoi elle échoue                                                |
-| -------------------------------------- | ------------------------------------------------------------------- |
-| Relance à cadence fixe                 | Se double elle-même : chaque essai interrompt le précédent          |
-| Garde sur `pending` seul               | Une navigation perdue laisse `pending` figé → **blocage définitif** |
-| Borne en NOMBRE d'essais               | Épuise son quota en deux secondes, quand il faudrait insister       |
-| Condition lue dans le corps de l'effet | L'effet ne se réexécute pas : `Date.now()` n'est pas une dépendance |
+### Hardening
 
-La forme retenue combine les quatre leçons : borne en **temps** (vingt secondes),
-attente **doublante**, `pending` lu par **référence** dans la minuterie, et
-réarmement à chaque battement. Condition d'arrêt factuelle : l'URL porte-t-elle ce
-qu'on a demandé ?
+`e2e/security.spec.ts`: headers present, a nonce **different on every response**,
+**zero CSP violations** on the working screens, a zeroed gauge renders empty, and
+the route handlers exercised in all three situations — no session, insufficient
+session, correct session.
 
-Depuis, **deux exécutions complètes consécutives passent, 135 sur 135**.
+### Accessibility
 
-⚠️ Ce qui reste vrai : le mécanisme compense un comportement de Next.js qu'il ne
-corrige pas. Si un écran neuf présente le symptôme, la cause est là, pas dans l'écran.
+`@axe-core/playwright` on every main screen. The violations found were fixed, never
+added to an exception list.
 
-### Windows épuise ses ports éphémères : `net::ERR_NO_BUFFER_SPACE`
+## Static tests — what no execution shows
 
-⚠️ **Ce n'est pas un défaut de l'application, et il ne faut pas le chercher dedans.**
+Three checks read the code itself:
 
-Le symptôme : un test de bout en bout échoue sur `page.goto: net::ERR_NO_BUFFER_SPACE`,
-souvent après une centaine de tests, jamais deux fois au même endroit. Relancé seul,
-le même test passe.
+| Test                           | What it prevents                                                                 |
+| ------------------------------ | -------------------------------------------------------------------------------- |
+| `server-action-guards.test.ts` | A Server Action with no permission guard                                         |
+| `rls.test.ts`                  | A table with no RLS                                                              |
+| `logical-properties.test.ts`   | A **physical** Tailwind class (`ml-`, `pr-`, `text-left`)                        |
+| `i18n-keys.test.ts`            | A key that resolves to a group, or a parameterised message called with no values |
 
-La cause est système. Windows conserve chaque socket fermée en `TIME_WAIT` pendant
-quatre minutes et n'ouvre par défaut qu'une plage de ports dynamiques étroite. La
-suite en consomme beaucoup : cent trente-neuf tests, chacun avec ses requêtes HTTP,
-sa session et sa réserve de connexions PostgreSQL. Au-delà d'un certain débit, la
-pile réseau refuse d'en ouvrir une de plus.
+The third prepares the Arabic switch: logical properties (`ms-`, `pe-`,
+`text-start`) flip by themselves. The debt would stay invisible until the day it
+cost a full review of the interface.
 
-**Ce qui a été fait**, dans `playwright.config.ts` : une **reprise** sous Windows
-(`retries: 1`). Une seconde tentative repart sur des ports libérés ; un échec
-applicatif, lui, échoue les deux fois — la reprise ne masque donc aucun défaut réel.
+⚠️ The fourth was extended after a real incident: a plural message called without
+its values does not degrade the label, it **raises `FORMATTING_ERROR` and takes the
+whole page down**. The Échéancier became unreachable as soon as one line was past
+its legal deadline — precisely when the list was most useful. Three occurrences
+were found.
 
-⚠️ **Cette reprise absorbe aussi l'intermittence Firefox** décrite plus bas. Deux
-exécutions complètes consécutives donnent désormais « 139 passés, 1 instable » là où
-l'une des deux échouait. Un test rapporté **instable** n'est pas un test vert : il
-signale qu'il a fallu s'y reprendre. Le rapport le nomme, et il faut le lire.
+⚠️ Each of these tests carries a list of **waivers with a written reason**, and a
+check that fails if a waiver becomes unnecessary. A waiver you forget to remove is
+a rule switching itself off.
 
-⚠️ **Ce qu'il ne faut PAS faire : augmenter le nombre de travailleurs.** La suite
-tourne déjà sur un seul (`workers: 1`, `fullyParallel: false`), et c'était déjà le
-cas quand l'incident est survenu. En mettre deux doublerait le débit de sockets —
-exactement ce qui manque. Le réglage porte un commentaire en ce sens, pour que
-personne ne le relance à la hausse en croyant gagner du temps.
+## What no suite covers
 
-Si le symptôme devenait fréquent, le remède est côté système et non côté suite :
-élargir la plage dynamique et raccourcir le `TIME_WAIT`
+Stated here so nobody discovers it in production:
+
+- **Measured browser rendering** — LCP, INP, CLS. `npm run load-test` measures the
+  server (~100 ms per page alone, p95 2.0 s at fifty concurrent sessions, 0 failures
+  out of 200 requests); it launches no browser.
+- **Restore under real conditions.** `npm run restore:test` restores into a
+  disposable database — already far more than nothing, but not a failover exercise.
+- **Load beyond fifty sessions.**
+
+## One intermittency explained, one tolerance accepted
+
+### Filters and sorting: the cause eventually showed itself
+
+Three tests failed across runs — `obligations.spec.ts:142`,
+`occurrences.spec.ts:225`, `occurrences.spec.ts:210` — always the same way: the URL
+did not receive what was asked of it. Long treated as load-related flakiness, it was
+a **real defect**, and it affected users.
+
+The recording finally showed it unambiguously: the navigation request leaves, the
+router **aborts** it (`net::ERR_ABORTED`), and the React transition carrying it then
+**never** completes. `pending` stays true indefinitely; and the controls are
+disabled while a navigation is in flight. Measured: search field greyed out and URL
+frozen **eight seconds** after typing, with no recovery.
+
+Four shapes were tried, each wrong for its own reason:
+
+| Shape                                 | Why it fails                                                      |
+| ------------------------------------- | ----------------------------------------------------------------- |
+| Retry at a fixed cadence              | Duplicates itself: each attempt interrupts the previous one       |
+| Guarding on `pending` alone           | A lost navigation leaves `pending` stuck → **permanent deadlock** |
+| A limit in NUMBER of attempts         | Exhausts its quota in two seconds, when it should persist         |
+| The condition read in the effect body | The effect does not re-run: `Date.now()` is not a dependency      |
+
+The shape retained combines all four lessons: a limit in **time** (twenty seconds),
+a **doubling** wait, `pending` read by **reference** inside the timer, and rearming
+on every beat. Factual stop condition: does the URL carry what we asked for?
+
+Since then, **two consecutive full runs pass**.
+
+⚠️ What remains true: the mechanism compensates for a Next.js behaviour it does not
+fix. If a new screen shows the symptom, the cause is there, not in the screen.
+
+### Windows exhausts its ephemeral ports: `net::ERR_NO_BUFFER_SPACE`
+
+⚠️ **This is not an application defect, and it must not be looked for there.**
+
+The symptom: an end-to-end test fails on `page.goto: net::ERR_NO_BUFFER_SPACE`,
+often after a hundred or so tests, never twice in the same place. Run alone, the
+same test passes.
+
+The cause is systemic. Windows keeps every closed socket in `TIME_WAIT` for four
+minutes and opens only a narrow dynamic port range by default. The suite consumes a
+lot of them: over a hundred tests, each with its HTTP requests, its session and its
+pool of PostgreSQL connections. Beyond a certain rate, the network stack refuses to
+open one more.
+
+**What was done**, in `playwright.config.ts`: one **retry** under Windows
+(`retries: 1`). A second attempt starts from freed ports; an application failure
+fails both times — so the retry masks no real defect.
+
+⚠️ **This retry also absorbs the Firefox intermittency** described below. Two
+consecutive full runs now give "141 passed, 1 flaky" where one of the two used to
+fail. A test reported **flaky** is not a green test: it signals that it took more
+than one go. The report names it, and it has to be read.
+
+⚠️ **What NOT to do: raise the worker count.** The suite already runs on one
+(`workers: 1`, `fullyParallel: false`), and it already did when the incident
+occurred. Two would double the socket rate — exactly what is short. The setting
+carries a comment to that effect, so nobody raises it again believing it saves
+time.
+
+If the symptom became frequent, the remedy is systemic and not in the suite: widen
+the dynamic range and shorten `TIME_WAIT`
 (`netsh int ipv4 set dynamicport tcp start=10000 num=55000`).
 
-### Firefox et les navigations interrompues
+### Firefox and interrupted navigations
 
-Firefox signale `NS_BINDING_ABORTED` dès qu'une navigation en remplace une autre ;
-Chromium absorbe le même cas sans rien dire. Le helper `visit()` tolère cette erreur
-précise et **seulement celle-là**, parce que la navigation aboutit : ce qui l'établit
-est la page obtenue, vérifiée par les assertions qui suivent.
+Firefox reports `NS_BINDING_ABORTED` as soon as one navigation replaces another;
+Chromium absorbs the same case silently. The `visit()` helper tolerates that
+precise error and **only that one**, because the navigation does complete: what
+establishes it is the page obtained, verified by the assertions that follow.
 
-## Avant d'annoncer « terminé »
+## Before announcing "done"
 
 ```bash
 npm run typecheck && npm run lint && npm test && npm run test:rls && npm run test:e2e
 ```
 
-Les cinq passent, ou ce n'est pas terminé.
+All five pass, or it is not done.
