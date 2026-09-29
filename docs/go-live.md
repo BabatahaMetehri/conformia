@@ -185,17 +185,40 @@ exercised by `tests/integration/holiday-reminder.test.ts`.
 
 ### 2. Commercial registers
 
-The **five AGROESPACE registers are already seeded** by
-`supabase/seed/0003_registres_agroespace.sql` — 58/00, 58/02, 58/04 (El Meniaa),
-01/07 (Adrar), 47/06 (Ghardaïa).
+The **five AGROESPACE registers are seeded** by
+`supabase/seed/0003_registres_agroespace.sql`, as confirmed by the administration
+on 29/09/2026:
 
-⚠️ **Three points in that file are marked "to confirm"**: one register number with
-an illegible digit, which of the five is the principal one, and the **expiry
-dates, which are absent**. Corrections are made on the **Registres** screen.
+| Number | Activity    | Wilaya    | Expires          |
+| ------ | ----------- | --------- | ---------------- |
+| 58/00  | principal   | El Meniaa | _to be supplied_ |
+| 58/01  | service     | El Meniaa | _to be supplied_ |
+| 58/04  | importation | El Meniaa | **27/11/2027**   |
+| 47/06  | irrigation  | Ghardaïa  | _to be supplied_ |
+| 01/07  | adrar       | Adrar     | _to be supplied_ |
 
-⚠️ **The expiry date is not a comfort field.** `AGR-SANIT` and `ETAB-CLASSE` are
-anchored on it: without it they generate **no dossier at all** — measured, zero —
-and that zero looks exactly like "nothing to do".
+⚠️ **The four missing expiry dates are the one thing still outstanding.**
+Corrections and additions are made on the **Registres** screen.
+
+⚠️ **The expiry date does nothing on its own today, and that is worth knowing.**
+`AGR-SANIT` and `ETAB-CLASSE` are anchored on it, but both are declared
+`ON_EVENT` — and `ON_EVENT` obligations are deliberately never generated
+(`listGeneratableObligations` excludes them at source: they are born of a fact,
+not of the calendar). So the date is stored and read by nothing.
+
+The generator _does_ contain the path that would use it: a `PER_REGISTER`
+obligation whose register carries `expires_at` plans its renewal ahead of the
+expiry. Measured by temporarily switching `AGR-SANIT` to `ANNUAL`: two dossiers
+appeared, **for 58/04 only** — the one register with a date — due 28/09/2027,
+thirty days before its 27/11/2027 expiry, exactly as the rule specifies.
+
+⚠️ **So there is a decision to take, and it is a referential one, not a technical
+one**: should renewal of the sanitary approval and of the classified-establishment
+authorisation be _planned_ from the register's expiry (periodicity `ANNUAL`), or
+_created by hand_ when the renewal is actually engaged (`ON_EVENT`, as today)?
+Planning them gives reminders; leaving them as they are means nobody is warned.
+The expiry dates are worth collecting either way — they become useful the moment
+that decision is made.
 
 ⚠️ **The type drives generation.** A `PER_REGISTER` obligation produces a dossier
 **per active register**. One register too many is a column of dossiers too many,

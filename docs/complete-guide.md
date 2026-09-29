@@ -583,12 +583,22 @@ Full schema audit. **What is sound:**
 1. **The religious holidays for 2026 and 2027** — Aïd el-Fitr, Aïd el-Adha, Awal
    Moharem, Achoura, Mawlid Ennabaoui. Set by decree each year; **they cannot be
    calculated**. Template ready: `docs/templates/jours-feries.csv`.
-2. **Expiry dates for the five registers** — without them, renewals generate no
-   dossier at all.
-3. **The number of register 58/02** — the second digit is illegible on the note.
-4. **Which of the five is the principal register** — 58/00 assumed by deduction.
-5. **The CASNOS declaration date** — January or February depending on the source.
-6. **The three IBS instalments** (20/03, 20/06, 20/11) — to be confirmed.
+2. **Expiry dates for four of the five registers** — 58/00, 58/01, 47/06 and
+   01/07. Only 58/04 (importation) has one, 27/11/2027.
+   ⚠️ They change nothing _yet_: `AGR-SANIT` and `ETAB-CLASSE` are declared
+   `ON_EVENT`, and those are never generated automatically. See the decision in
+   point 5.
+3. **The CASNOS declaration date** — January or February depending on the source.
+4. **The three IBS instalments** (20/03, 20/06, 20/11) — to be confirmed.
+5. **A decision, not a date**: should the renewal of the sanitary approval
+   (`AGR-SANIT`) and of the classified-establishment authorisation
+   (`ETAB-CLASSE`) be **planned automatically** from each register's expiry, or
+   **created by hand** when the renewal is engaged? Today they are `ON_EVENT`, so
+   nobody is reminded. Switching them to `ANNUAL` makes the platform raise the
+   dossier thirty days before expiry — verified by measurement.
+
+_Settled on 29/09/2026: the five register numbers and activities, and 58/00 as the
+principal one._
 
 ⚠️ **None of these dates were guessed.** A wrong deadline produces no visible
 error: only a reminder at the wrong moment, which the team then learns to rely
