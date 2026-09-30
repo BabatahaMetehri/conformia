@@ -121,9 +121,36 @@ export async function exchangePasswordRecoveryCode(code: string): Promise<Result
 
 export async function updatePassword(password: string): Promise<Result<null>> {
   const supabase = await createSupabaseServerClient();
+
+  const {
+    data: { user },
+    error: userError,
+  } = await supabase.auth.getUser();
+
   const { error } = await supabase.auth.updateUser({ password });
+
+  console.error("[PASSWORD RESET DEBUG]", {
+    hasUser: Boolean(user),
+    userId: user?.id ?? null,
+    userError: userError
+      ? {
+          message: userError.message,
+          status: userError.status,
+          code: userError.code,
+        }
+      : null,
+    updateError: error
+      ? {
+          message: error.message,
+          status: error.status,
+          code: error.code,
+        }
+      : null,
+  });
+
   if (error !== null)
     return err(AppError.validationFailed({ password: "REJECTED" }, { cause: error }));
+
   return ok(null);
 }
 
