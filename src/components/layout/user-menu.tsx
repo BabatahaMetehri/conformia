@@ -3,7 +3,7 @@
 import { CalendarDays, Check, Languages, LogOut, Monitor, Moon, Sun, User } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { useTheme } from "next-themes";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
 import { UserAvatar } from "@/components/shared/user-avatar";
 import {
@@ -51,6 +51,7 @@ export function UserMenu({ locale }: { readonly locale: string }) {
    * arrivée qui gagne — pas forcément celle qu'on a demandée en dernier.
    */
   const [switching, run] = useActionRunner();
+  const logoutFormRef = useRef<HTMLFormElement>(null);
 
   // Le thème résolu vit dans le navigateur : l'afficher au rendu serveur
   // produirait une coche placée au hasard, corrigée à l'hydratation.
@@ -169,12 +170,15 @@ export function UserMenu({ locale }: { readonly locale: string }) {
           du serveur : un GET la rendrait déclenchable par une simple image
           distante pointant sur l'URL, et préchargeable par le navigateur.
         */}
-        <form action={logoutAction.bind(null, locale)}>
-          <DropdownMenuItem asChild>
-            <button type="submit" className="w-full">
-              <LogOut aria-hidden="true" className="size-4 rtl:-scale-x-100" />
-              {t("layout.signOut")}
-            </button>
+        <form ref={logoutFormRef} action={logoutAction.bind(null, locale)}>
+          <DropdownMenuItem
+            onSelect={(event) => {
+              event.preventDefault();
+              logoutFormRef.current?.requestSubmit();
+            }}
+          >
+            <LogOut aria-hidden="true" className="size-4 rtl:-scale-x-100" />
+            {t("layout.signOut")}
           </DropdownMenuItem>
         </form>
       </DropdownMenuContent>
