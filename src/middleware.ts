@@ -418,7 +418,7 @@ export async function middleware(request: NextRequest): Promise<NextResponse> {
   }
 
   // Utilisateur en règle sur une page d'authentification : on le renvoie chez lui.
-  if (!mustEnrollMfa && onAuthPage) {
+  if (!mustEnrollMfa && onAuthPage && path !== "/reset-password") {
     const destination = redirectTo(request, `/${locale}${HOME_PATH}`);
     return applySecurityHeaders(carryOverCookies(response, destination), csp, requestId);
   }
