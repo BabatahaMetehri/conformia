@@ -74,25 +74,6 @@ export async function signInWithPassword(
 ): Promise<Result<SignInResult>> {
   const supabase = await createSupabaseServerClient();
   const { data, error } = await supabase.auth.signInWithPassword({ email, password });
-  console.info("[AUTH DEBUG]", {
-    email,
-    passwordLength: password.length,
-    supabaseUrl: process.env.NEXT_PUBLIC_SUPABASE_URL,
-    anonKeyPresent: Boolean(process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY),
-    result: {
-      hasUser: Boolean(data.user),
-      hasSession: Boolean(data.session),
-      userId: data.user?.id ?? null,
-      error: error
-        ? {
-            name: error.name,
-            message: error.message,
-            status: error.status,
-            code: error.code,
-          }
-        : null,
-    },
-  });
   if (error !== null) {
     // Un seul code d'erreur, quelle qu'en soit la cause : identifiant inconnu et
     // mot de passe incorrect doivent être indiscernables (cf. §2).
