@@ -104,7 +104,20 @@ export async function requestPasswordReset(
   redirectTo: string,
 ): Promise<Result<null>> {
   const supabase = await createSupabaseServerClient();
-  await supabase.auth.resetPasswordForEmail(email, { redirectTo });
+
+  const { error } = await supabase.auth.resetPasswordForEmail(email, { redirectTo });
+
+  if (error !== null) {
+    console.error("[PASSWORD RESET REQUEST FAILED]", {
+      message: error.message,
+      status: error.status,
+      code: error.code,
+    });
+  }
+
+  // Toujours répondre comme si la demande avait été acceptée.
+  // Signaler l'échec au navigateur pourrait permettre de distinguer
+  // une adresse existante d'une adresse inconnue.
   return ok(null);
 }
 
