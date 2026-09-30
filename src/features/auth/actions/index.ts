@@ -23,6 +23,7 @@ import {
   submitTotpChallenge,
   startPasswordReset,
   establishPasswordRecoverySession,
+  readPasswordRecoveryState,
   choosePassword,
 } from "@/services/auth/credentials";
 
@@ -135,7 +136,7 @@ export async function forgotPasswordAction(
 
 export async function establishPasswordRecoveryAction(
   code: string,
-): Promise<{ ok: true } | { ok: false; error: ClientError }> {
+): Promise<{ ok: true; requiresMfa: boolean } | { ok: false; error: ClientError }> {
   const parsed = z.string().min(1).max(4096).safeParse(code);
 
   if (!parsed.success) {
@@ -158,7 +159,66 @@ export async function establishPasswordRecoveryAction(
     };
   }
 
-  return { ok: true };
+  return {
+    ok: true,
+    requiresMfa: result.value.requiresMfa,
+  };
+}
+
+export async function getPasswordRecoveryStateAction(): Promise<
+  { ok: true; active: boolean; requiresMfa: boolean } | { ok: false; error: ClientError }
+> {
+  const result = await readPasswordRecoveryState();
+
+  if (!result.ok) {
+    return {
+      ok: false,
+      error: toClientError(result.error),
+    };
+  }
+
+  return {
+    ok: true,
+    active: result.value.active,
+    requiresMfa: result.value.requiresMfa,
+  };
+}
+
+export async function verifyPasswordRecoveryMfaAction(
+  _previous: ActionState,
+  formData: FormData,
+): Promise<ActionState> {
+  const parsed = z
+    .object({
+      code: totpCodeSchema,
+    })
+    .safeParse(Object.fromEntries(formData));
+
+  if (!parsed.success) {
+    return {
+      status: "error",
+      error: {
+        code: "VALIDATION_FAILED",
+        message: "auth.errors.invalidCode",
+        httpStatus: 422,
+      },
+    };
+  }
+
+  const result = await submitTotpChallenge(parsed.data.code);
+
+  if (!result.ok) {
+    return {
+      status: "error",
+      error: {
+        code: result.error.code,
+        message: "auth.errors.invalidCode",
+        httpStatus: result.error.httpStatus,
+      },
+    };
+  }
+
+  return { status: "success" };
 }
 
 export async function setPasswordAction(
@@ -170,6 +230,7 @@ export async function setPasswordAction(
       password: passwordSchema,
       confirmation: z.string(),
       locale: z.string().default(DEFAULT_LOCALE),
+      recovery: z.enum(["true"]).optional(),
     })
     .safeParse(Object.fromEntries(formData));
 
@@ -188,6 +249,19 @@ export async function setPasswordAction(
 
   const result = await choosePassword(parsed.data.password);
   if (!result.ok) return failed(result.error);
+
+  if (parsed.data.recovery === "true") {
+    const { ip, userAgent } = await requestContext();
+    const loggedOut = await logout({
+      email: "",
+      ipAddress: ip,
+      userAgent,
+    });
+
+    if (!loggedOut.ok) return failed(loggedOut.error);
+
+    redirect(`/${parsed.data.locale}/login`);
+  }
 
   redirect(`/${parsed.data.locale}/dashboard`);
 }

@@ -253,7 +253,7 @@ export async function middleware(request: NextRequest): Promise<NextResponse> {
   requestHeaders.set(APP_LOCALE_HEADER, splitLocale(request.nextUrl.pathname).locale);
 
   const clientIp = readClientIp(request);
-  const { response, user, gates, supabase } = await updateSession(
+  const { response, user, gates, supabase, isRecoverySession } = await updateSession(
     request,
     requestHeaders,
     clientIp,
@@ -350,6 +350,11 @@ export async function middleware(request: NextRequest): Promise<NextResponse> {
     return applySecurityHeaders(response, csp, requestId);
   }
 
+  if (isRecoverySession && path !== "/reset-password") {
+    const destination = redirectTo(request, `/${locale}/reset-password`);
+    return applySecurityHeaders(carryOverCookies(response, destination), csp, requestId);
+  }
+
   // ── Session présente : les portes se referment une à une. ──────────────────
 
   /*
@@ -403,6 +408,14 @@ export async function middleware(request: NextRequest): Promise<NextResponse> {
   if (gates !== null && gates.isAdmin && !gates.ipAllowed) {
     const destination = redirectTo(request, `/${locale}/login`);
     destination.cookies.delete("sb-access-token");
+    return applySecurityHeaders(carryOverCookies(response, destination), csp, requestId);
+  }
+
+  // Une session issue d'un lien de récupération n'est jamais une session
+  // applicative normale. Elle doit rester confinée à /reset-password jusqu'à
+  // la vérification TOTP puis être détruite après changement du mot de passe.
+  if (isRecoverySession && path !== "/reset-password") {
+    const destination = redirectTo(request, `/${locale}/reset-password`);
     return applySecurityHeaders(carryOverCookies(response, destination), csp, requestId);
   }
 

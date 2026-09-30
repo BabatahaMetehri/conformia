@@ -108,15 +108,30 @@ export async function requestPasswordReset(
   return ok(null);
 }
 
-export async function exchangePasswordRecoveryCode(code: string): Promise<Result<null>> {
+export interface PasswordRecoverySession {
+  readonly requiresMfa: boolean;
+}
+
+export async function exchangePasswordRecoveryCode(
+  code: string,
+): Promise<Result<PasswordRecoverySession>> {
   const supabase = await createSupabaseServerClient();
+
   const { error } = await supabase.auth.exchangeCodeForSession(code);
 
   if (error !== null) {
     return err(AppError.unauthenticated({ cause: error }));
   }
 
-  return ok(null);
+  const { data: aal, error: aalError } = await supabase.auth.mfa.getAuthenticatorAssuranceLevel();
+
+  if (aalError !== null) {
+    return err(AppError.internal({ cause: aalError }));
+  }
+
+  return ok({
+    requiresMfa: aal.nextLevel === "aal2" && aal.currentLevel !== "aal2",
+  });
 }
 
 export async function updatePassword(password: string): Promise<Result<null>> {

@@ -42,6 +42,7 @@ export interface SessionRefresh {
   readonly gates: SessionGates | null;
   /** Client de la requête, réemployé pour la limitation de débit. */
   readonly supabase?: SupabaseClient<Database>;
+  readonly isRecoverySession: boolean;
 }
 
 function readGates(value: unknown): SessionGates | null {
@@ -100,14 +101,36 @@ export async function updateSession(
   const { data } = await supabase.auth.getUser();
 
   if (data.user === null) {
-    return { response, user: null, gates: null, supabase };
+    return {
+      response,
+      user: null,
+      gates: null,
+      supabase,
+      isRecoverySession: false,
+    };
   }
+
+  const { data: claimsData } = await supabase.auth.getClaims();
+
+  const amr = claimsData?.claims.amr;
+
+  const isRecoverySession =
+    Array.isArray(amr) &&
+    amr.some(
+      (method) => typeof method === "object" && "method" in method && method.method === "recovery",
+    );
 
   const { data: gates } = await supabase.rpc("session_gates", {
     ...(clientIp === null ? {} : { p_ip: clientIp }),
   });
 
-  return { response, user: data.user, gates: readGates(gates), supabase };
+  return {
+    response,
+    user: data.user,
+    gates: readGates(gates),
+    supabase,
+    isRecoverySession,
+  };
 }
 
 export interface RateVerdict {

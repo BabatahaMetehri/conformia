@@ -20,10 +20,15 @@ import {
   updatePassword,
   verifyTotpFactor,
   type MfaFactorSummary,
+  type PasswordRecoverySession,
   type TotpEnrollment,
 } from "@/data/mutations/auth";
 import { setMfaEnrolled } from "@/data/mutations/profiles";
-import { getAuthenticatedUser } from "@/data/queries/auth";
+import {
+  getAuthenticatedUser,
+  getPasswordRecoveryState,
+  type PasswordRecoveryState,
+} from "@/data/queries/auth";
 import { AppError } from "@/lib/errors";
 import { err, ok, type Result } from "@/lib/result";
 import { env } from "@/config/env";
@@ -37,8 +42,14 @@ export async function startPasswordReset(email: string, locale: string): Promise
   return requestPasswordReset(email, `${env.NEXT_PUBLIC_APP_URL}/${locale}/reset-password`);
 }
 
-export async function establishPasswordRecoverySession(code: string): Promise<Result<null>> {
+export async function establishPasswordRecoverySession(
+  code: string,
+): Promise<Result<PasswordRecoverySession>> {
   return exchangePasswordRecoveryCode(code);
+}
+
+export async function readPasswordRecoveryState(): Promise<Result<PasswordRecoveryState>> {
+  return getPasswordRecoveryState();
 }
 
 export async function choosePassword(password: string): Promise<Result<null>> {

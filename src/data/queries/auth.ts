@@ -7,7 +7,7 @@ import "server-only";
  * (défense en profondeur) ; l'autorité reste la RLS.
  */
 
-import { mapPostgrestError } from "@/lib/errors";
+import { AppError, mapPostgrestError } from "@/lib/errors";
 import { err, ok, type Result } from "@/lib/result";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import type { DomainId, ProfileId } from "@/types/domain";
@@ -19,6 +19,61 @@ const PROFILE_COLUMNS =
 export interface AuthenticatedUser {
   readonly id: ProfileId;
   readonly email: string | null;
+}
+
+export interface PasswordRecoveryState {
+  readonly active: boolean;
+  readonly requiresMfa: boolean;
+}
+
+/**
+ * Détecte une session de récupération déjà établie, notamment après un
+ * rafraîchissement de /reset-password quand le code à usage unique a déjà
+ * été consommé.
+ */
+export async function getPasswordRecoveryState(): Promise<Result<PasswordRecoveryState>> {
+  const supabase = await createSupabaseServerClient();
+
+  const { error: userError } = await supabase.auth.getUser();
+
+  if (userError !== null) {
+    return ok({
+      active: false,
+      requiresMfa: false,
+    });
+  }
+
+  const { data: claimsData, error: claimsError } = await supabase.auth.getClaims();
+
+  if (claimsError !== null) {
+    return err(AppError.internal({ cause: claimsError }));
+  }
+
+  const amr = claimsData?.claims.amr;
+
+  const isRecoverySession =
+    Array.isArray(amr) &&
+    amr.some(
+      (method) => typeof method === "object" && "method" in method && method.method === "recovery",
+    );
+
+  if (!isRecoverySession) {
+    return ok({
+      active: false,
+      requiresMfa: false,
+    });
+  }
+
+  const { data: aal, error: aalError } = await supabase.auth.mfa.getAuthenticatorAssuranceLevel();
+
+  if (aalError !== null) {
+    return err(AppError.internal({ cause: aalError }));
+  }
+
+  return ok({
+    active: true,
+    requiresMfa: aal.nextLevel === "aal2" && aal.currentLevel !== "aal2",
+  });
 }
 
 export interface ProfileSummary {
