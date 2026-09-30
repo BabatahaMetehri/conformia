@@ -1,6 +1,6 @@
 import { getTranslations } from "next-intl/server";
 
-import { PasswordForm } from "@/features/auth/components/password-form";
+import { ResetPasswordRecovery } from "@/features/auth/components/reset-password-recovery";
 
 interface PageProps {
   params: Promise<{ locale: string }>;
@@ -21,7 +21,7 @@ export default async function ResetPasswordPage({ params }: PageProps) {
         <p className="text-sm opacity-80">{t("auth.resetPassword.subtitle")}</p>
       </header>
 
-      <PasswordForm locale={locale} submitLabel={t("auth.resetPassword.submit")} />
+      <ResetPasswordRecovery locale={locale} submitLabel={t("auth.resetPassword.submit")} />
     </section>
   );
 }

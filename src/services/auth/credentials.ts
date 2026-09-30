@@ -12,6 +12,7 @@ import "server-only";
 
 import {
   enrollTotpFactor,
+  exchangePasswordRecoveryCode,
   listTotpFactors,
   logAuthEvent,
   requestPasswordReset,
@@ -34,6 +35,10 @@ export async function startPasswordReset(email: string, locale: string): Promise
   // Le lien retombe sur /reset-password : c'est là que Supabase dépose la session
   // de récupération, et le seul endroit d'où un nouveau mot de passe est accepté.
   return requestPasswordReset(email, `${env.NEXT_PUBLIC_APP_URL}/${locale}/reset-password`);
+}
+
+export async function establishPasswordRecoverySession(code: string): Promise<Result<null>> {
+  return exchangePasswordRecoveryCode(code);
 }
 
 export async function choosePassword(password: string): Promise<Result<null>> {

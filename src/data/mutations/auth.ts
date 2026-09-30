@@ -108,6 +108,17 @@ export async function requestPasswordReset(
   return ok(null);
 }
 
+export async function exchangePasswordRecoveryCode(code: string): Promise<Result<null>> {
+  const supabase = await createSupabaseServerClient();
+  const { error } = await supabase.auth.exchangeCodeForSession(code);
+
+  if (error !== null) {
+    return err(AppError.unauthenticated({ cause: error }));
+  }
+
+  return ok(null);
+}
+
 export async function updatePassword(password: string): Promise<Result<null>> {
   const supabase = await createSupabaseServerClient();
   const { error } = await supabase.auth.updateUser({ password });

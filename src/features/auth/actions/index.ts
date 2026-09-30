@@ -15,12 +15,14 @@ import { z } from "zod";
 import { DEFAULT_LOCALE } from "@/config/constants";
 import type { ActionState } from "@/features/auth/actions/state";
 import { toClientError } from "@/lib/errors";
+import type { ClientError } from "@/lib/errors";
 import { login, logout } from "@/services/auth/login";
 import {
   beginTotpEnrollment,
   completeTotpEnrollment,
   submitTotpChallenge,
   startPasswordReset,
+  establishPasswordRecoverySession,
   choosePassword,
 } from "@/services/auth/credentials";
 
@@ -129,6 +131,34 @@ export async function forgotPasswordAction(
 
   await startPasswordReset(parsed.data.email, parsed.data.locale);
   return { status: "success", message: "auth.forgotPassword.sent" };
+}
+
+export async function establishPasswordRecoveryAction(
+  code: string,
+): Promise<{ ok: true } | { ok: false; error: ClientError }> {
+  const parsed = z.string().min(1).max(4096).safeParse(code);
+
+  if (!parsed.success) {
+    return {
+      ok: false,
+      error: {
+        code: "UNAUTHENTICATED",
+        message: "errors.unauthenticated",
+        httpStatus: 401,
+      },
+    };
+  }
+
+  const result = await establishPasswordRecoverySession(parsed.data);
+
+  if (!result.ok) {
+    return {
+      ok: false,
+      error: toClientError(result.error),
+    };
+  }
+
+  return { ok: true };
 }
 
 export async function setPasswordAction(
