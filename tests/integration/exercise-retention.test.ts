@@ -66,6 +66,23 @@ async function marquer(userId: string, year: number, backupId: number): Promise<
 beforeAll(async () => {
   scope = await createTestScope();
   adminId = await scope.createUserWithRole("ADMIN");
+
+  const obligationId = await scope.createObligation({
+    code: "RETENTION-TEST",
+    name: "Test conservation par exercice",
+    scope: "ENTITY",
+    periodicity: "MONTHLY",
+  });
+
+  await scope.createOccurrence({
+    obligationId,
+    periodKey: "2024-01",
+    periodStart: "2024-01-01",
+    periodEnd: "2024-01-31",
+    legalDueDate: "2024-02-20",
+    internalDueDate: "2024-02-13",
+    status: "TODO",
+  });
 }, 120_000);
 
 afterAll(async () => {

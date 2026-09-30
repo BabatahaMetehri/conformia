@@ -49,6 +49,12 @@ const DELIBERATELY_UNGUARDED: Readonly<Record<string, string>> = {
   logoutAction: "Fermer une session ne demande pas de permission.",
   forgotPasswordAction: "Accessible sans session, par construction.",
   setPasswordAction: "Consomme un jeton à usage unique, qui EST l'autorisation.",
+  establishPasswordRecoveryAction:
+    "Établit une session depuis un jeton de récupération à usage unique.",
+  getPasswordRecoveryStateAction:
+    "Lecture bornée à l'état de la session de récupération de l'appelant.",
+  verifyPasswordRecoveryMfaAction:
+    "Vérification du second facteur dans une session de récupération.",
   startMfaEnrollmentAction: "Enrôlement du second facteur, avant session complète.",
   completeMfaEnrollmentAction: "Enrôlement du second facteur, avant session complète.",
   verifyMfaAction: "Vérification du second facteur, avant session complète.",
