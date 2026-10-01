@@ -46,3 +46,11 @@ next-env.d.ts
 /playwright-report
 /blob-report
 /playwright/.cache
+
+# Local backup / restore working files
+.backup-work/
+.restore-work/
+.restore-test/
+.restore-test-production/
+.restore-diagnosis/
+.restore-schema-inspect.sql
